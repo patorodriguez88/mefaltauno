@@ -16,6 +16,14 @@ define('MAIL_MODO',     'mail');    // mail = envía con mail() | log = escribe 
 define('MAIL_FROM',     'no-responder@mefaltauno.com.ar');
 define('MAIL_OPERADOR', 'pedidos@mefaltauno.com.ar');
 
+// WePoint (warehouse): el stock y la preparación de pedidos los maneja WePoint.
+// Sandbox: https://sandbox.wepoint.ar/api · Producción: https://sistema.wepoint.ar/api
+define('WEPOINT_URL',              'https://sandbox.wepoint.ar/api');
+define('WEPOINT_EMAIL',            '');
+define('WEPOINT_PASSWORD',         '');
+define('WEPOINT_ID_TRANSPORTISTA', '');   // transportista para las órdenes de venta (lo da WePoint)
+define('WEPOINT_CRON_TOKEN',       '');   // clave para que el cron de cPanel sincronice el stock
+
 // Emails con acceso al panel admin (separados por coma)
 define('ADMIN_EMAILS', '');
 

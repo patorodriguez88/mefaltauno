@@ -2,7 +2,7 @@
 // Fragmentos de HTML reutilizables.
 
 function tarjeta_coleccion(array $c): string {
-    $img = $c['imagen'] ? ' style="background-image:url(\'' . e($c['imagen']) . '\')"' : '';
+    $img = $c['imagen'] ? ' style="background-image:url(\'' . e(img($c['imagen'])) . '\')"' : '';
     $chip = !empty($c['total']) ? '<span class="chip">' . (int)$c['total'] . ' números</span>' : '';
     return '<a class="col-card" href="' . url('coleccion.php?c=' . urlencode($c['slug'])) . '">'
         . '<div class="col-card-img"' . $img . '>' . $chip . '</div>'
@@ -43,7 +43,7 @@ function tarjeta_mi_coleccion(array $c): string {
     }
     $sub = $faltan ? "Faltan <b>$faltan</b>" . ($c['pendientes'] ? " · {$c['pendientes']} en búsqueda o en camino" : '') : '¡Equipo completo! 🏆';
     return '<a class="mi-col" href="' . url('coleccion.php?c=' . urlencode($c['slug'])) . '">'
-        . '<img src="' . e($c['imagen'] ?? '') . '" alt="" loading="lazy">'
+        . '<img src="' . e(img($c['imagen'] ?? '')) . '" alt="" loading="lazy">'
         . '<div><h3>' . e($c['nombre']) . '</h3>'
         . '<div class="progreso"><span style="width:' . $pct . '%"></span></div>'
         . '<div class="progreso-txt"><span>' . $c['tengo'] . ' de ' . $total . '</span><span>' . $sub . '</span></div>'

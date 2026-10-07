@@ -30,16 +30,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db = db();
         $db->beginTransaction();
         try {
-            // Revalidar stock con bloqueo y descontarlo (se devuelve si el pedido se cancela)
+            // Revalidar disponibilidad con bloqueo y descontarla (se devuelve si el pedido se cancela)
             $subtotal = 0;
             foreach ($c['lineas'] as $l) {
-                $st = (int)q("SELECT stock FROM items WHERE id=? FOR UPDATE", [$l['item']['id']])->fetchColumn();
-                if ($st < $l['cantidad']) throw new Exception('Se agotó ' . $l['item']['coleccion'] . ' ' . num((int)$l['item']['numero']) . '. Revisá tu carrito.');
+                $fila = q("SELECT stock, congelado, limite FROM items WHERE id=? FOR UPDATE", [$l['item']['id']])->fetch();
+                if (!$fila || disponible($fila) < $l['cantidad']) throw new Exception('Se agotó ' . $l['item']['coleccion'] . ' ' . num((int)$l['item']['numero']) . '. Revisá tu carrito.');
                 $subtotal += $l['total'];
             }
-            q("INSERT INTO pedidos (cliente_id, subtotal, total, envio_metodo, punto_id, envio_punto, envio_nombre, envio_direccion, envio_localidad, envio_provincia, envio_cp, envio_telefono, pago_metodo, notas)
-               VALUES (?,?,?,'retiro',?,?,?,?,?,?,?,?,?,?)", [
-                $cli['id'], $subtotal, $subtotal, $punto['id'], $punto['nombre'], $d['nombre'], $punto['direccion'], $punto['localidad'],
+            // Código de descuento: se revalida y se cuenta el uso dentro de la misma transacción
+            $cupon = null;
+            $descuento = 0;
+            if (carrito_cupon()) {
+                q("SELECT id FROM cupones WHERE codigo=? FOR UPDATE", [carrito_cupon()]);
+                $v = cupon_validar(carrito_cupon(), $cli, $subtotal);
+                $cupon = $v['cupon']['codigo'];
+                $descuento = $v['descuento'];
+                q("UPDATE cupones SET usos = usos + 1 WHERE codigo=?", [$cupon]);
+            }
+            q("INSERT INTO pedidos (cliente_id, subtotal, cupon_codigo, descuento, total, envio_metodo, punto_id, envio_punto, envio_nombre, envio_direccion, envio_localidad, envio_provincia, envio_cp, envio_telefono, pago_metodo, notas)
+               VALUES (?,?,?,?,?,'retiro',?,?,?,?,?,?,?,?,?,?)", [
+                $cli['id'], $subtotal, $cupon, $descuento, $subtotal - $descuento, $punto['id'], $punto['nombre'], $d['nombre'], $punto['direccion'], $punto['localidad'],
                 $punto['provincia'], $punto['cp'], $d['telefono'], $d['pago_metodo'], $d['notas'] ?: null,
             ]);
             $pid = (int)$db->lastInsertId();
@@ -47,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $it = $l['item'];
                 q("INSERT INTO pedido_items (pedido_id, item_id, coleccion, numero, titulo, precio, cantidad) VALUES (?,?,?,?,?,?,?)",
                   [$pid, $it['id'], $it['coleccion'], $it['numero'], $it['titulo'], $l['precio'], $l['cantidad']]);
-                q("UPDATE items SET stock = stock - ? WHERE id=?", [$l['cantidad'], $it['id']]);
+                q("UPDATE items SET stock = stock - ?, limite = IF(limite IS NULL, NULL, limite - ?) WHERE id=?", [$l['cantidad'], $l['cantidad'], $it['id']]);
                 q("INSERT IGNORE INTO cliente_colecciones (cliente_id, coleccion_id) VALUES (?,?)", [$cli['id'], $it['coleccion_id']]);
             }
             registrar_historial('pedido', $pid, 'pendiente', null, nombre_cliente($cli));
@@ -117,7 +127,7 @@ require __DIR__ . '/inc/header.php';
                             <div><strong>Mercado Pago</strong><span>Tarjeta, débito o dinero en cuenta. Te enviamos el link de pago.</span></div></label>
                         <label class="opcion"><input type="radio" name="pago_metodo" value="transferencia" <?= $d['pago_metodo'] === 'transferencia' ? 'checked' : '' ?>>
                             <div style="flex:1"><strong>Transferencia bancaria</strong><span>Transferís desde tu banco o billetera virtual. Te dejamos los datos acá y en el mail.</span>
-                                <div class="opcion-extra"><?= html_datos_bancarios($c['subtotal']) ?></div></div></label>
+                                <div class="opcion-extra"><?= html_datos_bancarios($c['total']) ?></div></div></label>
                     </div>
                     <label class="campo" style="margin-top:16px">Notas para nosotros <small>(opcional)</small><textarea name="notas"><?= e($d['notas']) ?></textarea></label>
                 </div>
@@ -131,8 +141,11 @@ require __DIR__ . '/inc/header.php';
                         <span><?= precio($l['total']) ?></span>
                     </div>
                 <?php endforeach; ?>
+                <?php if ($c['cupon']): ?>
+                    <div class="resumen-fila descuento"><span>Código <b><?= e($c['cupon']['codigo']) ?></b></span><span>−<?= precio($c['descuento']) ?></span></div>
+                <?php endif; ?>
                 <div class="resumen-fila muted"><span>Retiro</span><span>Sin cargo</span></div>
-                <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio($c['subtotal']) ?></span></div>
+                <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio($c['total']) ?></span></div>
                 <button class="btn btn-primario btn-bloque" style="margin-top:16px" type="submit" <?= $puntos ? '' : 'disabled' ?>>Confirmar pedido ⚡</button>
                 <p class="muted small" style="margin:12px 0 0">Te mandamos el detalle por mail y podés seguirlo desde tu cuenta.</p>
             </aside>

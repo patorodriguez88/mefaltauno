@@ -16,6 +16,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'colecciones' => ['colecciones.php', 'Colecciones y stock'],
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
+        'cupones'     => ['cupones.php', 'Descuentos'],
         'ajustes'     => ['ajustes.php', 'Ajustes'],
     ];
     echo '<div class="admin-bar"><div class="container"><b style="color:#fff">Admin</b>';
@@ -46,7 +47,8 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
 
     $lineas = q("SELECT item_id, cantidad FROM pedido_items WHERE pedido_id=? AND item_id IS NOT NULL", [$id])->fetchAll();
     if ($nuevo === 'cancelado' && $viejo !== 'cancelado') {
-        foreach ($lineas as $l) q("UPDATE items SET stock = stock + ? WHERE id=?", [$l['cantidad'], $l['item_id']]);
+        foreach ($lineas as $l) q("UPDATE items SET stock = stock + ?, limite = IF(limite IS NULL, NULL, limite + ?) WHERE id=?", [$l['cantidad'], $l['cantidad'], $l['item_id']]);
+        if ($p['cupon_codigo']) q("UPDATE cupones SET usos = GREATEST(usos - 1, 0) WHERE codigo=?", [$p['cupon_codigo']]);
     }
     if ($nuevo === 'entregado' && $viejo !== 'entregado') {
         foreach ($lineas as $l) q("INSERT IGNORE INTO cliente_items (cliente_id, item_id, origen) VALUES (?,?,'compra')", [$p['cliente_id'], $l['item_id']]);
@@ -54,6 +56,15 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
     q("UPDATE pedidos SET estado=? WHERE id=?", [$nuevo, $id]);
     registrar_historial('pedido', $id, $nuevo, $nota, $usuario);
     $db->commit();
+    // Pago confirmado → WePoint recibe la orden de venta para preparar el pedido
+    if (in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && wepoint_listo()) {
+        try {
+            wepoint_crear_orden($id);
+            flash('ok', 'Orden enviada a WePoint para preparar.');
+        } catch (Exception $e) {
+            flash('error', 'No se pudo enviar a WePoint: ' . $e->getMessage());
+        }
+    }
     if ($avisar) {
         require_once dirname(__DIR__) . '/inc/notificaciones.php';
         notificar_cambio_estado('pedido', $id, $nuevo, $nota);

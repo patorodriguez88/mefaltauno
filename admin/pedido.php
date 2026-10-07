@@ -2,6 +2,17 @@
 require __DIR__ . '/_inc.php';
 
 $id = (int)($_GET['id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'wepoint') {
+    csrf_exigir();
+    try {
+        $oid = wepoint_crear_orden($id);
+        flash('ok', "Orden enviada a WePoint ($oid).");
+    } catch (Exception $e) {
+        flash('error', 'WePoint: ' . $e->getMessage());
+    }
+    redirect('admin/pedido.php?id=' . $id);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
     try {
@@ -33,7 +44,7 @@ admin_header('Pedido #' . $id, 'pedidos');
         <div class="card">
             <?php foreach ($lineas as $l): ?>
                 <div class="linea">
-                    <img src="<?= e($l['imagen'] ?? '') ?>" alt="" loading="lazy">
+                    <img src="<?= e(img($l['imagen'] ?? '')) ?>" alt="" loading="lazy">
                     <div>
                         <div class="linea-sub"><?= e($l['coleccion']) ?> · <?= num((int)$l['numero']) ?></div>
                         <div class="linea-titulo"><?= e($l['titulo']) ?></div>
@@ -42,6 +53,9 @@ admin_header('Pedido #' . $id, 'pedidos');
                     <div class="linea-der"><strong><?= precio($l['precio'] * $l['cantidad']) ?></strong></div>
                 </div>
             <?php endforeach; ?>
+            <?php if ((float)$p['descuento'] > 0): ?>
+                <div class="resumen-fila descuento"><span>Código <b><?= e($p['cupon_codigo']) ?></b></span><span>−<?= precio((float)$p['descuento']) ?></span></div>
+            <?php endif; ?>
             <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio((float)$p['total']) ?></span></div>
         </div>
 
@@ -72,6 +86,18 @@ admin_header('Pedido #' . $id, 'pedidos');
             <p class="muted small" style="margin:0">“Listo para retirar” le avisa que pase a buscarlo. Cancelar devuelve el stock. Retirado suma los números a la colección del cliente.</p>
             <button class="btn btn-primario" type="submit">Guardar</button>
         </form>
+        <div class="card">
+            <h3>WePoint</h3>
+            <?php if ($p['wepoint_orden_id']): ?>
+                <p class="small" style="margin:0"><span class="badge badge-verde">Orden enviada</span> <b><?= e($p['wepoint_orden_id']) ?></b><br><span class="muted">WePoint la prepara y la lleva al punto de retiro.</span></p>
+            <?php elseif (!wepoint_listo()): ?>
+                <p class="muted small" style="margin:0">WePoint todavía no está conectado. Cuando lo esté, la orden se envía sola al marcar “Pago confirmado”.</p>
+            <?php else: ?>
+                <?php if ($p['wepoint_error']): ?><div class="aviso" style="background:var(--red-100);color:var(--red);margin-bottom:10px"><?= e($p['wepoint_error']) ?></div><?php endif; ?>
+                <p class="muted small">La orden se envía sola al marcar “Pago confirmado”. Si falló o querés mandarla ahora:</p>
+                <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="wepoint"><button class="btn btn-teal btn-chico" type="submit">Enviar a WePoint</button></form>
+            <?php endif; ?>
+        </div>
         <div class="card">
             <h3>Historial</h3>
             <ul class="timeline">

@@ -33,7 +33,7 @@ require __DIR__ . '/inc/header.php';
 <section class="col-hero">
     <div class="container col-hero-grid">
         <?php if ($col['imagen']): ?>
-            <img class="col-hero-img" src="<?= e($col['imagen']) ?>" alt="<?= e($col['nombre']) ?>">
+            <img class="col-hero-img" src="<?= e(img($col['imagen'])) ?>" alt="<?= e($col['nombre']) ?>">
         <?php endif; ?>
         <div>
             <div class="crumbs">
@@ -81,9 +81,9 @@ require __DIR__ . '/inc/header.php';
             <?php foreach ($items as $it):
                 $estado = $estados[$it['id']] ?? 'falta';
                 $p = precio_item($it);
-                $stock = (int)$it['stock']; ?>
+                $stock = disponible($it); ?>
                 <article class="item" data-id="<?= (int)$it['id'] ?>" data-estado="<?= e($estado) ?>" data-stock="<?= $stock ?>" data-precio="<?= $p ?>">
-                    <div class="item-img" <?php if ($it['imagen']): ?>style="background-image:url('<?= e($it['imagen']) ?>')"<?php endif; ?>>
+                    <div class="item-img" <?php if ($it['imagen']): ?>style="background-image:url('<?= e(img($it['imagen'])) ?>')"<?php endif; ?>>
                         <span class="item-num"><?= num((int)$it['numero']) ?></span>
                         <span class="item-estado"><?= $chips[$estado] ?? '' ?></span>
                     </div>

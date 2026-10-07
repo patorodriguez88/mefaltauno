@@ -35,7 +35,7 @@ admin_header('Faltante #' . $id, 'faltantes');
             <h3>Qué le falta</h3>
             <?php foreach ($its as $i): ?>
                 <div class="linea">
-                    <img src="<?= e($i['imagen'] ?? '') ?>" alt="" loading="lazy">
+                    <img src="<?= e(img($i['imagen'] ?? '')) ?>" alt="" loading="lazy">
                     <div>
                         <div class="linea-titulo"><?= e($i['descripcion']) ?></div>
                         <div class="linea-sub"><?= $i['item_id'] ? 'Del catálogo' : 'Pedido libre (no está en el catálogo)' ?></div>

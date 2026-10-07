@@ -184,6 +184,37 @@ function schema_pasos(): array {
                 valor TEXT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // Stock de WePoint (el operador solo congela o limita) y códigos de descuento
+        4 => [
+            "ALTER TABLE items ADD COLUMN congelado TINYINT(1) NOT NULL DEFAULT 0 AFTER stock",
+            "ALTER TABLE items ADD COLUMN limite INT NULL AFTER congelado",
+            "ALTER TABLE items ADD COLUMN stock_sync_at DATETIME NULL AFTER limite",
+            "CREATE TABLE IF NOT EXISTS cupones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                codigo VARCHAR(40) NOT NULL UNIQUE,
+                tipo VARCHAR(12) NOT NULL,
+                valor DECIMAL(12,2) NOT NULL,
+                minimo DECIMAL(12,2) NULL,
+                usos_max INT NULL,
+                usos INT NOT NULL DEFAULT 0,
+                uno_por_cliente TINYINT(1) NOT NULL DEFAULT 1,
+                cliente_email VARCHAR(160) NULL,
+                vence DATE NULL,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                nota VARCHAR(255) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "ALTER TABLE pedidos ADD COLUMN cupon_codigo VARCHAR(40) NULL AFTER subtotal",
+            "ALTER TABLE pedidos ADD COLUMN descuento DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER cupon_codigo",
+        ],
+
+        // Vínculo con WePoint: id de producto y orden de venta generada
+        5 => [
+            "ALTER TABLE items ADD COLUMN wepoint_id INT NULL AFTER sku",
+            "ALTER TABLE pedidos ADD COLUMN wepoint_orden_id VARCHAR(40) NULL",
+            "ALTER TABLE pedidos ADD COLUMN wepoint_error TEXT NULL",
+        ],
     ];
 }
 

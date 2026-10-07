@@ -25,7 +25,7 @@ require __DIR__ . '/inc/header.php';
             <div class="card">
                 <?php foreach ($lineas as $l): ?>
                     <div class="linea">
-                        <img src="<?= e($l['imagen'] ?? '') ?>" alt="" loading="lazy">
+                        <img src="<?= e(img($l['imagen'] ?? '')) ?>" alt="" loading="lazy">
                         <div>
                             <div class="linea-sub"><?= e($l['coleccion']) ?> · <?= num((int)$l['numero']) ?></div>
                             <div class="linea-titulo"><?= e($l['titulo']) ?></div>
@@ -34,6 +34,9 @@ require __DIR__ . '/inc/header.php';
                         <div class="linea-der"><strong><?= precio($l['precio'] * $l['cantidad']) ?></strong></div>
                     </div>
                 <?php endforeach; ?>
+                <?php if ((float)$p['descuento'] > 0): ?>
+                    <div class="resumen-fila descuento"><span>Código <b><?= e($p['cupon_codigo']) ?></b></span><span>−<?= precio((float)$p['descuento']) ?></span></div>
+                <?php endif; ?>
                 <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio((float)$p['total']) ?></span></div>
             </div>
 

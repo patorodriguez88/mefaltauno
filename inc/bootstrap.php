@@ -188,6 +188,20 @@ function precio_item(array $it): float {
     return $it['precio_promo'] !== null && (float)$it['precio_promo'] > 0 ? (float)$it['precio_promo'] : (float)$it['precio'];
 }
 
+// URL de una imagen: externa (http…) o subida por el operador (uploads/…)
+function img(?string $v): string {
+    if (!$v) return '';
+    return preg_match('#^https?://#', $v) ? $v : url($v);
+}
+
+// Unidades que se pueden vender: el stock lo informa WePoint; el operador solo
+// puede congelar el número o ponerle un tope (nunca sumar unidades).
+function disponible(array $it): int {
+    if (!empty($it['congelado'])) return 0;
+    $st = max(0, (int)$it['stock']);
+    return isset($it['limite']) && $it['limite'] !== null ? min($st, max(0, (int)$it['limite'])) : $st;
+}
+
 function num(int $n): string {
     return 'N° ' . str_pad((string)$n, 2, '0', STR_PAD_LEFT);
 }
@@ -312,5 +326,7 @@ function historial(string $entidad, int $id): array {
     return q("SELECT * FROM historial WHERE entidad=? AND entidad_id=? ORDER BY created_at, id", [$entidad, $id])->fetchAll();
 }
 
+require __DIR__ . '/cupones.php';
+require __DIR__ . '/wepoint.php';
 require __DIR__ . '/carrito.php';
 require __DIR__ . '/mail.php';

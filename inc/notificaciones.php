@@ -27,6 +27,7 @@ function notificar_pedido_nuevo(int $ped_id): void {
     foreach (q("SELECT * FROM pedido_items WHERE pedido_id=?", [$ped_id]) as $l) {
         $filas[] = [e($l['coleccion'] . ' ' . num((int)$l['numero']) . ' — ' . $l['titulo']), 'x' . (int)$l['cantidad'], precio($l['precio'] * $l['cantidad'])];
     }
+    if ((float)$p['descuento'] > 0) $filas[] = ['Código ' . e($p['cupon_codigo']), '', '−' . precio((float)$p['descuento'])];
     $filas[] = ['<b>Total</b>', '', '<b>' . precio((float)$p['total']) . '</b>'];
     $detalle = mail_tabla($filas)
         . mail_tabla([

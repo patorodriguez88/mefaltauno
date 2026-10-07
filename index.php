@@ -39,7 +39,7 @@ require __DIR__ . '/inc/header.php';
                 if (in_array($n, $faltan, true) || !isset($fotos[$f])): ?>
                     <div class="slot falta"><?= $n ?></div>
                 <?php else: ?>
-                    <div class="slot lleno" style="background-image:url('<?= e($fotos[$f++]) ?>')"></div>
+                    <div class="slot lleno" style="background-image:url('<?= e(img($fotos[$f++])) ?>')"></div>
                 <?php endif;
             endfor; ?>
         </div>
@@ -101,7 +101,7 @@ require __DIR__ . '/inc/header.php';
         <div class="cats">
             <?php foreach (categorias() as $cat): ?>
                 <a class="cat-card" href="<?= url('colecciones.php?cat=' . urlencode($cat['slug'])) ?>"
-                   <?php if (!empty($cat_img[$cat['id']])): ?>style="background-image:url('<?= e($cat_img[$cat['id']]) ?>')"<?php endif; ?>>
+                   <?php if (!empty($cat_img[$cat['id']])): ?>style="background-image:url('<?= e(img($cat_img[$cat['id']])) ?>')"<?php endif; ?>>
                     <h3><?= e($cat['nombre']) ?></h3>
                     <p><?= e($cat['descripcion']) ?></p>
                 </a>

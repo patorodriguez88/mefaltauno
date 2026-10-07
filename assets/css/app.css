@@ -225,7 +225,7 @@ label.campo { display: flex; flex-wrap: wrap; align-items: baseline; column-gap:
 label.campo > input, label.campo > select, label.campo > textarea { flex: 1 1 100%; }
 .form-row { align-items: end; }
 label.campo small { font-weight: 400; color: var(--muted); }
-input[type=text], input[type=email], input[type=password], input[type=tel], input[type=number], input[type=search], select, textarea {
+input[type=text], input[type=email], input[type=password], input[type=tel], input[type=number], input[type=search], input[type=date], select, textarea {
     width: 100%; padding: 11px 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); font: inherit; font-size: 1rem; background: var(--white); color: var(--ink); transition: border-color .15s, box-shadow .15s;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(0, 99, 104, .15); }
@@ -450,3 +450,22 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .admin-bar-der form { margin: 0; }
 .admin-bar-der button { background: none; border: 1px solid rgba(255, 255, 255, .35); color: var(--white); border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .8rem; cursor: pointer; }
 .admin-bar-der button:hover { border-color: var(--yellow); color: var(--yellow); }
+
+.resumen-fila.descuento { color: var(--green); font-weight: 600; }
+.cupon-form { display: flex; gap: 8px; margin: 8px 0; }
+.cupon-form input { padding: 8px 12px; font-size: .9rem; }
+
+/* ── Admin: fotos y estados de números ──────────────────── */
+.foto-portada { display: grid; gap: 10px; justify-items: start; }
+.foto-portada img, .foto-portada .sin-foto { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--teal-50); display: grid; place-items: center; color: var(--muted); }
+.foto-mini { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 9px; overflow: hidden; background: var(--teal-50); border: 1.5px dashed var(--line); cursor: pointer; position: relative; }
+.foto-mini img { width: 100%; height: 100%; object-fit: cover; }
+.foto-mini:hover { border-color: var(--teal); }
+.foto-mini:hover::after { content: '📷'; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 57, 60, .45); font-size: 1.1rem; }
+.fila-congelada td { background: #eef6ff; }
+.fila-oculta td { opacity: .55; }
+.tabla-items td { padding: 8px; }
+
+.layout-cupones { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 24px; align-items: start; }
+.acciones-cupon { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+@media (max-width: 1000px) { .layout-cupones { grid-template-columns: 1fr; } }
