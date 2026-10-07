@@ -28,6 +28,18 @@ session_set_cookie_params([
 session_name('mfu_sess');
 session_start();
 
+// Las páginas son personales (sesión, carrito): ningún proxy/caché del hosting debe guardarlas.
+// El nginx de InMotion ignora Cache-Control pero respeta X-Accel-Expires.
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('X-Accel-Expires: 0');
+    header('CDN-Cache-Control: no-store');
+    header('Surrogate-Control: no-store');
+    header('X-LiteSpeed-Cache-Control: no-cache');
+    header('Vary: Cookie');
+}
+
 // ─── Base de datos ──────────────────────────────────────────────────────────
 
 function db(): PDO {
