@@ -1,0 +1,170 @@
+<?php
+// Esquema de la base. Se aplica solo: db_migrar() corre los pasos que falten
+// según la versión guardada en la tabla `meta`. Para cambiar el esquema,
+// agregar un paso nuevo al final (nunca editar uno ya publicado).
+
+function schema_pasos(): array {
+    return [
+        1 => [
+            "CREATE TABLE IF NOT EXISTS categorias (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                slug VARCHAR(80) NOT NULL UNIQUE,
+                nombre VARCHAR(120) NOT NULL,
+                descripcion VARCHAR(255) NULL,
+                orden INT NOT NULL DEFAULT 0
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS colecciones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                categoria_id INT NULL,
+                slug VARCHAR(120) NOT NULL UNIQUE,
+                nombre VARCHAR(160) NOT NULL,
+                bajada VARCHAR(255) NULL,
+                descripcion TEXT NULL,
+                imagen VARCHAR(500) NULL,
+                activa TINYINT(1) NOT NULL DEFAULT 1,
+                destacada TINYINT(1) NOT NULL DEFAULT 0,
+                orden INT NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_cat (categoria_id),
+                CONSTRAINT fk_col_cat FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Cada número / entrega de una colección
+            "CREATE TABLE IF NOT EXISTS items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coleccion_id INT NOT NULL,
+                numero INT NOT NULL,
+                titulo VARCHAR(255) NOT NULL,
+                imagen VARCHAR(500) NULL,
+                precio DECIMAL(12,2) NOT NULL DEFAULT 0,
+                precio_promo DECIMAL(12,2) NULL,
+                stock INT NOT NULL DEFAULT 0,
+                sku VARCHAR(64) NULL,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                UNIQUE KEY uniq_col_num (coleccion_id, numero),
+                KEY idx_sku (sku),
+                CONSTRAINT fk_item_col FOREIGN KEY (coleccion_id) REFERENCES colecciones(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS clientes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(80) NOT NULL,
+                apellido VARCHAR(80) NOT NULL DEFAULT '',
+                email VARCHAR(160) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                telefono VARCHAR(40) NULL,
+                direccion VARCHAR(200) NULL,
+                localidad VARCHAR(100) NULL,
+                provincia VARCHAR(100) NULL,
+                cp VARCHAR(12) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                ultimo_login DATETIME NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Colecciones que el cliente sigue (aparecen en su panel)
+            "CREATE TABLE IF NOT EXISTS cliente_colecciones (
+                cliente_id INT NOT NULL,
+                coleccion_id INT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (cliente_id, coleccion_id),
+                CONSTRAINT fk_cc_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+                CONSTRAINT fk_cc_col FOREIGN KEY (coleccion_id) REFERENCES colecciones(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Números que el cliente ya tiene
+            "CREATE TABLE IF NOT EXISTS cliente_items (
+                cliente_id INT NOT NULL,
+                item_id INT NOT NULL,
+                origen VARCHAR(20) NOT NULL DEFAULT 'manual',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (cliente_id, item_id),
+                CONSTRAINT fk_ci_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+                CONSTRAINT fk_ci_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS pedidos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                cliente_id INT NOT NULL,
+                estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+                subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+                envio_costo DECIMAL(12,2) NOT NULL DEFAULT 0,
+                total DECIMAL(12,2) NOT NULL DEFAULT 0,
+                envio_metodo VARCHAR(20) NOT NULL,
+                envio_nombre VARCHAR(160) NULL,
+                envio_direccion VARCHAR(200) NULL,
+                envio_localidad VARCHAR(100) NULL,
+                envio_provincia VARCHAR(100) NULL,
+                envio_cp VARCHAR(12) NULL,
+                envio_telefono VARCHAR(40) NULL,
+                pago_metodo VARCHAR(20) NOT NULL,
+                notas TEXT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                KEY idx_cli (cliente_id),
+                KEY idx_estado (estado),
+                CONSTRAINT fk_ped_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS pedido_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                pedido_id INT NOT NULL,
+                item_id INT NULL,
+                coleccion VARCHAR(160) NOT NULL,
+                numero INT NOT NULL,
+                titulo VARCHAR(255) NOT NULL,
+                precio DECIMAL(12,2) NOT NULL,
+                cantidad INT NOT NULL DEFAULT 1,
+                CONSTRAINT fk_pi_ped FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
+                CONSTRAINT fk_pi_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // "Me falta uno": pedidos de números que no hay en stock (o que no están en la web)
+            "CREATE TABLE IF NOT EXISTS solicitudes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                cliente_id INT NOT NULL,
+                estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+                mensaje TEXT NULL,
+                respuesta TEXT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                KEY idx_cli (cliente_id),
+                KEY idx_estado (estado),
+                CONSTRAINT fk_sol_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            "CREATE TABLE IF NOT EXISTS solicitud_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                solicitud_id INT NOT NULL,
+                item_id INT NULL,
+                descripcion VARCHAR(255) NOT NULL,
+                CONSTRAINT fk_si_sol FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id) ON DELETE CASCADE,
+                CONSTRAINT fk_si_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Línea de tiempo de pedidos y solicitudes (la ve el cliente)
+            "CREATE TABLE IF NOT EXISTS historial (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                entidad VARCHAR(20) NOT NULL,
+                entidad_id INT NOT NULL,
+                estado VARCHAR(20) NOT NULL,
+                nota TEXT NULL,
+                usuario VARCHAR(160) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_ent (entidad, entidad_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
+    ];
+}
+
+function db_migrar(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS meta (clave VARCHAR(50) PRIMARY KEY, valor VARCHAR(255) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $actual = (int)$db->query("SELECT valor FROM meta WHERE clave='schema_version'")->fetchColumn();
+    $pasos = schema_pasos();
+    if ($actual >= max(array_keys($pasos))) return;
+    foreach ($pasos as $v => $sqls) {
+        if ($v <= $actual) continue;
+        foreach ($sqls as $sql) $db->exec($sql);
+        $db->prepare("REPLACE INTO meta (clave, valor) VALUES ('schema_version', ?)")->execute([$v]);
+    }
+}

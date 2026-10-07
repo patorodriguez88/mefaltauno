@@ -2,6 +2,8 @@
 .vscode/
 .idea/
 *.log
-/config.local.php
+/config.php
 /vendor/
 /uploads/
+/storage/*
+!/storage/.htaccess
