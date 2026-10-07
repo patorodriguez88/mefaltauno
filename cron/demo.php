@@ -18,6 +18,8 @@ try {
         $po = (string)($_POST['po'] ?? '');
         if (strlen($pc) < 8 || strlen($po) < 8) throw new Exception('Faltan las claves (mínimo 8 caracteres).');
         echo json_encode(['ok' => true, 'hecho' => demo_cargar_base($pc, $po)], JSON_UNESCAPED_UNICODE);
+    } elseif (($_GET['paso'] ?? '') === 'cp_puntos') {
+        echo json_encode(['ok' => true, 'puntos' => demo_cp_puntos()], JSON_UNESCAPED_UNICODE);
     } elseif (($_GET['paso'] ?? '') === 'restaurar_stock') {
         echo json_encode(['ok' => true, 'numeros' => demo_restaurar_stock()], JSON_UNESCAPED_UNICODE);
     } elseif (($_GET['paso'] ?? '') === 'imagenes') {

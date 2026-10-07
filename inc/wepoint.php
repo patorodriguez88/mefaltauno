@@ -124,12 +124,16 @@ function wepoint_sincronizar_stock(): array {
 
 // Crea la orden de venta en WePoint para un pedido confirmado. Guarda el id o el error en el pedido.
 function wepoint_crear_orden(int $pedido_id): string {
-    $p = q("SELECT p.*, c.nombre, c.apellido, c.email FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.id=?", [$pedido_id])->fetch();
+    $p = q("SELECT p.*, c.nombre, c.apellido, c.email, pr.cp AS punto_cp, pr.provincia AS punto_provincia
+            FROM pedidos p JOIN clientes c ON c.id=p.cliente_id LEFT JOIN puntos_retiro pr ON pr.id=p.punto_id WHERE p.id=?", [$pedido_id])->fetch();
     if (!$p) throw new Exception('Pedido no encontrado.');
+    $p['envio_cp'] = $p['envio_cp'] ?: $p['punto_cp'];
+    $p['envio_provincia'] = $p['envio_provincia'] ?: $p['punto_provincia'];
     if ($p['wepoint_orden_id']) return $p['wepoint_orden_id'];
     if (!wepoint_ordenes_activas()) throw new Exception('El envío de órdenes a WePoint está apagado (WEPOINT_CREAR_ORDENES en config.php).');
     try {
         if (!defined('WEPOINT_ID_TRANSPORTISTA') || WEPOINT_ID_TRANSPORTISTA === '') throw new Exception('Falta WEPOINT_ID_TRANSPORTISTA en config.php.');
+        if (!$p['envio_cp']) throw new Exception('El punto de retiro “' . $p['envio_punto'] . '” no tiene código postal: cargalo en Puntos de retiro y reenviá.');
         $detalle = [];
         foreach (q("SELECT pi.*, i.wepoint_id, i.sku FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$pedido_id]) as $l) {
             if (!$l['wepoint_id']) throw new Exception($l['coleccion'] . ' ' . num((int)$l['numero']) . ' no está vinculado a WePoint (falta SKU o sincronizar stock).');

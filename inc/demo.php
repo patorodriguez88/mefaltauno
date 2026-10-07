@@ -12,11 +12,11 @@ function demo_cargar_base(string $pass_cliente, string $pass_operador): array {
 
     if (!q("SELECT COUNT(*) FROM puntos_retiro")->fetchColumn()) {
         foreach ([
-            ['Kiosco de prueba Centro', 'Av. Colón 300', -31.4135, -64.1890, 'Lun a Sáb 8 a 21 h'],
-            ['Kiosco de prueba Nueva Córdoba', 'Bv. Illia 450', -31.4250, -64.1860, 'Todos los días 9 a 22 h'],
-            ['Kiosco de prueba Cerro de las Rosas', 'Av. Rafael Núñez 4500', -31.3650, -64.2350, 'Lun a Vie 8 a 20 h'],
+            ['Kiosco de prueba Centro', 'Av. Colón 300', -31.4135, -64.1890, 'Lun a Sáb 8 a 21 h', '5000'],
+            ['Kiosco de prueba Nueva Córdoba', 'Bv. Illia 450', -31.4250, -64.1860, 'Todos los días 9 a 22 h', '5000'],
+            ['Kiosco de prueba Cerro de las Rosas', 'Av. Rafael Núñez 4500', -31.3650, -64.2350, 'Lun a Vie 8 a 20 h', '5009'],
         ] as $p) {
-            q("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, lat, lng, horario) VALUES (?,?,'Córdoba','Córdoba',?,?,?)", $p);
+            q("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, lat, lng, horario, cp) VALUES (?,?,'Córdoba','Córdoba',?,?,?,?)", $p);
         }
         $hecho[] = 'puntos de retiro de prueba: 3';
     }
@@ -95,4 +95,10 @@ function demo_restaurar_stock(): int {
         }
     }
     return $n;
+}
+
+// Completa el código postal de los kioscos de prueba ya cargados
+function demo_cp_puntos(): int {
+    $n = q("UPDATE puntos_retiro SET cp='5009' WHERE (cp IS NULL OR cp='') AND nombre LIKE 'Kiosco de prueba Cerro%'")->rowCount();
+    return $n + q("UPDATE puntos_retiro SET cp='5000' WHERE (cp IS NULL OR cp='') AND nombre LIKE 'Kiosco de prueba%'")->rowCount();
 }

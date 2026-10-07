@@ -15,8 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($campos as $k) $d[$k] = trim(mb_substr($_POST[$k] ?? '', 0, 200));
     $lat = is_numeric($_POST['lat'] ?? '') ? (float)$_POST['lat'] : null;
     $lng = is_numeric($_POST['lng'] ?? '') ? (float)$_POST['lng'] : null;
-    if ($d['nombre'] === '' || $d['direccion'] === '' || $d['localidad'] === '') {
-        flash('error', 'Completá nombre, dirección y localidad.');
+    if ($d['nombre'] === '' || $d['direccion'] === '' || $d['localidad'] === '' || $d['cp'] === '') {
+        flash('error', 'Completá nombre, dirección, localidad y código postal (el transportista lo necesita).');
         redirect('admin/puntos.php?id=' . $id);
     }
     if ($lat === null || $lng === null) {
@@ -68,7 +68,7 @@ if ($editar !== null):
                 <label class="campo">Provincia<input type="text" name="provincia" value="<?= e($p['provincia']) ?>"></label>
             </div>
             <div class="form-row">
-                <label class="campo">CP<input type="text" name="cp" value="<?= e($p['cp']) ?>"></label>
+                <label class="campo">Código postal<input type="text" name="cp" value="<?= e($p['cp']) ?>" required inputmode="numeric" placeholder="5000"></label>
                 <label class="campo">Teléfono<input type="tel" name="telefono" value="<?= e($p['telefono']) ?>"></label>
             </div>
             <label class="campo">Horario <small>(lo ve el cliente)</small><input type="text" name="horario" value="<?= e($p['horario']) ?>" placeholder="Ej: Lun a Sáb 8 a 20 h"></label>
