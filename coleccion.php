@@ -17,6 +17,7 @@ $items = q("SELECT * FROM items WHERE coleccion_id=? AND activo=1 ORDER BY numer
 $cli = cliente();
 $estados = $cli ? estados_items((int)$cli['id'], (int)$col['id']) : [];
 $siguiendo = $cli && q("SELECT 1 FROM cliente_colecciones WHERE cliente_id=? AND coleccion_id=?", [$cli['id'], $col['id']])->fetchColumn();
+$suscripto = suscripto($cli, (int)$col['id']);
 $en_carrito = carrito();
 
 $chips = [
@@ -55,7 +56,30 @@ require __DIR__ . '/inc/header.php';
                     </button>
                     <button class="btn btn-primario btn-chico" type="button" onclick="seleccionarFaltantes()">Seleccionar los que me faltan</button>
                 </div>
-            <?php else: ?>
+            <?php endif; ?>
+
+            <div class="suscribir-card" id="suscribir-card">
+                <div class="suscribir-icono">🔔</div>
+                <div class="suscribir-cuerpo">
+                    <strong>Suscribite a esta colección</strong>
+                    <p class="muted small">Te avisamos cuando lleguen números nuevos, reposiciones o lanzamientos de <?= e($col['nombre']) ?>.</p>
+                    <?php if ($cli): ?>
+                        <button type="button" class="btn btn-chico <?= $suscripto ? 'btn-linea' : 'btn-teal' ?>" data-suscripto="<?= $suscripto ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>" onclick="toggleSuscripcion(this)">
+                            <?= $suscripto ? '✓ Suscripto · darme de baja' : '🔔 Avisarme novedades' ?>
+                        </button>
+                    <?php else: ?>
+                        <form class="form-suscribir" data-coleccion="<?= (int)$col['id'] ?>" data-origen="coleccion">
+                            <input type="email" name="email" placeholder="Tu email" required autocomplete="email">
+                            <input type="text" name="nombre" placeholder="Nombre (opcional)" autocomplete="given-name">
+                            <input type="tel" name="telefono" placeholder="WhatsApp (opcional)" autocomplete="tel">
+                            <input type="text" name="web" class="trampa" tabindex="-1" autocomplete="off" aria-hidden="true">
+                            <button class="btn btn-teal btn-chico" type="submit">Suscribirme</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <?php if (!$cli): ?>
                 <div class="mi-progreso">
                     <strong>¿Ya tenés parte del equipo?</strong>
                     <p class="muted small" style="margin:4px 0 12px">Creá tu cuenta, pasá lista de los que ya tenés y salimos a buscar al resto.</p>

@@ -220,6 +220,28 @@ function schema_pasos(): array {
         6 => [
             "ALTER TABLE clientes ADD COLUMN es_operador TINYINT(1) NOT NULL DEFAULT 0",
         ],
+
+        // Suscripciones: interesados en una colección (o en novedades generales si coleccion_id es NULL)
+        7 => [
+            "CREATE TABLE IF NOT EXISTS suscripciones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(160) NOT NULL,
+                nombre VARCHAR(120) NULL,
+                telefono VARCHAR(40) NULL,
+                coleccion_id INT NULL,
+                coleccion_clave INT NOT NULL DEFAULT 0,
+                cliente_id INT NULL,
+                origen VARCHAR(30) NULL,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                token CHAR(32) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                baja_at DATETIME NULL,
+                UNIQUE KEY uniq_email_col (email, coleccion_clave),
+                KEY idx_col (coleccion_id),
+                CONSTRAINT fk_sus_col FOREIGN KEY (coleccion_id) REFERENCES colecciones(id) ON DELETE CASCADE,
+                CONSTRAINT fk_sus_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
     ];
 }
 

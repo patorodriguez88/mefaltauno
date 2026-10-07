@@ -9,6 +9,17 @@
 </div>
 
 <footer class="site-footer">
+    <div class="container footer-liga">
+        <div>
+            <h3>Sumate a la liga</h3>
+            <p>Lanzamientos, reposiciones y búsquedas épicas, directo a tu mail.</p>
+        </div>
+        <form class="form-suscribir form-liga" data-origen="footer">
+            <?php if (!cliente()): ?><input type="email" name="email" placeholder="Tu email" required autocomplete="email" aria-label="Tu email"><?php endif; ?>
+            <input type="text" name="web" class="trampa" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <button class="btn btn-primario" type="submit">Quiero sumarme</button>
+        </form>
+    </div>
     <div class="container footer-grid">
         <div>
             <img src="<?= asset('assets/img/logo-sm.png') ?>" alt="MeFaltaUno" width="160" height="54" loading="lazy">

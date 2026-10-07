@@ -473,3 +473,20 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .sin-sesion { text-align: center; padding: 24px 12px 8px; display: grid; justify-items: center; gap: 4px; border-top: 1px solid var(--line); margin-top: 8px; }
 .sin-sesion h3 { margin: 12px 0 0; }
 .sin-sesion-botones { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+
+/* ── Suscripciones ──────────────────────────────────────── */
+.suscribir-card { display: flex; gap: 14px; align-items: flex-start; background: var(--white); border: 1px solid var(--line); border-left: 5px solid var(--yellow-600); border-radius: var(--radius); padding: 16px; margin-top: 16px; max-width: 620px; }
+.suscribir-icono { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--yellow); display: grid; place-items: center; font-size: 1.2rem; }
+.suscribir-cuerpo { flex: 1; min-width: 0; }
+.suscribir-cuerpo strong { font-family: var(--font-display); color: var(--teal-900); }
+.suscribir-cuerpo p { margin: 2px 0 10px; }
+.form-suscribir { display: flex; gap: 8px; flex-wrap: wrap; }
+.form-suscribir input { flex: 1 1 160px; padding: 9px 12px; font-size: .92rem; }
+.form-suscribir .trampa { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.suscribir-ok { margin: 0; font-weight: 600; color: var(--green); }
+.footer-liga { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-top: 32px; padding-bottom: 28px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.footer-liga h3 { color: var(--white); margin: 0 0 4px; font-size: 1.4rem; }
+.footer-liga p { margin: 0; }
+.form-liga { flex: 0 1 460px; }
+.form-liga input { background: rgba(255, 255, 255, .95); }
+.footer-liga .suscribir-ok { color: var(--yellow); }

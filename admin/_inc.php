@@ -16,6 +16,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'colecciones' => ['colecciones.php', 'Colecciones y stock'],
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
+        'suscripciones' => ['suscripciones.php', 'Suscripciones'],
         'cupones'     => ['cupones.php', 'Descuentos'],
         'wepoint'     => ['wepoint.php', 'WePoint'],
         'ajustes'     => ['ajustes.php', 'Ajustes'],

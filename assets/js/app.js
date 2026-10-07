@@ -254,7 +254,7 @@ function fmt(n) {
 // Descripción larga: "Ver más"
 document.querySelectorAll('[data-vermas]').forEach(btn => {
     const el = document.getElementById(btn.dataset.vermas);
-    if (!el || el.scrollHeight <= el.clientHeight + 4) { btn.hidden = true; return; }
+    if (!el || el.scrollHeight <= el.clientHeight + 1) { el.classList.remove("recortada"); btn.hidden = true; return; }
     btn.addEventListener('click', () => { el.classList.remove('recortada'); btn.hidden = true; });
 });
 
@@ -328,3 +328,34 @@ function cerrarAviso(el) {
 document.querySelectorAll('.aviso-flotante[data-auto="1"]').forEach((el, i) => {
     setTimeout(() => cerrarAviso(el), 5000 + i * 800);
 });
+
+// ─── Suscripciones ──────────────────────────────────────────────────────────
+document.querySelectorAll('.form-suscribir').forEach(f => f.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const btn = f.querySelector('button');
+    const datos = { origen: f.dataset.origen || 'web' };
+    if (f.dataset.coleccion) datos.coleccion_id = f.dataset.coleccion;
+    f.querySelectorAll('input').forEach(i => { if (i.name) datos[i.name] = i.value; });
+    btn.disabled = true;
+    try {
+        const r = await api('suscribir', datos);
+        toast(r.mensaje);
+        f.innerHTML = `<p class="suscribir-ok">${esc(r.mensaje)}</p>`;
+    } catch (e) {
+        btn.disabled = false;
+    }
+}));
+
+async function toggleSuscripcion(btn) {
+    const activo = btn.dataset.suscripto === '1';
+    btn.disabled = true;
+    try {
+        const r = await api(activo ? 'desuscribir' : 'suscribir', { coleccion_id: btn.dataset.coleccion, origen: 'coleccion' });
+        btn.dataset.suscripto = activo ? '0' : '1';
+        btn.textContent = activo ? '🔔 Avisarme novedades' : '✓ Suscripto · darme de baja';
+        btn.classList.toggle('btn-teal', activo);
+        btn.classList.toggle('btn-linea', !activo);
+        toast(r.mensaje);
+    } catch (e) { }
+    btn.disabled = false;
+}

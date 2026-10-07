@@ -115,6 +115,27 @@ try {
         json_out(['ok' => true, 'solicitud' => $sol, 'chip' => chip_estado('buscando'),
                   'mensaje' => $n === 1 ? '¡Misión aceptada! Salimos a buscarlo.' : "¡Misión aceptada! Salimos a buscar a los $n."]);
 
+    // Suscripción a una colección (coleccion_id) o a novedades generales (sin coleccion_id)
+    case 'suscribir':
+        if (trim($_POST['web'] ?? '') !== '') json_out(['ok' => true, 'mensaje' => '¡Listo!']);   // trampa para bots
+        $intentos = array_filter($_SESSION['sus_intentos'] ?? [], fn($t) => $t > time() - 600);
+        if (count($intentos) >= 10) throw new Exception('Demasiados intentos. Probá en unos minutos.');
+        $_SESSION['sus_intentos'] = array_merge($intentos, [time()]);
+        $col = (int)($_POST['coleccion_id'] ?? 0) ?: null;
+        $email = $cli ? $cli['email'] : (string)($_POST['email'] ?? '');
+        $r = suscribir($email, $col, mb_substr((string)($_POST['origen'] ?? 'web'), 0, 30),
+                       $cli ? nombre_cliente($cli) : trim(mb_substr($_POST['nombre'] ?? '', 0, 120)),
+                       $cli ? $cli['telefono'] : trim(mb_substr($_POST['telefono'] ?? '', 0, 40)));
+        $msg = $r === 'ya'
+            ? 'Ya estabas en la lista ⚡'
+            : ($col ? '¡Listo! Te avisamos cuando haya novedades de esta colección 🦸' : '¡Bienvenido/a a la liga! Te vamos a mandar las novedades ⚡');
+        json_out(['ok' => true, 'mensaje' => $msg]);
+
+    case 'desuscribir':
+        $cli = exigir_login($cli);
+        desuscribir_cliente($cli, (int)($_POST['coleccion_id'] ?? 0));
+        json_out(['ok' => true, 'mensaje' => 'Listo, ya no te avisamos de esta colección.']);
+
     default:
         throw new Exception('Acción no válida.');
     }
