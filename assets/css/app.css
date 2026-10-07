@@ -415,3 +415,15 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 @media (prefers-reduced-motion: reduce) { .franja-pista { animation: none; } }
 
 .kicker { font-family: 'Bangers', var(--font-display); letter-spacing: .12em; font-size: 1.15rem; color: var(--yellow); text-transform: uppercase; margin-bottom: 6px; }
+
+/* ── Avisos flotantes (mensajes después de una acción) ─── */
+.avisos { position: fixed; top: 76px; right: 16px; z-index: 50; display: grid; gap: 10px; width: min(400px, calc(100% - 32px)); pointer-events: none; }
+.aviso-flotante { pointer-events: auto; display: flex; align-items: flex-start; gap: 12px; padding: 14px 14px 14px 16px; border-radius: 14px; background: var(--white); color: var(--teal-900); box-shadow: 0 12px 32px rgba(0, 41, 44, .3); border-left: 6px solid var(--yellow-600); font-weight: 500; font-size: .95rem; line-height: 1.4; animation: aviso-in .3s cubic-bezier(.2, .9, .3, 1.2); }
+.aviso-flotante.aviso-error { background: #fff; color: var(--red); border-left-color: var(--red); }
+.aviso-flotante.saliendo { opacity: 0; transform: translateX(24px); transition: opacity .25s, transform .25s; }
+.aviso-icono { font-size: 1.2rem; line-height: 1.2; }
+.aviso-msg { flex: 1; }
+.aviso-cerrar { background: none; border: 0; color: inherit; opacity: .6; font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0 2px; }
+.aviso-cerrar:hover { opacity: 1; }
+@keyframes aviso-in { from { opacity: 0; transform: translateX(40px); } }
+@media (max-width: 600px) { .avisos { top: 72px; right: 16px; left: 16px; width: auto; } }

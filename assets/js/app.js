@@ -318,3 +318,13 @@ document.addEventListener('click', async ev => {
     }
     toast(`${b.dataset.label || 'Dato'} copiado ✓`);
 });
+
+// Avisos flotantes: los de éxito/info se van solos; los errores quedan hasta cerrarlos
+function cerrarAviso(el) {
+    if (!el || el.classList.contains('saliendo')) return;
+    el.classList.add('saliendo');
+    setTimeout(() => el.remove(), 260);
+}
+document.querySelectorAll('.aviso-flotante[data-auto="1"]').forEach((el, i) => {
+    setTimeout(() => cerrarAviso(el), 5000 + i * 800);
+});
