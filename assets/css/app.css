@@ -427,3 +427,8 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .aviso-cerrar:hover { opacity: 1; }
 @keyframes aviso-in { from { opacity: 0; transform: translateX(40px); } }
 @media (max-width: 600px) { .avisos { top: 72px; right: 16px; left: 16px; width: auto; } }
+
+.admin-bar-der { margin-left: auto; display: flex; align-items: center; gap: 12px; color: rgba(255, 255, 255, .6); white-space: nowrap; }
+.admin-bar-der form { margin: 0; }
+.admin-bar-der button { background: none; border: 1px solid rgba(255, 255, 255, .35); color: var(--white); border-radius: 999px; padding: 3px 12px; font: inherit; font-size: .8rem; cursor: pointer; }
+.admin-bar-der button:hover { border-color: var(--yellow); color: var(--yellow); }

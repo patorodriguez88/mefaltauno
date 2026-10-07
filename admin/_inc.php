@@ -22,6 +22,8 @@ function admin_header(string $titulo_pag, string $activo): void {
     foreach ($links as $k => [$href, $label]) {
         echo '<a href="' . url('admin/' . $href) . '" class="' . ($k === $activo ? 'activo' : '') . '">' . e($label) . '</a>';
     }
+    echo '<span class="admin-bar-der">' . e($admin['email'])
+        . ' <form method="post" action="' . url('salir.php') . '">' . csrf_field() . '<button type="submit">Cerrar sesión</button></form></span>';
     echo '</div></div><section class="section" style="padding-top:28px"><div class="container">';
 }
 

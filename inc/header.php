@@ -39,7 +39,8 @@ $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
         </nav>
 
         <div class="header-acciones">
-            <a class="icon-btn" href="<?= url($cli ? 'cuenta.php' : 'ingresar.php') ?>" aria-label="Mi cuenta" title="<?= $cli ? e($cli['nombre']) : 'Ingresar' ?>">
+            <?php $cuenta_url = !$cli ? 'ingresar.php' : (es_admin($cli) ? 'admin/' : 'cuenta.php'); ?>
+            <a class="icon-btn" href="<?= url($cuenta_url) ?>" aria-label="<?= $cli && es_admin($cli) ? 'Panel de administración' : 'Mi cuenta' ?>" title="<?= $cli ? e($cli['nombre']) : 'Ingresar' ?>">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
                 <span class="icon-label"><?= $cli ? e($cli['nombre']) : 'Ingresar' ?></span>
             </a>
