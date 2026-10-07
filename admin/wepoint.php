@@ -17,6 +17,17 @@ function sku_demo(array $it): string {
     return sprintf('MFU-%02d-%02d', $it['coleccion_id'], $it['numero']);
 }
 
+// Consulta de solo lectura a la API (diagnóstico): ?consultar=v2/ingresos/productos/19
+if (isset($_GET['consultar'])) {
+    $ruta = (string)$_GET['consultar'];
+    if (!preg_match('#^v2/[a-z0-9_/\-]+(\?[a-z0-9_=&\-]*)?$#i', $ruta)) json_out(['ok' => false, 'error' => 'Ruta inválida'], 400);
+    try {
+        json_out(['ok' => true, 'ruta' => $ruta, 'respuesta' => wepoint_api('GET', $ruta)]);
+    } catch (Exception $e) {
+        json_out(['ok' => false, 'error' => $e->getMessage()]);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
     $accion = $_POST['accion'] ?? '';
