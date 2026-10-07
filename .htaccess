@@ -1,0 +1,7 @@
+DirectoryIndex index.php index.html
+Options -Indexes
+
+# Entorno de desarrollo: que los buscadores no lo indexen (quitar al lanzar).
+<IfModule mod_headers.c>
+    Header set X-Robots-Tag "noindex, nofollow"
+</IfModule>

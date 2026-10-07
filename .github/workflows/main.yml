@@ -1,0 +1,24 @@
+on:
+  push:
+    branches: [main]
+name: 🚀 Deploy web.mefaltauno.com.ar
+jobs:
+  web-deploy:
+    name: 🎉 Deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚚 Get latest code
+      uses: actions/checkout@v4
+
+    - name: 📂 Sync files
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      with:
+        server: dintersa.com.ar
+        username: user@web.mefaltauno.com.ar
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: ./
+        timeout: 60000
+        exclude: |
+          **/.git*
+          **/.git*/**
+          README.md

@@ -1,0 +1,3 @@
+# Entorno de desarrollo: no indexar. Cambiar al lanzar en mefaltauno.com.ar.
+User-agent: *
+Disallow: /
