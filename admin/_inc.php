@@ -17,6 +17,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
         'cupones'     => ['cupones.php', 'Descuentos'],
+        'wepoint'     => ['wepoint.php', 'WePoint'],
         'ajustes'     => ['ajustes.php', 'Ajustes'],
     ];
     echo '<div class="admin-bar"><div class="container"><b style="color:#fff">Admin</b>';
