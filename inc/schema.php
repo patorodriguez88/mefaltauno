@@ -215,6 +215,11 @@ function schema_pasos(): array {
             "ALTER TABLE pedidos ADD COLUMN wepoint_orden_id VARCHAR(40) NULL",
             "ALTER TABLE pedidos ADD COLUMN wepoint_error TEXT NULL",
         ],
+
+        // Operadores marcados en la base (además de ADMIN_EMAILS en config.php)
+        6 => [
+            "ALTER TABLE clientes ADD COLUMN es_operador TINYINT(1) NOT NULL DEFAULT 0",
+        ],
     ];
 }
 

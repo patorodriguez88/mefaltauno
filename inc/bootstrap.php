@@ -143,6 +143,7 @@ function cliente(): ?array {
 function es_admin(?array $c = null): bool {
     $c = $c ?? cliente();
     if (!$c) return false;
+    if (!empty($c['es_operador'])) return true;
     $admins = array_filter(array_map('trim', explode(',', strtolower(ADMIN_EMAILS))));
     return in_array(strtolower($c['email']), $admins, true);
 }
