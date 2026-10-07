@@ -194,7 +194,20 @@ async function agregarAlCarrito(itemId, btn) {
 
     window.selSolicitar = async function (btn) {
         const sel = seleccionados().filter(i => +i.dataset.stock <= 0);
-        const nota = prompt('¿Querés dejarnos algún comentario? (opcional)', '');
+        if (!sel.length) return;
+        const lista = sel.map(i => {
+            const img = i.querySelector('.item-img').style.backgroundImage.replace(/^url\(["']?|["']?\)$/g, '');
+            return `<li>${img ? `<img src="${esc(img)}" alt="">` : ''}<b>${esc(i.querySelector('.item-num').textContent)}</b> ${esc(i.querySelector('.item-titulo').textContent)}</li>`;
+        }).join('');
+        const uno = sel.length === 1;
+        const nota = await modal({
+            icono: '🔎',
+            titulo: uno ? '¿Te lo conseguimos?' : `¿Te conseguimos estos ${sel.length}?`,
+            cuerpo: `<p style="margin:0">${uno ? 'No lo tenemos en stock, pero lo vamos a buscar' : 'No los tenemos en stock, pero los vamos a buscar'} y te avisamos por mail apenas haya novedades.</p><ul>${lista}</ul>`,
+            texto: 'Comentario (opcional)',
+            placeholder: 'Ej: lo necesito antes de fin de mes, me sirve usado…',
+            ok: uno ? 'Pedir que me lo consigan' : 'Pedir que me los consigan',
+        });
         if (nota === null) return;
         btn.disabled = true;
         try {
@@ -208,7 +221,14 @@ async function agregarAlCarrito(itemId, btn) {
             });
             contar();
             actualizarBarra();
-            toast(r.mensaje);
+            const ver = await modal({
+                icono: '🙌',
+                titulo: '¡Listo, lo vamos a buscar!',
+                cuerpo: `<p style="margin:0">Tu pedido quedó <b>pendiente</b>. Te mandamos un mail con el detalle y te avisamos cuando ${uno ? 'lo consigamos' : 'los consigamos'}.</p>`,
+                ok: 'Ver mis faltantes',
+                cancelar: 'Seguir mirando',
+            });
+            if (ver !== null) location = MFU.base + 'cuenta.php?tab=faltantes';
         } catch (e) { }
         btn.disabled = false;
     };
@@ -244,4 +264,39 @@ async function cambiarCantidad(itemId, delta, actual) {
         await api('carrito_cantidad', { item_id: itemId, cantidad: actual + delta });
         location.reload();
     } catch (e) { }
+}
+
+// ─── Modal ──────────────────────────────────────────────────────────────────
+// modal({titulo, cuerpo (HTML), icono, texto (label del campo), placeholder, ok, cancelar})
+// Devuelve una promesa: el texto ingresado ('' si no hay campo) al aceptar, o null al cancelar.
+function modal(o) {
+    const dlg = document.getElementById('modal');
+    const $ = id => document.getElementById(id);
+    $('modal-titulo').textContent = o.titulo || '';
+    $('modal-cuerpo').innerHTML = o.cuerpo || '';
+    $('modal-icono').hidden = !o.icono;
+    $('modal-icono').textContent = o.icono || '';
+    $('modal-texto-wrap').hidden = !o.texto;
+    $('modal-texto-label').textContent = o.texto || '';
+    $('modal-texto').value = '';
+    $('modal-texto').placeholder = o.placeholder || '';
+    $('modal-ok').textContent = o.ok || 'Aceptar';
+    $('modal-cancelar').textContent = o.cancelar || 'Cancelar';
+    return new Promise(resolve => {
+        dlg.addEventListener('close', () => {
+            resolve(dlg.returnValue === 'ok' ? $('modal-texto').value.trim() : null);
+        }, { once: true });
+        dlg.returnValue = '';
+        dlg.showModal();
+        (o.texto ? $('modal-texto') : $('modal-ok')).focus();
+    });
+}
+
+// Cerrar tocando afuera de la caja
+document.getElementById('modal').addEventListener('click', ev => {
+    if (ev.target.id === 'modal') ev.target.close('cancelar');
+});
+
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

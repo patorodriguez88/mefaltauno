@@ -26,7 +26,7 @@ $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
 <header class="site-header">
     <div class="container header-row">
         <a class="brand" href="<?= url() ?>" aria-label="MeFaltaUno — inicio">
-            <img src="<?= asset('assets/img/logo.jpg') ?>" alt="MeFaltaUno" width="140" height="58">
+            <img src="<?= asset('assets/img/logo-sm.png') ?>" alt="MeFaltaUno" width="137" height="46">
         </a>
 
         <nav class="main-nav" id="main-nav">
