@@ -2,7 +2,7 @@
 // Herramientas de WePoint: estado, transportistas y (solo en SANDBOX) carga de productos y stock de prueba.
 require __DIR__ . '/_inc.php';
 
-$sandbox = wepoint_listo() && stripos(WEPOINT_URL, 'sandbox') !== false;
+$sandbox = wepoint_listo() && stripos(wepoint_base(), 'sandbox') !== false;
 $log = [];
 
 function wp_id(array $r): ?int {
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if ($accion === 'probar') {
             wepoint_token(true);
-            $log[] = 'Login OK en ' . WEPOINT_URL;
+            $log[] = 'Login OK en ' . wepoint_base();
         }
     } catch (Exception $e) {
         $log[] = 'ERROR: ' . $e->getMessage();
@@ -121,7 +121,7 @@ admin_header('WePoint', 'wepoint');
             <h3>Conexión</h3>
             <p class="small">
                 <?= $sandbox ? '<span class="badge badge-amarillo">SANDBOX (pruebas)</span>' : '<span class="badge badge-rojo">PRODUCCIÓN</span>' ?>
-                <span class="muted"><?= e(WEPOINT_URL) ?></span>
+                <span class="muted"><?= e(wepoint_base()) ?></span>
                 <?= wepoint_ordenes_activas() ? '<span class="badge badge-azul">Envía órdenes</span>' : '<span class="badge badge-gris">Órdenes apagadas</span>' ?>
             </p>
             <?php if ($error): ?><div class="aviso" style="background:var(--red-100);color:var(--red)"><?= e($error) ?></div><?php endif; ?>

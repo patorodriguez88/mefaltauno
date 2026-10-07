@@ -22,9 +22,18 @@ function wepoint_ajuste_set(string $k, string $v): void {
     q("REPLACE INTO ajustes (clave, valor) VALUES (?,?)", [$k, $v]);
 }
 
+// Base de la API. Acepta también la dirección del portal (sandbox-portal…) que muestra WePoint,
+// y agrega /api si falta.
+function wepoint_base(): string {
+    $u = rtrim(trim(WEPOINT_URL), '/');
+    $u = preg_replace('#^https?://sandbox-portal\.wepoint\.ar#i', 'https://sandbox.wepoint.ar', $u);
+    if (!preg_match('#/api$#', $u)) $u .= '/api';
+    return $u;
+}
+
 // Petición HTTP cruda. Devuelve [código, cuerpo decodificado].
 function wepoint_http(string $metodo, string $ruta, ?array $body = null, ?string $token = null): array {
-    $ch = curl_init(rtrim(WEPOINT_URL, '/') . '/' . ltrim($ruta, '/'));
+    $ch = curl_init(wepoint_base() . '/' . ltrim($ruta, '/'));
     $headers = ['Accept: application/json', 'Content-Type: application/json'];
     if ($token) $headers[] = 'Authorization: Bearer ' . $token;
     curl_setopt_array($ch, [
