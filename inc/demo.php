@@ -82,3 +82,17 @@ function demo_copiar_imagenes(int $lote = 12): array {
     $quedan = (int)q("SELECT (SELECT COUNT(*) FROM colecciones WHERE imagen LIKE 'http%') + (SELECT COUNT(*) FROM items WHERE imagen LIKE 'http%')")->fetchColumn();
     return ['copiadas' => $ok, 'quedan' => $quedan, 'errores' => $errores];
 }
+
+// Vuelve a poner el stock de prueba original (el que tenía cada número en Tiendanube).
+function demo_restaurar_stock(): int {
+    $json = json_decode(file_get_contents(dirname(__DIR__) . '/data/catalogo-tiendanube.json'), true);
+    $n = 0;
+    foreach ($json as $c) {
+        $col = q("SELECT id FROM colecciones WHERE slug=?", [$c['slug']])->fetchColumn();
+        if (!$col) continue;
+        foreach ($c['items'] as $i => $it) {
+            $n += q("UPDATE items SET stock=?, stock_sync_at=NULL WHERE coleccion_id=? AND numero=?", [max(0, (int)($it['stock'] ?? 0)), $col, $i + 1])->rowCount();
+        }
+    }
+    return $n;
+}
