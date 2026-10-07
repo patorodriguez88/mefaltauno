@@ -72,7 +72,8 @@ admin_header('Ajustes', 'ajustes');
                 <p class="muted small">Faltan el email y la contraseña de la API en <code>config.php</code>. Mientras tanto el stock se carga a mano en cada colección.</p>
             <?php else:
                 $ult = json_decode(ajuste('wepoint_ultimo_resultado'), true) ?: []; ?>
-                <p class="small"><span class="badge badge-verde">Configurado</span> <span class="muted"><?= e(preg_replace('#^https?://#', '', WEPOINT_URL)) ?></span></p>
+                <p class="small"><span class="badge badge-verde">Configurado</span> <span class="muted"><?= e(preg_replace('#^https?://#', '', WEPOINT_URL)) ?></span>
+                    <?= wepoint_ordenes_activas() ? '<span class="badge badge-azul">Envía órdenes</span>' : '<span class="badge badge-gris">Órdenes apagadas (modo prueba)</span>' ?></p>
                 <p class="small muted" style="margin:0 0 12px">
                     Última sincronización: <b><?= ajuste('wepoint_ultima_sync') ? fecha(ajuste('wepoint_ultima_sync')) : 'nunca' ?></b>
                     <?php if ($ult): ?><br><?= (int)($ult['actualizados'] ?? 0) ?> números actualizados · <?= count($ult['no_encontrados'] ?? []) ?> SKU sin coincidencia · <?= (int)($ult['sin_sku'] ?? 0) ?> sin SKU<?php endif; ?>

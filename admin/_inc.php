@@ -57,7 +57,7 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
     registrar_historial('pedido', $id, $nuevo, $nota, $usuario);
     $db->commit();
     // Pago confirmado → WePoint recibe la orden de venta para preparar el pedido
-    if (in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && wepoint_listo()) {
+    if (in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && wepoint_ordenes_activas()) {
         try {
             wepoint_crear_orden($id);
             flash('ok', 'Orden enviada a WePoint para preparar.');

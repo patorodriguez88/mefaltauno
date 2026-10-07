@@ -92,6 +92,8 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <p class="small" style="margin:0"><span class="badge badge-verde">Orden enviada</span> <b><?= e($p['wepoint_orden_id']) ?></b><br><span class="muted">WePoint la prepara y la lleva al punto de retiro.</span></p>
             <?php elseif (!wepoint_listo()): ?>
                 <p class="muted small" style="margin:0">WePoint todavía no está conectado. Cuando lo esté, la orden se envía sola al marcar “Pago confirmado”.</p>
+            <?php elseif (!wepoint_ordenes_activas()): ?>
+                <p class="muted small" style="margin:0"><span class="badge badge-gris">Envío de órdenes apagado</span><br>Modo prueba: los pedidos no se mandan al depósito. Se activa con <code>WEPOINT_CREAR_ORDENES</code> en config.php.</p>
             <?php else: ?>
                 <?php if ($p['wepoint_error']): ?><div class="aviso" style="background:var(--red-100);color:var(--red);margin-bottom:10px"><?= e($p['wepoint_error']) ?></div><?php endif; ?>
                 <p class="muted small">La orden se envía sola al marcar “Pago confirmado”. Si falló o querés mandarla ahora:</p>

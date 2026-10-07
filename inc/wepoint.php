@@ -7,6 +7,12 @@
 // Config (config.php): WEPOINT_URL (sandbox: https://sandbox.wepoint.ar/api · producción: https://sistema.wepoint.ar/api),
 // WEPOINT_EMAIL, WEPOINT_PASSWORD, WEPOINT_ID_TRANSPORTISTA.
 
+// Interruptor de seguridad: las órdenes de venta solo se envían si WEPOINT_CREAR_ORDENES = true
+// (así los pedidos de prueba nunca llegan al depósito real).
+function wepoint_ordenes_activas(): bool {
+    return wepoint_listo() && defined('WEPOINT_CREAR_ORDENES') && WEPOINT_CREAR_ORDENES === true;
+}
+
 function wepoint_listo(): bool {
     return defined('WEPOINT_URL') && WEPOINT_URL !== '' && defined('WEPOINT_EMAIL') && WEPOINT_EMAIL !== ''
         && defined('WEPOINT_PASSWORD') && WEPOINT_PASSWORD !== '';
@@ -112,6 +118,7 @@ function wepoint_crear_orden(int $pedido_id): string {
     $p = q("SELECT p.*, c.nombre, c.apellido, c.email FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.id=?", [$pedido_id])->fetch();
     if (!$p) throw new Exception('Pedido no encontrado.');
     if ($p['wepoint_orden_id']) return $p['wepoint_orden_id'];
+    if (!wepoint_ordenes_activas()) throw new Exception('El envío de órdenes a WePoint está apagado (WEPOINT_CREAR_ORDENES en config.php).');
     try {
         if (!defined('WEPOINT_ID_TRANSPORTISTA') || WEPOINT_ID_TRANSPORTISTA === '') throw new Exception('Falta WEPOINT_ID_TRANSPORTISTA en config.php.');
         $detalle = [];

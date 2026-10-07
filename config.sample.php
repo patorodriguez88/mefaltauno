@@ -22,6 +22,7 @@ define('WEPOINT_URL',              'https://sandbox.wepoint.ar/api');
 define('WEPOINT_EMAIL',            '');
 define('WEPOINT_PASSWORD',         '');
 define('WEPOINT_ID_TRANSPORTISTA', '');   // transportista para las órdenes de venta (lo da WePoint)
+define('WEPOINT_CREAR_ORDENES',    false);  // true = los pedidos confirmados se mandan al depósito (¡solo en producción real!)
 define('WEPOINT_CRON_TOKEN',       '');   // clave para que el cron de cPanel sincronice el stock
 
 // Emails con acceso al panel admin (separados por coma)
