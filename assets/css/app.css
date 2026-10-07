@@ -221,7 +221,9 @@ body.con-barra { padding-bottom: 90px; }
 .form { display: grid; gap: 16px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
-label.campo { display: grid; gap: 6px; font-weight: 600; font-size: .9rem; }
+label.campo { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; row-gap: 6px; font-weight: 600; font-size: .9rem; }
+label.campo > input, label.campo > select, label.campo > textarea { flex: 1 1 100%; }
+.form-row { align-items: end; }
 label.campo small { font-weight: 400; color: var(--muted); }
 input[type=text], input[type=email], input[type=password], input[type=tel], input[type=number], input[type=search], select, textarea {
     width: 100%; padding: 11px 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); font: inherit; font-size: 1rem; background: var(--white); color: var(--ink); transition: border-color .15s, box-shadow .15s;
@@ -237,8 +239,24 @@ textarea { min-height: 96px; resize: vertical; }
 
 .card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
 .card + .card { margin-top: 16px; }
-.auth-wrap { max-width: 440px; margin: 48px auto; }
-.auth-wrap .card { padding: 32px; }
+.auth-wrap { max-width: 1040px; margin: 40px auto; display: grid; grid-template-columns: 1fr 1.15fr; padding: 0; background: var(--white); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--line); }
+.auth-panel { background: radial-gradient(600px 300px at 0% 0%, rgba(241, 229, 47, .16), transparent 60%), var(--teal); color: var(--white); padding: 44px 40px; display: flex; flex-direction: column; justify-content: center; }
+.auth-panel h2 { color: var(--white); font-size: clamp(1.6rem, 3vw, 2.2rem); margin-bottom: 24px; }
+.auth-beneficios { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.auth-beneficios li { display: flex; gap: 14px; align-items: flex-start; color: rgba(255, 255, 255, .88); line-height: 1.45; }
+.auth-beneficios li > span { flex: none; width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 255, 255, .12); display: grid; place-items: center; font-size: 1.25rem; }
+.auth-beneficios b { color: var(--yellow); }
+.auth-form { padding: 44px 48px; }
+.auth-form h1 { font-size: clamp(1.7rem, 3vw, 2.2rem); }
+@media (max-width: 860px) {
+    .auth-wrap { grid-template-columns: 1fr; margin: 0 auto 24px; padding: 0 16px; border-radius: 0; border: 0; box-shadow: none; background: transparent; }
+    .auth-panel { padding: 24px 16px; margin: 0 -16px; }
+    .auth-panel h2 { margin-bottom: 14px; font-size: 1.4rem; }
+    .auth-beneficios { gap: 10px; }
+    .auth-beneficios li { font-size: .9rem; }
+    .auth-beneficios li > span { width: 34px; height: 34px; font-size: 1rem; }
+    .auth-form { padding: 24px 0 0; }
+}
 
 /* ── Mensajes ───────────────────────────────────────────── */
 .flashes { margin-top: 16px; display: grid; gap: 8px; }

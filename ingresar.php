@@ -32,8 +32,9 @@ require __DIR__ . '/inc/header.php';
 ?>
 
 <div class="container auth-wrap">
-    <div class="card">
-        <h1 style="font-size:1.8rem">Volviste, coleccionista</h1>
+    <?php require __DIR__ . '/inc/auth_panel.php'; ?>
+    <div class="auth-form">
+        <h1>Volviste, coleccionista</h1>
         <p class="muted">Tu equipo te estaba esperando. Ingresá para ver tus colecciones y quién falta.</p>
         <form method="post" class="form">
             <?= csrf_field() ?>

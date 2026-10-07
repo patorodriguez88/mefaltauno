@@ -31,8 +31,9 @@ require __DIR__ . '/inc/header.php';
 ?>
 
 <div class="container auth-wrap">
-    <div class="card">
-        <h1 style="font-size:1.8rem">Sumate a la liga</h1>
+    <?php require __DIR__ . '/inc/auth_panel.php'; ?>
+    <div class="auth-form">
+        <h1>Sumate a la liga</h1>
         <p class="muted">Tu base de coleccionista: marcá los que tenés, mirá quién falta en tu equipo y te avisamos cuando lo rescatamos.</p>
         <?php foreach ($errores as $er): ?><div class="flash flash-error" style="margin-bottom:8px"><?= e($er) ?></div><?php endforeach; ?>
         <form method="post" class="form">
@@ -42,8 +43,10 @@ require __DIR__ . '/inc/header.php';
                 <label class="campo">Nombre<input type="text" name="nombre" value="<?= e($d['nombre']) ?>" required autocomplete="given-name"></label>
                 <label class="campo">Apellido<input type="text" name="apellido" value="<?= e($d['apellido']) ?>" autocomplete="family-name"></label>
             </div>
-            <label class="campo">Email<input type="email" name="email" value="<?= e($d['email']) ?>" required autocomplete="email"></label>
-            <label class="campo">Teléfono <small>(opcional, para coordinar entregas)</small><input type="tel" name="telefono" value="<?= e($d['telefono']) ?>" autocomplete="tel"></label>
+            <div class="form-row">
+                <label class="campo">Email<input type="email" name="email" value="<?= e($d['email']) ?>" required autocomplete="email"></label>
+                <label class="campo">Teléfono <small>(opcional)</small><input type="tel" name="telefono" value="<?= e($d['telefono']) ?>" autocomplete="tel"></label>
+            </div>
             <label class="campo">Contraseña <small>(mínimo 8 caracteres)</small><input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
             <button class="btn btn-primario btn-bloque" type="submit">Crear mi cuenta</button>
         </form>
