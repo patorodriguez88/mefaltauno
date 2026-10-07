@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $items = q("SELECT i.*, c.nombre AS coleccion FROM items i JOIN colecciones c ON c.id=i.coleccion_id ORDER BY i.coleccion_id, i.numero")->fetchAll();
             $n = 0;
             foreach ($items as $it) {
-                if ($it['wepoint_id']) continue;
+                // Siempre se verifica por SKU: el sandbox se borra todas las noches a las 03:00
                 $sku = $it['sku'] ?: sku_demo($it);
                 $id = null;
                 // ¿Ya existe en WePoint ese SKU?
