@@ -81,6 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia.';
         }
         if ($accion === 'probar') {
+            $pw = trim(WEPOINT_PASSWORD);
+            $log[] = 'Diagnóstico: email «' . trim(WEPOINT_EMAIL) . '» · contraseña de ' . mb_strlen($pw) . ' caracteres'
+                . (preg_match('/[\'"\\\\$\s]/', $pw) ? ' · contiene comillas, barra, $ o espacios' : '') . ' · API ' . wepoint_base();
             wepoint_token(true);
             $log[] = 'Login OK en ' . wepoint_base();
         }
