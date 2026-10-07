@@ -42,9 +42,18 @@ require __DIR__ . '/inc/header.php';
         <p class="muted">Danos la pista y salimos a buscarlo: colección, número y cualquier dato que sirva. Te avisamos apenas lo rescatamos.</p>
         <?php foreach ($errores as $er): ?><div class="flash flash-error" style="margin-bottom:8px"><?= e($er) ?></div><?php endforeach; ?>
 
-        <?php if (!$cli): ?>
-            <div class="aviso" style="margin-bottom:16px">Para pedirlo necesitás una cuenta, así te avisamos y podés seguir el pedido. <a href="<?= url('ingresar.php?volver=' . urlencode(url('me-falta.php'))) ?>">Ingresá</a> o <a href="<?= url('registro.php?volver=' . urlencode(url('me-falta.php'))) ?>">creá tu cuenta</a>.</div>
-        <?php endif; ?>
+        <?php if (!$cli):
+            $volver = urlencode(url('me-falta.php')); ?>
+            <div class="sin-sesion">
+                <div class="modal-icono">🔒</div>
+                <h3>Para activar una búsqueda necesitás tu cuenta</h3>
+                <p class="muted">Así te avisamos por mail apenas lo encontramos y podés seguir la misión desde tu panel.</p>
+                <div class="sin-sesion-botones">
+                    <a class="btn btn-primario" href="<?= url('registro.php?volver=' . $volver) ?>">Crear mi cuenta</a>
+                    <a class="btn btn-linea" href="<?= url('ingresar.php?volver=' . $volver) ?>">Ya tengo cuenta</a>
+                </div>
+            </div>
+        <?php else: ?>
 
         <form method="post" class="form">
             <?= csrf_field() ?>
@@ -65,8 +74,9 @@ require __DIR__ . '/inc/header.php';
             <label class="campo">Comentario <small>(opcional)</small>
                 <textarea name="mensaje" placeholder="Cualquier dato que nos ayude a encontrarlo"><?= e($d['mensaje']) ?></textarea>
             </label>
-            <button class="btn btn-primario" type="submit" <?= $cli ? '' : 'disabled' ?>>Activar la búsqueda</button>
+            <button class="btn btn-primario" type="submit">Activar la búsqueda</button>
         </form>
+        <?php endif; ?>
     </div>
 </div>
 

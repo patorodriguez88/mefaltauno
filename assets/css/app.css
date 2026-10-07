@@ -469,3 +469,7 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .layout-cupones { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 24px; align-items: start; }
 .acciones-cupon { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 @media (max-width: 1000px) { .layout-cupones { grid-template-columns: 1fr; } }
+
+.sin-sesion { text-align: center; padding: 24px 12px 8px; display: grid; justify-items: center; gap: 4px; border-top: 1px solid var(--line); margin-top: 8px; }
+.sin-sesion h3 { margin: 12px 0 0; }
+.sin-sesion-botones { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
