@@ -1,5 +1,13 @@
 </main>
 
+<div class="franja-epica" aria-hidden="true">
+    <div class="franja-pista">
+        <?php for ($vuelta = 0; $vuelta < 2; $vuelta++): foreach (FRASES_EPICAS as $f): ?>
+            <span><?= e($f) ?></span><i>★</i>
+        <?php endforeach; endfor; ?>
+    </div>
+</div>
+
 <footer class="site-footer">
     <div class="container footer-grid">
         <div>
@@ -9,8 +17,8 @@
         <div>
             <h4>Tienda</h4>
             <a href="<?= url('colecciones.php') ?>">Todas las colecciones</a>
-            <?php foreach (categorias() as $cat): ?>
-                <a href="<?= url('colecciones.php?cat=' . urlencode($cat['slug'])) ?>"><?= e($cat['nombre']) ?></a>
+            <?php foreach (categorias() as $nav_cat): ?>
+                <a href="<?= url('colecciones.php?cat=' . urlencode($nav_cat['slug'])) ?>"><?= e($nav_cat['nombre']) ?></a>
             <?php endforeach; ?>
         </div>
         <div>

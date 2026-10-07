@@ -31,7 +31,7 @@ require __DIR__ . '/inc/header.php';
         <div class="section-head">
             <div>
                 <h1 style="margin-bottom:4px"><?= e($titulo) ?></h1>
-                <p class="muted" style="margin:0"><?= e($cat['descripcion'] ?? 'Todas nuestras colecciones para completar.') ?></p>
+                <p class="muted" style="margin:0"><?= e($cat['descripcion'] ?? 'Cada saga, cada número, cada leyenda. Elegí la tuya.') ?></p>
             </div>
             <form method="get" style="min-width:260px">
                 <?php if ($cat): ?><input type="hidden" name="cat" value="<?= e($cat['slug']) ?>"><?php endif; ?>
@@ -45,8 +45,8 @@ require __DIR__ . '/inc/header.php';
             </div>
         <?php else: ?>
             <div class="vacio">
-                <h3>No encontramos colecciones<?= $buscar ? ' para “' . e($buscar) . '”' : '' ?></h3>
-                <p>¿Buscás algo puntual? <a href="<?= url('me-falta.php') ?>">Pedinoslo</a> y lo buscamos.</p>
+                <h3>Ni rastro<?= $buscar ? ' de “' . e($buscar) . '”' : '' ?> en nuestra base</h3>
+                <p>Pero ningún héroe queda atrás: <a href="<?= url('me-falta.php') ?>">danos la pista</a> y salimos a buscarlo.</p>
             </div>
         <?php endif; ?>
     </div>

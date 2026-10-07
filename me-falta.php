@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         registrar_historial('solicitud', $sol, 'pendiente', null, nombre_cliente($cli));
         $db->commit();
         notificar_solicitud_nueva($sol);
-        flash('ok', '¡Recibido! Lo vamos a buscar y te avisamos por mail.');
+        flash('ok', '¡Misión aceptada! Salimos a buscarlo y te avisamos por mail.');
         redirect('cuenta.php?tab=faltantes');
     }
 }

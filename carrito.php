@@ -11,12 +11,13 @@ require __DIR__ . '/inc/header.php';
 <section class="section">
     <div class="container">
         <h1>Tu carrito</h1>
+        <?php if ($c['lineas']): ?><p class="muted" style="margin-top:-8px">El equipo está casi listo. Solo falta confirmar.</p><?php endif; ?>
 
         <?php if (!$c['lineas']): ?>
             <div class="card vacio">
-                <h3>Tu carrito está vacío</h3>
-                <p>Entrá a una colección y sumá los números que te faltan.</p>
-                <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Ver colecciones</a>
+                <h3>Tu carrito está vacío… por ahora</h3>
+                <p>Toda leyenda empieza con un primer número. Elegí una colección y reclutá al que te falta.</p>
+                <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Explorar colecciones</a>
             </div>
         <?php else: ?>
             <div class="layout-2">

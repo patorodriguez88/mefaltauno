@@ -14,10 +14,10 @@ function notificar_solicitud_nueva(int $sol_id): void {
         . mail_tabla([['Email', e($s['email'])], ['Teléfono', e($s['telefono'] ?: '—')]])
         . mail_link("admin/solicitud.php?id=$sol_id", 'Ver en el panel'));
 
-    mail_enviar($s['email'], "Recibimos tu pedido #$sol_id: te lo vamos a conseguir",
-        '<p>Hola ' . e($s['nombre']) . ',</p><p>Recibimos tu pedido de estos números:</p>' . $lista
-        . '<p>Ya está <b>pendiente</b> y lo vamos a buscar. Te avisamos por mail apenas tengamos novedades.</p>'
-        . mail_link("cuenta.php?tab=faltantes", 'Seguir mi pedido'));
+    mail_enviar($s['email'], "Misión aceptada: salimos a buscar tu pedido #$sol_id",
+        '<p>Hola ' . e($s['nombre']) . ',</p><p>Recibimos tu pedido. Estos son los integrantes que salimos a buscar:</p>' . $lista
+        . '<p>La misión ya está en marcha. Te avisamos por mail apenas tengamos novedades. <b>Ningún héroe queda atrás.</b></p>'
+        . mail_link("cuenta.php?tab=faltantes", 'Seguir la búsqueda'));
 }
 
 function notificar_pedido_nuevo(int $ped_id): void {
@@ -51,8 +51,8 @@ function notificar_pedido_nuevo(int $ped_id): void {
         $pago = '<p>Te vamos a enviar el link de pago de Mercado Pago para confirmarlo.</p>';
     }
     $pago .= '<p>Te avisamos por mail cuando esté listo para retirar.</p>';
-    mail_enviar($p['email'], "Recibimos tu pedido #$ped_id",
-        '<p>Hola ' . e($p['nombre']) . ', ¡gracias por tu compra!</p>' . $detalle . $pago
+    mail_enviar($p['email'], "Misión en marcha: tu pedido #$ped_id",
+        '<p>Hola ' . e($p['nombre']) . ', ¡gracias! Tu equipo está a punto de crecer.</p>' . $detalle . $pago
         . mail_link("pedido.php?id=$ped_id", 'Ver mi pedido'));
 }
 
@@ -65,8 +65,8 @@ function notificar_cambio_estado(string $entidad, int $id, string $estado, ?stri
     } else {
         $r = q("SELECT c.nombre, c.email FROM solicitudes s JOIN clientes c ON c.id=s.cliente_id WHERE s.id=?", [$id])->fetch();
         [$label, $texto] = ESTADOS_SOLICITUD[$estado] ?? [$estado, ''];
-        $asunto = "Tu pedido de faltantes #$id: $label";
-        $link = mail_link("cuenta.php?tab=faltantes", 'Ver mis pedidos');
+        $asunto = "Tu búsqueda #$id: $label";
+        $link = mail_link("cuenta.php?tab=faltantes", 'Ver mis búsquedas');
     }
     if (!$r) return;
     mail_enviar($r['email'], $asunto,

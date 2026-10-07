@@ -51,7 +51,7 @@ require __DIR__ . '/inc/header.php';
         <p class="muted" style="margin:4px 0 0">Tu base de operaciones: tus colecciones, quién falta y tus pedidos.</p>
         <nav class="tabs">
             <a href="?tab=colecciones" class="<?= $tab === 'colecciones' ? 'activo' : '' ?>">Mis colecciones</a>
-            <a href="?tab=faltantes" class="<?= $tab === 'faltantes' ? 'activo' : '' ?>">Me faltan<?= $cnt_faltantes ? '<span class="cnt">' . $cnt_faltantes . '</span>' : '' ?></a>
+            <a href="?tab=faltantes" class="<?= $tab === 'faltantes' ? 'activo' : '' ?>">En búsqueda<?= $cnt_faltantes ? '<span class="cnt">' . $cnt_faltantes . '</span>' : '' ?></a>
             <a href="?tab=pedidos" class="<?= $tab === 'pedidos' ? 'activo' : '' ?>">Mis pedidos<?= $cnt_pedidos ? '<span class="cnt">' . $cnt_pedidos . '</span>' : '' ?></a>
             <a href="?tab=datos" class="<?= $tab === 'datos' ? 'activo' : '' ?>">Mis datos</a>
         </nav>
@@ -74,8 +74,8 @@ require __DIR__ . '/inc/header.php';
             </p>
         <?php else: ?>
             <div class="card vacio">
-                <h3>Todavía no sumaste colecciones</h3>
-                <p>Entrá a una colección, marcá los números que ya tenés y aparece acá con tu progreso.</p>
+                <h3>Tu base está vacía</h3>
+                <p>Toda leyenda empieza con un primer número. Entrá a una colección, pasá lista y acá vas a ver cómo crece tu equipo.</p>
                 <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Elegir una colección</a>
             </div>
         <?php endif; ?>
@@ -83,13 +83,13 @@ require __DIR__ . '/inc/header.php';
     <?php elseif ($tab === 'faltantes'):
         $sols = q("SELECT * FROM solicitudes WHERE cliente_id=? ORDER BY FIELD(estado,'conseguido','buscando','pendiente') DESC, created_at DESC", [$cli['id']])->fetchAll(); ?>
         <div class="section-head">
-            <p class="muted" style="margin:0;max-width:640px">Los números que nos pediste conseguir. Te avisamos por mail con cada novedad.</p>
-            <a class="btn btn-teal btn-chico" href="<?= url('me-falta.php') ?>">Pedir otro número</a>
+            <p class="muted" style="margin:0;max-width:640px">Tus misiones de búsqueda: los números que salimos a rastrear para vos. Te avisamos por mail con cada novedad.</p>
+            <a class="btn btn-teal btn-chico" href="<?= url('me-falta.php') ?>">Activar otra búsqueda</a>
         </div>
         <?php if (!$sols): ?>
             <div class="card vacio">
-                <h3>No tenés pedidos de faltantes</h3>
-                <p>En cada colección podés seleccionar los números sin stock y tocar <b>“Conseguímelos”</b>.</p>
+                <h3>No hay búsquedas activas</h3>
+                <p>En cada colección seleccioná los números sin stock y tocá <b>“Activar la búsqueda”</b>. Nosotros salimos a buscarlos.</p>
             </div>
         <?php endif; ?>
         <div class="lista">
@@ -97,7 +97,7 @@ require __DIR__ . '/inc/header.php';
                 $its = q("SELECT si.descripcion, c.slug FROM solicitud_items si LEFT JOIN items i ON i.id=si.item_id LEFT JOIN colecciones c ON c.id=i.coleccion_id WHERE si.solicitud_id=?", [$s['id']])->fetchAll(); ?>
                 <div class="card">
                     <div class="section-head" style="margin-bottom:8px">
-                        <div><b>Pedido de faltantes #<?= (int)$s['id'] ?></b> <span class="muted small">· <?= fecha($s['created_at'], false) ?></span></div>
+                        <div><b>Misión de búsqueda #<?= (int)$s['id'] ?></b> <span class="muted small">· <?= fecha($s['created_at'], false) ?></span></div>
                         <?= badge_estado($s['estado'], ESTADOS_SOLICITUD) ?>
                     </div>
                     <p class="muted small" style="margin:0 0 8px"><?= e(ESTADOS_SOLICITUD[$s['estado']][1] ?? '') ?></p>
@@ -107,7 +107,7 @@ require __DIR__ . '/inc/header.php';
                         <?php endforeach; ?>
                     </ul>
                     <?php if ($s['respuesta']): ?>
-                        <div class="aviso" style="background:var(--teal-50);color:var(--teal-900)"><b>MeFaltaUno:</b> <?= nl2br(e($s['respuesta'])) ?></div>
+                        <div class="aviso" style="background:var(--teal-50);color:var(--teal-900)"><b>Base MeFaltaUno:</b> <?= nl2br(e($s['respuesta'])) ?></div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -117,7 +117,8 @@ require __DIR__ . '/inc/header.php';
         $peds = q("SELECT p.*, (SELECT SUM(cantidad) FROM pedido_items WHERE pedido_id=p.id) AS unidades FROM pedidos p WHERE cliente_id=? ORDER BY created_at DESC", [$cli['id']])->fetchAll(); ?>
         <?php if (!$peds): ?>
             <div class="card vacio">
-                <h3>Todavía no hiciste pedidos</h3>
+                <h3>Todavía no hay misiones en tu historial</h3>
+                <p>Tu primera colección completa está a un clic.</p>
                 <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Ver colecciones</a>
             </div>
         <?php endif; ?>

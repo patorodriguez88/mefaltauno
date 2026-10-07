@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         carrito_vaciar();
         notificar_pedido_nuevo($pid);
-        flash('ok', '¡Gracias! Recibimos tu pedido. Te mandamos el detalle por mail.');
+        flash('ok', '¡Misión en marcha! Recibimos tu pedido y te mandamos el detalle por mail.');
         redirect('pedido.php?id=' . $pid);
     }
 }
@@ -73,7 +73,7 @@ require __DIR__ . '/inc/header.php';
 
 <section class="section">
     <div class="container">
-        <h1>Finalizar compra</h1>
+        <h1>Último paso, coleccionista</h1>
         <?php foreach ($errores as $er): ?><div class="flash flash-error" style="margin-bottom:8px"><?= e($er) ?></div><?php endforeach; ?>
 
         <form method="post" class="layout-2">
@@ -81,11 +81,11 @@ require __DIR__ . '/inc/header.php';
             <input type="hidden" name="punto_id" id="punto-id" value="<?= $d['punto_id'] ?: '' ?>">
             <div>
                 <div class="card">
-                    <h3>¿Dónde lo retirás?</h3>
+                    <h3>Elegí tu punto de encuentro</h3>
                     <?php if (!$puntos): ?>
                         <div class="aviso">Todavía no hay puntos de retiro disponibles. Escribinos y coordinamos la entrega.</div>
                     <?php else: ?>
-                        <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu pedido esté listo para retirar.</p>
+                        <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu equipo esté listo para retirar.</p>
                         <div id="selector-punto" data-puntos="<?= e(json_encode($puntos, JSON_UNESCAPED_UNICODE)) ?>">
                             <div class="buscador-dir">
                                 <input type="search" id="buscar-dir" value="<?= e($referencia) ?>" placeholder="Tu dirección o barrio, ej: Av. Colón 1200, Córdoba" autocomplete="street-address">
@@ -103,7 +103,7 @@ require __DIR__ . '/inc/header.php';
                 </div>
 
                 <div class="card">
-                    <h3>¿Quién retira?</h3>
+                    <h3>¿Quién va a buscarlo?</h3>
                     <div class="form-row">
                         <label class="campo">Nombre y apellido<input type="text" name="nombre" value="<?= e($d['nombre']) ?>" required></label>
                         <label class="campo">Teléfono <small>(te avisamos cuando esté listo)</small><input type="tel" name="telefono" value="<?= e($d['telefono']) ?>" required></label>
@@ -133,7 +133,7 @@ require __DIR__ . '/inc/header.php';
                 <?php endforeach; ?>
                 <div class="resumen-fila muted"><span>Retiro</span><span>Sin cargo</span></div>
                 <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio($c['subtotal']) ?></span></div>
-                <button class="btn btn-primario btn-bloque" style="margin-top:16px" type="submit" <?= $puntos ? '' : 'disabled' ?>>Confirmar pedido</button>
+                <button class="btn btn-primario btn-bloque" style="margin-top:16px" type="submit" <?= $puntos ? '' : 'disabled' ?>>Confirmar pedido ⚡</button>
                 <p class="muted small" style="margin:12px 0 0">Te mandamos el detalle por mail y podés seguirlo desde tu cuenta.</p>
             </aside>
         </form>

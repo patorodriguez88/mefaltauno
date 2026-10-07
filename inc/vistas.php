@@ -41,7 +41,7 @@ function tarjeta_mi_coleccion(array $c): string {
     foreach ($c['items'] as $it) {
         $nums .= '<span class="' . e($it['estado']) . '" title="' . e(num((int)$it['numero']) . ' — ' . $it['titulo']) . '">' . (int)$it['numero'] . '</span>';
     }
-    $sub = $faltan ? "Te faltan <b>$faltan</b>" . ($c['pendientes'] ? " · {$c['pendientes']} en camino o pedidos" : '') : '¡Completa! 🎉';
+    $sub = $faltan ? "Faltan <b>$faltan</b>" . ($c['pendientes'] ? " · {$c['pendientes']} en búsqueda o en camino" : '') : '¡Equipo completo! 🏆';
     return '<a class="mi-col" href="' . url('coleccion.php?c=' . urlencode($c['slug'])) . '">'
         . '<img src="' . e($c['imagen'] ?? '') . '" alt="" loading="lazy">'
         . '<div><h3>' . e($c['nombre']) . '</h3>'

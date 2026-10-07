@@ -214,20 +214,32 @@ function estados_items(int $cliente_id, ?int $coleccion_id = null): array {
 // ─── Estados de pedidos y solicitudes ───────────────────────────────────────
 
 const ESTADOS_PEDIDO = [
-    'pendiente'  => ['Recibido',          'Recibimos tu pedido. En breve te contactamos para confirmar el pago.', 'amarillo'],
-    'confirmado' => ['Confirmado',        'El pago está confirmado.', 'azul'],
-    'preparando' => ['En preparación',    'Estamos preparando tu pedido.', 'azul'],
-    'enviado'    => ['Listo para retirar', 'Tu pedido ya está en el punto de retiro. ¡Pasá a buscarlo!', 'azul'],
-    'entregado'  => ['Retirado',          '¡Listo! Ya los sumamos a tu colección.', 'verde'],
-    'cancelado'  => ['Cancelado',         'El pedido fue cancelado.', 'gris'],
+    'pendiente'  => ['Misión recibida',      'Recibimos tu pedido. Apenas confirmemos el pago, arranca la misión.', 'amarillo'],
+    'confirmado' => ['Pago confirmado',      'Pago confirmado: tu equipo ya se está reuniendo.', 'azul'],
+    'preparando' => ['Preparando el equipo', 'Estamos preparando tu pedido con el cuidado que merece.', 'azul'],
+    'enviado'    => ['Listo para retirar',   'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!', 'azul'],
+    'entregado'  => ['Misión cumplida',      '¡Misión cumplida! Ya los sumamos a tu colección.', 'verde'],
+    'cancelado'  => ['Cancelado',            'El pedido fue cancelado.', 'gris'],
 ];
 
 const ESTADOS_SOLICITUD = [
-    'pendiente'     => ['Pendiente',          'Recibimos tu pedido. Lo vamos a buscar y te avisamos.', 'amarillo'],
-    'buscando'      => ['Lo estamos buscando', 'Ya estamos buscándolo para vos.', 'azul'],
-    'conseguido'    => ['¡Lo conseguimos!',    'Lo conseguimos. Te contactamos para coordinar la entrega.', 'verde'],
-    'no_disponible' => ['No disponible',      'Por ahora no lo pudimos conseguir.', 'gris'],
-    'cancelada'     => ['Cancelada',          'La solicitud fue cancelada.', 'gris'],
+    'pendiente'     => ['Misión recibida',      'Recibimos tu pedido. En breve salimos a buscarlo.', 'amarillo'],
+    'buscando'      => ['En búsqueda',          'Nuestro equipo ya está rastreándolo para vos.', 'azul'],
+    'conseguido'    => ['¡Lo encontramos!',     '¡Lo encontramos! Te contactamos para coordinar la entrega.', 'verde'],
+    'no_disponible' => ['Sin rastro, por ahora', 'Por ahora no pudimos encontrarlo. Seguimos atentos al radar.', 'gris'],
+    'cancelada'     => ['Cancelada',            'La búsqueda fue cancelada.', 'gris'],
+];
+
+// Frases de la franja épica (aparece arriba del footer en todas las páginas)
+const FRASES_EPICAS = [
+    'Ningún héroe queda atrás',
+    'Toda saga merece su final',
+    'Reuní a todos. Sin excepción',
+    'El último número es el más épico',
+    'Tu equipo no está completo… todavía',
+    'Cada colección tiene su leyenda',
+    'Salimos a buscar al que falta',
+    'Un estante. Una misión. Ningún hueco',
 ];
 
 const ENVIO_METODOS = [

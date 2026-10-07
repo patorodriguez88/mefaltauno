@@ -86,7 +86,7 @@ async function agregarAlCarrito(itemId, btn) {
         const bar = document.getElementById('prog-bar');
         if (bar) bar.style.width = pct + '%';
         const txt = document.getElementById('prog-txt');
-        if (txt) txt.innerHTML = `Tenés <strong>${tengo}</strong> de ${total}` + (total - tengo ? ` · te faltan <strong>${total - tengo}</strong>` : ' · ¡Colección completa! 🎉');
+        if (txt) txt.innerHTML = `Tu equipo: <strong>${tengo}</strong> de ${total}` + (total - tengo ? ` · faltan <strong>${total - tengo}</strong> por reclutar` : ' · ¡Equipo completo, misión cumplida! 🏆');
         document.querySelectorAll('[data-cnt]').forEach(el => {
             const k = el.dataset.cnt;
             el.textContent = k === 'todos' ? total : k === 'tengo' ? tengo : total - tengo;
@@ -121,7 +121,7 @@ async function agregarAlCarrito(itemId, btn) {
                 contar();
                 actualizarBarra();
                 const seguir = document.getElementById('btn-seguir');
-                if (seguir && r.siguiendo) { seguir.dataset.siguiendo = '1'; seguir.textContent = '✓ En mis colecciones'; }
+                if (seguir && r.siguiendo) { seguir.dataset.siguiendo = '1'; seguir.textContent = '✓ En mi base'; }
             } catch (e) {
                 ev.target.checked = !tengo;
             }
@@ -165,7 +165,7 @@ async function agregarAlCarrito(itemId, btn) {
             if (cb) cb.checked = !todos;
         });
         actualizarBarra();
-        if (!faltan.length) toast('No te falta ninguno disponible para pedir 🙌');
+        if (!faltan.length) toast('No falta nadie en tu equipo 🏆');
     };
 
     window.limpiarSeleccion = function () {
@@ -238,8 +238,8 @@ async function agregarAlCarrito(itemId, btn) {
         try {
             await api('seguir', { coleccion_id: coleccionId, seguir: seguir ? 1 : 0 });
             btn.dataset.siguiendo = seguir ? '1' : '0';
-            btn.textContent = seguir ? '✓ En mis colecciones' : '+ Sumar a mis colecciones';
-            toast(seguir ? 'La sumamos a tus colecciones' : 'La quitamos de tus colecciones');
+            btn.textContent = seguir ? '✓ En mi base' : '+ Sumar a mi base';
+            toast(seguir ? 'Colección sumada a tu base ⚡' : 'La quitamos de tu base');
         } catch (e) { }
     };
 

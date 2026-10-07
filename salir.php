@@ -6,6 +6,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok()) {
     $_SESSION = [];
     session_regenerate_id(true);
     if ($carrito) $_SESSION['carrito'] = $carrito;  // el carrito sobrevive al cerrar sesión
-    flash('info', 'Cerraste sesión. ¡Hasta pronto!');
+    flash('info', 'Cerraste sesión. Tu colección te espera, coleccionista.');
 }
 redirect('');

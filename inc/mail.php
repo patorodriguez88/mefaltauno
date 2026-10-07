@@ -27,7 +27,7 @@ function mail_layout(string $titulo, string $cuerpo): string {
         . '<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden">'
         . '<tr><td style="background:#006368;padding:16px 24px"><img src="' . e($logo) . '" alt="MeFaltaUno" height="44"></td></tr>'
         . '<tr><td style="padding:24px"><h2 style="margin:0 0 16px;color:#006368">' . e($titulo) . '</h2>' . $cuerpo . '</td></tr>'
-        . '<tr><td style="padding:16px 24px;background:#f4f6f6;font-size:12px;color:#6b7a7b">MeFaltaUno · Dinter S.A.</td></tr>'
+        . '<tr><td style="padding:16px 24px;background:#f4f6f6;font-size:12px;color:#6b7a7b"><b style="color:#006368">Ningún héroe queda atrás.</b><br>MeFaltaUno · Dinter S.A.</td></tr>'
         . '</table></td></tr></table></body></html>';
 }
 

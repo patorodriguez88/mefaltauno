@@ -36,9 +36,9 @@ try {
     case 'carrito_agregar':
         $it = item_activo((int)($_POST['item_id'] ?? 0));
         $actual = carrito()[$it['id']] ?? 0;
-        if ($actual + 1 > (int)$it['stock']) throw new Exception($it['stock'] > 0 ? 'No hay más unidades de ese número.' : 'Sin stock: pedilo con "Conseguímelo".');
+        if ($actual + 1 > (int)$it['stock']) throw new Exception($it['stock'] > 0 ? 'No quedan más unidades de ese número.' : 'Sin stock: activá la búsqueda y salimos a buscarlo.');
         carrito_set((int)$it['id'], $actual + 1);
-        json_out(['ok' => true, 'carrito' => carrito_cantidad(), 'mensaje' => num((int)$it['numero']) . ' agregado al carrito']);
+        json_out(['ok' => true, 'carrito' => carrito_cantidad(), 'mensaje' => num((int)$it['numero']) . ' se sumó a tu equipo ⚡']);
 
     case 'carrito_agregar_varios':
         $n = 0;
@@ -50,7 +50,7 @@ try {
             $n++;
         }
         if (!$n) throw new Exception('No se pudo agregar ninguno (sin stock).');
-        json_out(['ok' => true, 'carrito' => carrito_cantidad(), 'mensaje' => $n === 1 ? 'Agregamos 1 número al carrito' : "Agregamos $n números al carrito"]);
+        json_out(['ok' => true, 'carrito' => carrito_cantidad(), 'mensaje' => $n === 1 ? '1 número se sumó a tu equipo ⚡' : "$n números se sumaron a tu equipo ⚡"]);
 
     case 'carrito_cantidad':
         $id = (int)($_POST['item_id'] ?? 0);

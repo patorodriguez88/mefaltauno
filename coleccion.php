@@ -8,7 +8,7 @@ if (!$col) {
     http_response_code(404);
     $titulo = 'No encontrada';
     require __DIR__ . '/inc/header.php';
-    echo '<div class="container vacio"><h3>Esa colección no existe o ya no está disponible.</h3><p><a href="' . url('colecciones.php') . '">Ver todas las colecciones</a></p></div>';
+    echo '<div class="container vacio"><h3>Esta colección desapareció del mapa.</h3><p><a href="' . url('colecciones.php') . '">Volver a la base de colecciones</a></p></div>';
     require __DIR__ . '/inc/footer.php';
     exit;
 }
@@ -51,7 +51,7 @@ require __DIR__ . '/inc/header.php';
                 </div>
                 <div class="col-acciones">
                     <button class="btn btn-linea btn-chico" id="btn-seguir" type="button" data-siguiendo="<?= $siguiendo ? '1' : '0' ?>" onclick="toggleSeguir(this)">
-                        <?= $siguiendo ? '✓ En mis colecciones' : '+ Sumar a mis colecciones' ?>
+                        <?= $siguiendo ? '✓ En mi base' : '+ Sumar a mi base' ?>
                     </button>
                     <button class="btn btn-primario btn-chico" type="button" onclick="seleccionarFaltantes()">Seleccionar los que me faltan</button>
                 </div>
@@ -94,7 +94,7 @@ require __DIR__ . '/inc/header.php';
                             <?php if ($p < (float)$it['precio']): ?><s><?= precio((float)$it['precio']) ?></s><?php endif; ?>
                         </div>
                         <div class="item-stock <?= $stock > 0 ? 'si' : 'no' ?>">
-                            <?= $stock > 0 ? ($stock <= 3 ? "¡Últimas $stock!" : 'Disponible') : 'Sin stock · salimos a buscarlo' ?>
+                            <?= $stock > 0 ? ($stock <= 3 ? "¡Quedan solo $stock!" : 'Disponible') : 'Sin stock · salimos a buscarlo' ?>
                         </div>
                         <div class="item-acciones">
                             <?php if ($cli): ?>

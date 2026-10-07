@@ -23,6 +23,7 @@ require __DIR__ . '/inc/header.php';
 <section class="hero">
     <div class="container hero-grid">
         <div>
+            <div class="kicker">★ Una misión para coleccionistas ★</div>
             <h1>¿Te falta <em>uno</em>?</h1>
             <p class="lead">Todo gran equipo tiene un integrante que todavía no llegó. Marcá los que ya custodiás en tu estante y nosotros salimos a rescatar al que falta. <strong>Ningún héroe queda atrás.</strong></p>
             <div class="hero-cta">

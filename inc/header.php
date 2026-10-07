@@ -18,7 +18,7 @@ $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
     <link rel="icon" href="<?= asset('assets/img/favicon.svg') ?>" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&family=Bangers&display=swap" rel="stylesheet">
     <?php foreach ($page_css ?? [] as $css): ?><link rel="stylesheet" href="<?= e($css) ?>"><?php endforeach; ?>
     <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 </head>
@@ -32,8 +32,8 @@ $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
 
         <nav class="main-nav" id="main-nav">
             <a href="<?= url('colecciones.php') ?>" class="<?= $actual === 'colecciones' && empty($_GET['cat']) ? 'activo' : '' ?>">Colecciones</a>
-            <?php foreach (categorias() as $cat): ?>
-                <a href="<?= url('colecciones.php?cat=' . urlencode($cat['slug'])) ?>" class="<?= ($_GET['cat'] ?? '') === $cat['slug'] ? 'activo' : '' ?>"><?= e($cat['nombre']) ?></a>
+            <?php foreach (categorias() as $nav_cat): ?>
+                <a href="<?= url('colecciones.php?cat=' . urlencode($nav_cat['slug'])) ?>" class="<?= ($_GET['cat'] ?? '') === $nav_cat['slug'] ? 'activo' : '' ?>"><?= e($nav_cat['nombre']) ?></a>
             <?php endforeach; ?>
             <a href="<?= url('me-falta.php') ?>" class="nav-destacado <?= $actual === 'me-falta' ? 'activo' : '' ?>">¿Te falta uno?</a>
         </nav>
