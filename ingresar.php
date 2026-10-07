@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($c && password_verify($_POST['password'] ?? '', $c['password_hash'])) {
         unset($_SESSION['login_fallos']);
         login_cliente($c);
-        header('Location: ' . destino_post_login());
+        header('Location: ' . destino_post_login($c));
         exit;
     } else {
         $intentos[] = time();
