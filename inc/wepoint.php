@@ -2,7 +2,7 @@
 // Integración con WePoint Warehouse (https://sistema.wepoint.ar/docs/api/).
 // - El stock lo maneja WePoint: wepoint_sincronizar_stock() trae "disponible para venta" por SKU.
 // - Cuando un pedido se confirma, wepoint_crear_orden() genera la orden de venta (egreso) para que la preparen.
-// Autenticación: POST /auth/login (email + contraseña) → token Bearer, que se guarda en `ajustes`.
+// Autenticación: POST /v2/auth/login (email + contraseña, igual que el portal de WePoint) → token Bearer, que se guarda en `ajustes`.
 //
 // Config (config.php): WEPOINT_URL (sandbox: https://sandbox.wepoint.ar/api · producción: https://sistema.wepoint.ar/api),
 // WEPOINT_EMAIL, WEPOINT_PASSWORD, WEPOINT_ID_TRANSPORTISTA.
@@ -51,7 +51,7 @@ function wepoint_token(bool $renovar = false): string {
     if (!wepoint_listo()) throw new Exception('Faltan los datos de WePoint en config.php (URL, email y contraseña).');
     $t = ajuste('wepoint_token');
     if ($t !== '' && !$renovar) return $t;
-    [$code, $r] = wepoint_http('POST', 'auth/login', ['email' => trim(WEPOINT_EMAIL), 'password' => trim(WEPOINT_PASSWORD)]);
+    [$code, $r] = wepoint_http('POST', 'v2/auth/login', ['email' => trim(WEPOINT_EMAIL), 'password' => trim(WEPOINT_PASSWORD)]);
     $t = $r['token'] ?? $r['access_token'] ?? $r['data']['token'] ?? $r['data']['access_token'] ?? '';
     if ($code >= 400 || !$t) throw new Exception('WePoint rechazó el login (' . $code . '): ' . ($r['message'] ?? 'sin detalle'));
     wepoint_ajuste_set('wepoint_token', $t);
