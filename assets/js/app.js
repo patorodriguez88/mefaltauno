@@ -300,3 +300,21 @@ document.getElementById('modal').addEventListener('click', ev => {
 function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// Botones "Copiar" (CBU, alias, CUIT)
+document.addEventListener('click', async ev => {
+    const b = ev.target.closest('[data-copiar]');
+    if (!b) return;
+    ev.preventDefault();
+    try {
+        await navigator.clipboard.writeText(b.dataset.copiar);
+    } catch (e) {
+        const t = document.createElement('textarea');
+        t.value = b.dataset.copiar;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        t.remove();
+    }
+    toast(`${b.dataset.label || 'Dato'} copiado ✓`);
+});

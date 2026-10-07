@@ -392,3 +392,15 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
     .buscador-dir { flex-direction: column; }
     .mapa { height: 280px; }
 }
+
+/* ── Datos bancarios ────────────────────────────────────── */
+.opcion-extra { display: none; margin-top: 12px; }
+.opcion:has(input:checked) .opcion-extra { display: block; }
+.banco { margin: 0; display: grid; gap: 2px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 6px 12px; }
+.banco > div { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.banco > div:last-child { border-bottom: 0; }
+.banco dt { font-size: .8rem; color: var(--muted); font-weight: 600; }
+.banco dd { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; word-break: break-all; color: var(--ink); }
+.btn-copiar { flex: none; background: var(--teal-50); color: var(--teal); border: 1px solid var(--teal-100); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; }
+.btn-copiar:hover { background: var(--teal-100); }
+.card-destacada { border: 2px solid var(--yellow-600); background: #fffdea; }

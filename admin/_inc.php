@@ -16,6 +16,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'colecciones' => ['colecciones.php', 'Colecciones y stock'],
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
+        'ajustes'     => ['ajustes.php', 'Ajustes'],
     ];
     echo '<div class="admin-bar"><div class="container"><b style="color:#fff">Admin</b>';
     foreach ($links as $k => [$href, $label]) {

@@ -237,8 +237,49 @@ const ENVIO_METODOS = [
 
 const PAGO_METODOS = [
     'mercadopago'    => 'Mercado Pago',
-    'contra_entrega' => 'Pago contra entrega',
+    'transferencia'  => 'Transferencia bancaria',
+    'contra_entrega' => 'Pago contra entrega',   // histórico: ya no se ofrece
 ];
+const PAGO_METODOS_ACTIVOS = ['mercadopago', 'transferencia'];
+
+// ─── Ajustes (tabla `ajustes`, se editan en admin/ajustes.php) ──────────────
+
+const DATOS_BANCARIOS = ['banco' => 'Banco', 'titular' => 'Titular', 'cuit' => 'CUIT', 'cbu' => 'CBU', 'alias' => 'Alias'];
+
+function ajustes(): array {
+    static $a = null;
+    if ($a === null) $a = q("SELECT clave, valor FROM ajustes")->fetchAll(PDO::FETCH_KEY_PAIR);
+    return $a;
+}
+
+function ajuste(string $clave, string $def = ''): string {
+    return (string)(ajustes()[$clave] ?? $def);
+}
+
+// Datos para transferir que estén cargados: ['Banco' => 'Galicia', ...]
+function datos_bancarios(): array {
+    $out = [];
+    foreach (DATOS_BANCARIOS as $k => $label) {
+        if (ajuste("banco_$k") !== '') $out[$k] = ['label' => $label, 'valor' => ajuste("banco_$k")];
+    }
+    return $out;
+}
+
+// Bloque HTML con los datos bancarios y botones para copiar CBU y alias
+function html_datos_bancarios(?float $total = null): string {
+    $datos = datos_bancarios();
+    if (!$datos) return '<p class="small muted" style="margin:0">Te enviamos los datos para transferir por mail.</p>';
+    $h = '<dl class="banco">';
+    if ($total !== null) $h .= '<div><dt>Monto</dt><dd><b>' . precio($total) . '</b></dd></div>';
+    foreach ($datos as $k => $d) {
+        $copiar = in_array($k, ['cbu', 'alias', 'cuit'], true)
+            ? ' <button type="button" class="btn-copiar" data-copiar="' . e($d['valor']) . '" data-label="' . e($d['label']) . '">Copiar</button>' : '';
+        $h .= '<div><dt>' . e($d['label']) . '</dt><dd><span>' . e($d['valor']) . '</span>' . $copiar . '</dd></div>';
+    }
+    $h .= '</dl>';
+    if (ajuste('banco_instrucciones') !== '') $h .= '<p class="small muted" style="margin:8px 0 0">' . nl2br(e(ajuste('banco_instrucciones'))) . '</p>';
+    return $h;
+}
 
 function puntos_retiro_activos(): array {
     return q("SELECT id, nombre, direccion, localidad, provincia, telefono, horario, notas, lat+0 AS lat, lng+0 AS lng

@@ -176,6 +176,14 @@ function schema_pasos(): array {
             "ALTER TABLE pedidos ADD COLUMN envio_punto VARCHAR(160) NULL AFTER punto_id",
             "ALTER TABLE pedidos ADD CONSTRAINT fk_ped_punto FOREIGN KEY (punto_id) REFERENCES puntos_retiro(id) ON DELETE SET NULL",
         ],
+
+        // Ajustes editables desde el admin (datos bancarios, etc.)
+        3 => [
+            "CREATE TABLE IF NOT EXISTS ajustes (
+                clave VARCHAR(60) PRIMARY KEY,
+                valor TEXT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
     ];
 }
 

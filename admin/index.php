@@ -29,6 +29,13 @@ admin_header('Resumen', 'inicio');
 
 <h1>Resumen</h1>
 
+<?php if (!datos_bancarios()): ?>
+    <div class="aviso" style="margin-bottom:16px">Faltan los datos bancarios para los clientes que pagan por transferencia. <a href="<?= url('admin/ajustes.php') ?>">Cargarlos en Ajustes</a></div>
+<?php endif; ?>
+<?php if (!puntos_retiro_activos()): ?>
+    <div class="aviso" style="margin-bottom:16px">No hay puntos de retiro disponibles: los clientes no pueden comprar. <a href="<?= url('admin/puntos.php?id=0') ?>">Cargar el primero</a></div>
+<?php endif; ?>
+
 <?php if (!$k['cols']): ?>
     <div class="card" style="margin-bottom:24px">
         <h3>El catálogo está vacío</h3>

@@ -40,12 +40,19 @@ function notificar_pedido_nuevo(int $ped_id): void {
         '<p><b>' . e(nombre_cliente($p)) . '</b> (' . e($p['email']) . ') hizo un pedido:</p>' . $detalle
         . mail_link("admin/pedido.php?id=$ped_id", 'Ver en el panel'));
 
-    $pago = $p['pago_metodo'] === 'mercadopago'
-        ? 'Te vamos a enviar el link de pago de Mercado Pago para confirmarlo.'
-        : 'Lo pagás cuando lo retirás.';
-    $pago .= ' Te avisamos por mail cuando esté listo para retirar.';
+    if ($p['pago_metodo'] === 'transferencia') {
+        $filas = [['Monto', '<b>' . precio((float)$p['total']) . '</b>']];
+        foreach (datos_bancarios() as $b) $filas[] = [e($b['label']), '<b>' . e($b['valor']) . '</b>'];
+        $pago = '<h3 style="color:#006368;margin:20px 0 8px">Datos para transferir</h3>'
+            . (count($filas) > 1 ? mail_tabla($filas) : '<p>En breve te enviamos los datos para transferir.</p>')
+            . (ajuste('banco_instrucciones') !== '' ? '<p>' . nl2br(e(ajuste('banco_instrucciones'))) . '</p>' : '')
+            . '<p>Cuando transfieras, <b>respondé este mail con el comprobante</b>. Apenas lo confirmamos, empezamos a prepararlo.</p>';
+    } else {
+        $pago = '<p>Te vamos a enviar el link de pago de Mercado Pago para confirmarlo.</p>';
+    }
+    $pago .= '<p>Te avisamos por mail cuando esté listo para retirar.</p>';
     mail_enviar($p['email'], "Recibimos tu pedido #$ped_id",
-        '<p>Hola ' . e($p['nombre']) . ', ¡gracias por tu compra!</p>' . $detalle . "<p>$pago</p>"
+        '<p>Hola ' . e($p['nombre']) . ', ¡gracias por tu compra!</p>' . $detalle . $pago
         . mail_link("pedido.php?id=$ped_id", 'Ver mi pedido'));
 }
 

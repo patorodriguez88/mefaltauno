@@ -38,6 +38,13 @@ require __DIR__ . '/inc/header.php';
             </div>
 
             <aside>
+                <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente'): ?>
+                    <div class="card card-destacada">
+                        <h3>Datos para transferir</h3>
+                        <?= html_datos_bancarios((float)$p['total']) ?>
+                        <p class="small" style="margin:12px 0 0">Cuando transfieras, enviá el comprobante respondiendo el mail del pedido. Apenas lo confirmamos, empezamos a prepararlo.</p>
+                    </div>
+                <?php endif; ?>
                 <div class="card">
                     <h3>Retiro y pago</h3>
                     <p class="small" style="margin:0">

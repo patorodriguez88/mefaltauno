@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (['pago_metodo', 'nombre', 'telefono', 'notas'] as $k) $d[$k] = trim((string)$d[$k]);
     $punto = $d['punto_id'] ? q("SELECT * FROM puntos_retiro WHERE id=? AND activo=1", [$d['punto_id']])->fetch() : null;
     if (!$punto) $errores[] = 'Elegí en el mapa el punto donde vas a retirar.';
-    if (!isset(PAGO_METODOS[$d['pago_metodo']])) $errores[] = 'Elegí cómo querés pagar.';
+    if (!in_array($d['pago_metodo'], PAGO_METODOS_ACTIVOS, true)) $errores[] = 'Elegí cómo querés pagar.';
     if ($d['nombre'] === '') $errores[] = 'Indicá quién retira.';
     if ($d['telefono'] === '') $errores[] = 'Dejanos un teléfono para avisarte cuando esté listo.';
 
@@ -115,8 +115,9 @@ require __DIR__ . '/inc/header.php';
                     <div class="opciones">
                         <label class="opcion"><input type="radio" name="pago_metodo" value="mercadopago" <?= $d['pago_metodo'] === 'mercadopago' ? 'checked' : '' ?>>
                             <div><strong>Mercado Pago</strong><span>Tarjeta, débito o dinero en cuenta. Te enviamos el link de pago.</span></div></label>
-                        <label class="opcion"><input type="radio" name="pago_metodo" value="contra_entrega" <?= $d['pago_metodo'] === 'contra_entrega' ? 'checked' : '' ?>>
-                            <div><strong>Pago al retirar</strong><span>Pagás en el punto de retiro cuando lo buscás.</span></div></label>
+                        <label class="opcion"><input type="radio" name="pago_metodo" value="transferencia" <?= $d['pago_metodo'] === 'transferencia' ? 'checked' : '' ?>>
+                            <div style="flex:1"><strong>Transferencia bancaria</strong><span>Transferís desde tu banco o billetera virtual. Te dejamos los datos acá y en el mail.</span>
+                                <div class="opcion-extra"><?= html_datos_bancarios($c['subtotal']) ?></div></div></label>
                     </div>
                     <label class="campo" style="margin-top:16px">Notas para nosotros <small>(opcional)</small><textarea name="notas"><?= e($d['notas']) ?></textarea></label>
                 </div>
