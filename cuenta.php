@@ -48,7 +48,7 @@ require __DIR__ . '/inc/header.php';
 <section class="cuenta-head">
     <div class="container">
         <h1 style="margin:0">Hola, <?= e($cli['nombre']) ?></h1>
-        <p class="muted" style="margin:4px 0 0">Tus colecciones, lo que te falta y tus pedidos, todo en un lugar.</p>
+        <p class="muted" style="margin:4px 0 0">Tu base de operaciones: tus colecciones, quién falta y tus pedidos.</p>
         <nav class="tabs">
             <a href="?tab=colecciones" class="<?= $tab === 'colecciones' ? 'activo' : '' ?>">Mis colecciones</a>
             <a href="?tab=faltantes" class="<?= $tab === 'faltantes' ? 'activo' : '' ?>">Me faltan<?= $cnt_faltantes ? '<span class="cnt">' . $cnt_faltantes . '</span>' : '' ?></a>
@@ -126,7 +126,7 @@ require __DIR__ . '/inc/header.php';
                 <a class="fila-card" href="<?= url('pedido.php?id=' . (int)$p['id']) ?>">
                     <div>
                         <div class="titulo">Pedido #<?= (int)$p['id'] ?></div>
-                        <div class="muted small"><?= fecha($p['created_at']) ?> · <?= (int)$p['unidades'] ?> número<?= $p['unidades'] == 1 ? '' : 's' ?> · <?= e(ENVIO_METODOS[$p['envio_metodo']] ?? '') ?></div>
+                        <div class="muted small"><?= fecha($p['created_at']) ?> · <?= (int)$p['unidades'] ?> número<?= $p['unidades'] == 1 ? '' : 's' ?> · <?= e($p['envio_punto'] ? 'Retiro en ' . $p['envio_punto'] : (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?></div>
                     </div>
                     <div style="display:flex;gap:12px;align-items:center">
                         <strong><?= precio((float)$p['total']) ?></strong>
@@ -148,7 +148,7 @@ require __DIR__ . '/inc/header.php';
                 </div>
                 <label class="campo">Email <small>(no se puede cambiar)</small><input type="email" value="<?= e($cli['email']) ?>" disabled></label>
                 <label class="campo">Teléfono<input type="tel" name="telefono" value="<?= e($cli['telefono']) ?>"></label>
-                <label class="campo">Dirección<input type="text" name="direccion" value="<?= e($cli['direccion']) ?>"></label>
+                <label class="campo">Dirección <small>(la usamos para mostrarte los puntos de retiro más cercanos)</small><input type="text" name="direccion" value="<?= e($cli['direccion']) ?>"></label>
                 <div class="form-row">
                     <label class="campo">Localidad<input type="text" name="localidad" value="<?= e($cli['localidad']) ?>"></label>
                     <label class="campo">Provincia<input type="text" name="provincia" value="<?= e($cli['provincia']) ?>"></label>

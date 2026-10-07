@@ -4,7 +4,7 @@
     <div class="container footer-grid">
         <div>
             <img src="<?= asset('assets/img/logo-sm.png') ?>" alt="MeFaltaUno" width="160" height="54" loading="lazy">
-            <p>Colecciones para grandes. Si te falta uno, lo conseguimos.</p>
+            <p><b style="color:#fff">Ningún héroe queda atrás.</b><br>Cada colección merece su final épico.</p>
         </div>
         <div>
             <h4>Tienda</h4>
@@ -43,7 +43,7 @@
 </dialog>
 <script src="<?= asset('assets/js/app.js') ?>"></script>
 <?php if (!empty($page_scripts)) foreach ($page_scripts as $s): ?>
-<script src="<?= asset($s) ?>"></script>
+<script src="<?= preg_match('#^https?://#', $s) ? e($s) : asset($s) ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>

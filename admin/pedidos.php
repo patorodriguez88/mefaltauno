@@ -35,14 +35,14 @@ admin_header('Pedidos', 'pedidos');
 
 <div class="tabla-wrap">
     <table class="tabla">
-        <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Números</th><th>Entrega</th><th>Pago</th><th>Total</th><th>Estado</th></tr>
+        <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Números</th><th>Retira en</th><th>Pago</th><th>Total</th><th>Estado</th></tr>
         <?php foreach ($peds as $p): ?>
             <tr class="clic" onclick="location='<?= url('admin/pedido.php?id=' . (int)$p['id']) ?>'">
                 <td><?= (int)$p['id'] ?></td>
                 <td class="small"><?= fecha($p['created_at']) ?></td>
                 <td><?= e(nombre_cliente($p)) ?><div class="muted small"><?= e($p['email']) ?></div></td>
                 <td><?= (int)$p['unidades'] ?></td>
-                <td class="small"><?= e(ENVIO_METODOS[$p['envio_metodo']] ?? '') ?><div class="muted"><?= e($p['envio_localidad']) ?></div></td>
+                <td class="small"><?= e($p['envio_punto'] ?: (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?><div class="muted"><?= e($p['envio_localidad']) ?></div></td>
                 <td class="small"><?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?></td>
                 <td><b><?= precio((float)$p['total']) ?></b></td>
                 <td><?= badge_estado($p['estado'], ESTADOS_PEDIDO) ?></td>

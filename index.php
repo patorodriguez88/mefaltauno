@@ -24,10 +24,10 @@ require __DIR__ . '/inc/header.php';
     <div class="container hero-grid">
         <div>
             <h1>¿Te falta <em>uno</em>?</h1>
-            <p class="lead">Completá tus colecciones. Marcá los números que ya tenés, comprá los que hay y pedinos los que no: <strong>nosotros te los conseguimos.</strong></p>
+            <p class="lead">Todo gran equipo tiene un integrante que todavía no llegó. Marcá los que ya custodiás en tu estante y nosotros salimos a rescatar al que falta. <strong>Ningún héroe queda atrás.</strong></p>
             <div class="hero-cta">
-                <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Ver colecciones</a>
-                <a class="btn btn-claro" href="<?= url($cli ? 'cuenta.php' : 'registro.php') ?>"><?= $cli ? 'Mis colecciones' : 'Armá tu colección' ?></a>
+                <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Explorar colecciones</a>
+                <a class="btn btn-claro" href="<?= url($cli ? 'cuenta.php' : 'registro.php') ?>"><?= $cli ? 'Ir a mi base' : 'Armá tu equipo' ?></a>
             </div>
         </div>
         <div class="hero-album" aria-hidden="true">
@@ -49,7 +49,7 @@ require __DIR__ . '/inc/header.php';
 <section class="section" style="padding-bottom:0">
     <div class="container">
         <div class="section-head">
-            <h2>Seguí completando</h2>
+            <h2>Tu misión sigue en curso</h2>
             <a href="<?= url('cuenta.php') ?>">Ver todas</a>
         </div>
         <div class="mis-cols">
@@ -62,7 +62,7 @@ require __DIR__ . '/inc/header.php';
 <section class="section">
     <div class="container">
         <div class="section-head">
-            <h2>Colecciones <span class="hl">destacadas</span></h2>
+            <h2>Colecciones <span class="hl">legendarias</span></h2>
             <a href="<?= url('colecciones.php') ?>">Ver todas →</a>
         </div>
         <div class="grid-colecciones">
@@ -73,22 +73,22 @@ require __DIR__ . '/inc/header.php';
 
 <section class="section" style="background:var(--white);border-block:1px solid var(--line)">
     <div class="container">
-        <h2 style="text-align:center;margin-bottom:24px">Así de simple</h2>
+        <h2 style="text-align:center;margin-bottom:24px">Tu misión, en tres pasos</h2>
         <div class="pasos">
             <div class="paso">
                 <div class="paso-num">1</div>
-                <h3>Elegí tu colección</h3>
-                <p>Libros, autos a escala, juegos y más. Sumala a tu panel con un clic.</p>
+                <h3>Elegí tu saga</h3>
+                <p>Comics, figuras, autos de leyenda y más. Sumala a tu base con un clic.</p>
             </div>
             <div class="paso">
                 <div class="paso-num">2</div>
-                <h3>Marcá los que tenés</h3>
-                <p>Tildá los números que ya están en tu estante y mirá de un vistazo cuáles te faltan.</p>
+                <h3>Pasá lista</h3>
+                <p>Marcá los números que ya tenés y descubrí quién falta en tu equipo.</p>
             </div>
             <div class="paso">
                 <div class="paso-num">3</div>
-                <h3>Pedí los que te faltan</h3>
-                <p>Los que hay, al carrito. Los que no, nos los pedís y te avisamos cuando los conseguimos.</p>
+                <h3>Pedí refuerzos</h3>
+                <p>Los que hay, al carrito. Los que no, nos los pedís: salimos a buscarlos y te avisamos.</p>
             </div>
         </div>
     </div>
@@ -96,7 +96,7 @@ require __DIR__ . '/inc/header.php';
 
 <section class="section">
     <div class="container">
-        <h2>Explorá por categoría</h2>
+        <h2>Elegí tu universo</h2>
         <div class="cats">
             <?php foreach (categorias() as $cat): ?>
                 <a class="cat-card" href="<?= url('colecciones.php?cat=' . urlencode($cat['slug'])) ?>"
@@ -112,10 +112,10 @@ require __DIR__ . '/inc/header.php';
 <section class="container">
     <div class="banner-falta">
         <div>
-            <h2>¿Buscás un número que no está en la web?</h2>
-            <p>Contanos qué colección y qué número te falta. Lo buscamos por vos.</p>
+            <h2>¿El que te falta no aparece en la web?</h2>
+            <p>Danos la pista: colección y número. Nosotros salimos a buscarlo.</p>
         </div>
-        <a class="btn btn-teal" href="<?= url('me-falta.php') ?>">Pedir el que me falta</a>
+        <a class="btn btn-teal" href="<?= url('me-falta.php') ?>">Activar la búsqueda</a>
     </div>
 </section>
 

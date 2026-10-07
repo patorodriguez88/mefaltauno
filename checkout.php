@@ -6,29 +6,25 @@ $cli = requiere_login();
 $c = carrito_lineas();
 if (!$c['lineas']) redirect('carrito.php');
 
+$puntos = puntos_retiro_activos();
 $d = [
-    'envio_metodo' => $_POST['envio_metodo'] ?? 'domicilio',
-    'pago_metodo'  => $_POST['pago_metodo'] ?? 'mercadopago',
-    'nombre'       => $_POST['nombre'] ?? nombre_cliente($cli),
-    'telefono'     => $_POST['telefono'] ?? $cli['telefono'],
-    'direccion'    => $_POST['direccion'] ?? $cli['direccion'],
-    'localidad'    => $_POST['localidad'] ?? $cli['localidad'],
-    'provincia'    => $_POST['provincia'] ?? $cli['provincia'],
-    'cp'           => $_POST['cp'] ?? $cli['cp'],
-    'notas'        => $_POST['notas'] ?? '',
+    'punto_id'    => (int)($_POST['punto_id'] ?? 0),
+    'pago_metodo' => $_POST['pago_metodo'] ?? 'mercadopago',
+    'nombre'      => $_POST['nombre'] ?? nombre_cliente($cli),
+    'telefono'    => $_POST['telefono'] ?? $cli['telefono'],
+    'notas'       => $_POST['notas'] ?? '',
 ];
+$referencia = trim(implode(', ', array_filter([$cli['direccion'], $cli['localidad']])));
 $errores = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
-    $d = array_map(fn($v) => trim((string)$v), $d);
-    if (!isset(ENVIO_METODOS[$d['envio_metodo']])) $errores[] = 'Elegí cómo querés recibirlo.';
+    foreach (['pago_metodo', 'nombre', 'telefono', 'notas'] as $k) $d[$k] = trim((string)$d[$k]);
+    $punto = $d['punto_id'] ? q("SELECT * FROM puntos_retiro WHERE id=? AND activo=1", [$d['punto_id']])->fetch() : null;
+    if (!$punto) $errores[] = 'Elegí en el mapa el punto donde vas a retirar.';
     if (!isset(PAGO_METODOS[$d['pago_metodo']])) $errores[] = 'Elegí cómo querés pagar.';
-    if ($d['nombre'] === '') $errores[] = 'Indicá quién recibe.';
-    if ($d['telefono'] === '') $errores[] = 'Dejanos un teléfono para coordinar.';
-    if ($d['direccion'] === '' || $d['localidad'] === '') {
-        $errores[] = $d['envio_metodo'] === 'kiosco' ? 'Indicá el kiosco (dirección y localidad).' : 'Completá la dirección y la localidad.';
-    }
+    if ($d['nombre'] === '') $errores[] = 'Indicá quién retira.';
+    if ($d['telefono'] === '') $errores[] = 'Dejanos un teléfono para avisarte cuando esté listo.';
 
     if (!$errores) {
         $db = db();
@@ -41,10 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($st < $l['cantidad']) throw new Exception('Se agotó ' . $l['item']['coleccion'] . ' ' . num((int)$l['item']['numero']) . '. Revisá tu carrito.');
                 $subtotal += $l['total'];
             }
-            q("INSERT INTO pedidos (cliente_id, subtotal, total, envio_metodo, envio_nombre, envio_direccion, envio_localidad, envio_provincia, envio_cp, envio_telefono, pago_metodo, notas)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [
-                $cli['id'], $subtotal, $subtotal, $d['envio_metodo'], $d['nombre'], $d['direccion'], $d['localidad'],
-                $d['provincia'] ?: null, $d['cp'] ?: null, $d['telefono'], $d['pago_metodo'], $d['notas'] ?: null,
+            q("INSERT INTO pedidos (cliente_id, subtotal, total, envio_metodo, punto_id, envio_punto, envio_nombre, envio_direccion, envio_localidad, envio_provincia, envio_cp, envio_telefono, pago_metodo, notas)
+               VALUES (?,?,?,'retiro',?,?,?,?,?,?,?,?,?,?)", [
+                $cli['id'], $subtotal, $subtotal, $punto['id'], $punto['nombre'], $d['nombre'], $punto['direccion'], $punto['localidad'],
+                $punto['provincia'], $punto['cp'], $d['telefono'], $d['pago_metodo'], $d['notas'] ?: null,
             ]);
             $pid = (int)$db->lastInsertId();
             foreach ($c['lineas'] as $l) {
@@ -55,9 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 q("INSERT IGNORE INTO cliente_colecciones (cliente_id, coleccion_id) VALUES (?,?)", [$cli['id'], $it['coleccion_id']]);
             }
             registrar_historial('pedido', $pid, 'pendiente', null, nombre_cliente($cli));
-            // Guardar los datos de envío en el perfil si no los tenía
-            q("UPDATE clientes SET telefono=COALESCE(telefono,?), direccion=COALESCE(direccion,?), localidad=COALESCE(localidad,?), provincia=COALESCE(provincia,?), cp=COALESCE(cp,?) WHERE id=?",
-              [$d['telefono'], $d['envio_metodo'] === 'domicilio' ? $d['direccion'] : null, $d['envio_metodo'] === 'domicilio' ? $d['localidad'] : null, $d['provincia'] ?: null, $d['cp'] ?: null, $cli['id']]);
+            if (!$cli['telefono']) q("UPDATE clientes SET telefono=? WHERE id=?", [$d['telefono'], $cli['id']]);
             $db->commit();
         } catch (Exception $e) {
             $db->rollBack();
@@ -72,6 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $titulo = 'Finalizar compra';
+$page_css = ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'];
+$page_scripts = ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', 'assets/js/mapa.js'];
 require __DIR__ . '/inc/header.php';
 ?>
 
@@ -82,33 +78,35 @@ require __DIR__ . '/inc/header.php';
 
         <form method="post" class="layout-2">
             <?= csrf_field() ?>
+            <input type="hidden" name="punto_id" id="punto-id" value="<?= $d['punto_id'] ?: '' ?>">
             <div>
                 <div class="card">
-                    <h3>¿Cómo lo recibís?</h3>
-                    <div class="opciones">
-                        <label class="opcion"><input type="radio" name="envio_metodo" value="domicilio" <?= $d['envio_metodo'] === 'domicilio' ? 'checked' : '' ?>>
-                            <div><strong>Envío a domicilio</strong><span>Te lo llevamos a tu casa. El costo se coordina según la zona.</span></div></label>
-                        <label class="opcion"><input type="radio" name="envio_metodo" value="kiosco" <?= $d['envio_metodo'] === 'kiosco' ? 'checked' : '' ?>>
-                            <div><strong>Retiro en kiosco</strong><span>Lo retirás en el kiosco de diarios que elijas. Indicá su dirección abajo.</span></div></label>
-                    </div>
+                    <h3>¿Dónde lo retirás?</h3>
+                    <?php if (!$puntos): ?>
+                        <div class="aviso">Todavía no hay puntos de retiro disponibles. Escribinos y coordinamos la entrega.</div>
+                    <?php else: ?>
+                        <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu pedido esté listo para retirar.</p>
+                        <div id="selector-punto" data-puntos="<?= e(json_encode($puntos, JSON_UNESCAPED_UNICODE)) ?>">
+                            <div class="buscador-dir">
+                                <input type="search" id="buscar-dir" value="<?= e($referencia) ?>" placeholder="Tu dirección o barrio, ej: Av. Colón 1200, Córdoba" autocomplete="street-address">
+                                <button class="btn btn-teal" type="button" id="btn-buscar-dir">Buscar</button>
+                            </div>
+                            <div class="buscar-pie">
+                                <button class="btn-texto" type="button" id="btn-mi-ubicacion">📍 Usar mi ubicación</button>
+                                <span class="muted small" id="buscar-msg"></span>
+                            </div>
+                            <div class="mapa" id="mapa-puntos"></div>
+                            <div class="puntos-lista" id="puntos-lista" hidden></div>
+                            <div class="punto-elegido" id="punto-elegido" hidden></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="card">
-                    <h3>Datos de entrega</h3>
-                    <div class="form">
-                        <div class="form-row">
-                            <label class="campo">Quién recibe<input type="text" name="nombre" value="<?= e($d['nombre']) ?>" required></label>
-                            <label class="campo">Teléfono<input type="tel" name="telefono" value="<?= e($d['telefono']) ?>" required></label>
-                        </div>
-                        <label class="campo">Dirección <small>(o la del kiosco)</small><input type="text" name="direccion" value="<?= e($d['direccion']) ?>" required></label>
-                        <div class="form-row">
-                            <label class="campo">Localidad<input type="text" name="localidad" value="<?= e($d['localidad']) ?>" required></label>
-                            <label class="campo">Provincia<input type="text" name="provincia" value="<?= e($d['provincia']) ?>"></label>
-                        </div>
-                        <div class="form-row">
-                            <label class="campo">Código postal<input type="text" name="cp" value="<?= e($d['cp']) ?>"></label>
-                            <div></div>
-                        </div>
+                    <h3>¿Quién retira?</h3>
+                    <div class="form-row">
+                        <label class="campo">Nombre y apellido<input type="text" name="nombre" value="<?= e($d['nombre']) ?>" required></label>
+                        <label class="campo">Teléfono <small>(te avisamos cuando esté listo)</small><input type="tel" name="telefono" value="<?= e($d['telefono']) ?>" required></label>
                     </div>
                 </div>
 
@@ -118,7 +116,7 @@ require __DIR__ . '/inc/header.php';
                         <label class="opcion"><input type="radio" name="pago_metodo" value="mercadopago" <?= $d['pago_metodo'] === 'mercadopago' ? 'checked' : '' ?>>
                             <div><strong>Mercado Pago</strong><span>Tarjeta, débito o dinero en cuenta. Te enviamos el link de pago.</span></div></label>
                         <label class="opcion"><input type="radio" name="pago_metodo" value="contra_entrega" <?= $d['pago_metodo'] === 'contra_entrega' ? 'checked' : '' ?>>
-                            <div><strong>Pago contra entrega</strong><span>Pagás cuando lo recibís.</span></div></label>
+                            <div><strong>Pago al retirar</strong><span>Pagás en el punto de retiro cuando lo buscás.</span></div></label>
                     </div>
                     <label class="campo" style="margin-top:16px">Notas para nosotros <small>(opcional)</small><textarea name="notas"><?= e($d['notas']) ?></textarea></label>
                 </div>
@@ -132,9 +130,9 @@ require __DIR__ . '/inc/header.php';
                         <span><?= precio($l['total']) ?></span>
                     </div>
                 <?php endforeach; ?>
-                <div class="resumen-fila muted"><span>Envío</span><span>A coordinar</span></div>
+                <div class="resumen-fila muted"><span>Retiro</span><span>Sin cargo</span></div>
                 <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio($c['subtotal']) ?></span></div>
-                <button class="btn btn-primario btn-bloque" style="margin-top:16px" type="submit">Confirmar pedido</button>
+                <button class="btn btn-primario btn-bloque" style="margin-top:16px" type="submit" <?= $puntos ? '' : 'disabled' ?>>Confirmar pedido</button>
                 <p class="muted small" style="margin:12px 0 0">Te mandamos el detalle por mail y podés seguirlo desde tu cuenta.</p>
             </aside>
         </form>

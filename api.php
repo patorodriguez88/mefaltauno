@@ -24,7 +24,7 @@ function item_activo(int $id): array {
 function chip_estado(string $estado): string {
     $map = [
         'tengo'     => ['badge-verde', 'Lo tengo'],
-        'buscando'  => ['badge-amarillo', 'Te lo conseguimos'],
+        'buscando'  => ['badge-amarillo', 'En búsqueda'],
         'en_camino' => ['badge-azul', 'En camino'],
     ];
     return isset($map[$estado]) ? '<span class="badge ' . $map[$estado][0] . '">' . $map[$estado][1] . '</span>' : '';
@@ -112,7 +112,7 @@ try {
         notificar_solicitud_nueva($sol);
         $n = count($items);
         json_out(['ok' => true, 'solicitud' => $sol, 'chip' => chip_estado('buscando'),
-                  'mensaje' => $n === 1 ? '¡Listo! Te lo vamos a conseguir. Te avisamos por mail.' : "¡Listo! Vamos a buscar los $n. Te avisamos por mail."]);
+                  'mensaje' => $n === 1 ? '¡Misión aceptada! Salimos a buscarlo.' : "¡Misión aceptada! Salimos a buscar a los $n."]);
 
     default:
         throw new Exception('Acción no válida.');

@@ -4,7 +4,7 @@ require dirname(__DIR__) . '/inc/bootstrap.php';
 $admin = requiere_admin();
 
 function admin_header(string $titulo_pag, string $activo): void {
-    global $titulo, $admin;
+    global $titulo, $admin, $page_css, $page_scripts;
     $titulo = $titulo_pag . ' · Admin';
     require dirname(__DIR__) . '/inc/header.php';
     $pend_sol = (int)q("SELECT COUNT(*) FROM solicitudes WHERE estado='pendiente'")->fetchColumn();
@@ -14,6 +14,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'pedidos'     => ['pedidos.php', 'Pedidos' . ($pend_ped ? " ($pend_ped)" : '')],
         'faltantes'   => ['faltantes.php', 'Me faltan' . ($pend_sol ? " ($pend_sol)" : '')],
         'colecciones' => ['colecciones.php', 'Colecciones y stock'],
+        'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
     ];
     echo '<div class="admin-bar"><div class="container"><b style="color:#fff">Admin</b>';
@@ -24,6 +25,7 @@ function admin_header(string $titulo_pag, string $activo): void {
 }
 
 function admin_footer(): void {
+    global $page_scripts;
     echo '</div></section>';
     require dirname(__DIR__) . '/inc/footer.php';
 }

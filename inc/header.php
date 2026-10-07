@@ -1,8 +1,8 @@
 <?php
 // Variables opcionales: $titulo, $descripcion, $body_class
 $cli = cliente();
-$titulo_pag = isset($titulo) ? $titulo . ' · MeFaltaUno' : 'MeFaltaUno · ¿Te falta uno? Lo conseguimos';
-$descripcion_pag = $descripcion ?? 'Colecciones para grandes: libros, modelismo y objetos de colección. Marcá los números que tenés y te conseguimos los que te faltan.';
+$titulo_pag = isset($titulo) ? $titulo . ' · MeFaltaUno' : 'MeFaltaUno · Ningún héroe queda atrás';
+$descripcion_pag = $descripcion ?? 'Comics, figuras y colecciones de leyenda. Marcá los números que ya tenés y salimos a buscar los que te faltan. Ningún héroe queda atrás.';
 $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
 ?>
 <!doctype html>
@@ -19,6 +19,7 @@ $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <?php foreach ($page_css ?? [] as $css): ?><link rel="stylesheet" href="<?= e($css) ?>"><?php endforeach; ?>
     <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 </head>
 <body class="<?= e($body_class ?? '') ?>">

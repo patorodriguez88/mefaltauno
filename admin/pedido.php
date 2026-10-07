@@ -46,11 +46,12 @@ admin_header('Pedido #' . $id, 'pedidos');
         </div>
 
         <div class="card">
-            <h3>Cliente y entrega</h3>
+            <h3>Cliente y retiro</h3>
             <p class="small" style="margin:0">
                 <b><?= e(nombre_cliente($p)) ?></b> · <a href="mailto:<?= e($p['email']) ?>"><?= e($p['email']) ?></a> · <?= e($p['telefono'] ?: '') ?><br><br>
-                <b><?= e(ENVIO_METODOS[$p['envio_metodo']] ?? '') ?></b> — recibe <?= e($p['envio_nombre']) ?> (<?= e($p['envio_telefono']) ?>)<br>
-                <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?> <?= e($p['envio_provincia']) ?> <?= e($p['envio_cp']) ?><br><br>
+                <b><?= e($p['envio_punto'] ? 'Retira en ' . $p['envio_punto'] : (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?></b><br>
+                <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?> <?= e($p['envio_provincia']) ?><br>
+                Retira: <?= e($p['envio_nombre']) ?> (<?= e($p['envio_telefono']) ?>)<br><br>
                 <b>Pago:</b> <?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?>
                 <?php if ($p['notas']): ?><br><br><b>Notas del cliente:</b> <?= nl2br(e($p['notas'])) ?><?php endif; ?>
             </p>
@@ -68,7 +69,7 @@ admin_header('Pedido #' . $id, 'pedidos');
             </label>
             <label class="campo">Mensaje para el cliente <small>(opcional: link de pago, seguimiento del envío…)</small><textarea name="nota"></textarea></label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="avisar" value="1" checked> Avisarle por mail</label>
-            <p class="muted small" style="margin:0">Cancelar devuelve el stock. Entregado suma los números a la colección del cliente.</p>
+            <p class="muted small" style="margin:0">“Listo para retirar” le avisa que pase a buscarlo. Cancelar devuelve el stock. Retirado suma los números a la colección del cliente.</p>
             <button class="btn btn-primario" type="submit">Guardar</button>
         </form>
         <div class="card">

@@ -201,12 +201,12 @@ async function agregarAlCarrito(itemId, btn) {
         }).join('');
         const uno = sel.length === 1;
         const nota = await modal({
-            icono: '🔎',
-            titulo: uno ? '¿Te lo conseguimos?' : `¿Te conseguimos estos ${sel.length}?`,
-            cuerpo: `<p style="margin:0">${uno ? 'No lo tenemos en stock, pero lo vamos a buscar' : 'No los tenemos en stock, pero los vamos a buscar'} y te avisamos por mail apenas haya novedades.</p><ul>${lista}</ul>`,
+            icono: '🦸',
+            titulo: uno ? '¿Salimos a buscarlo?' : `¿Salimos a buscar a estos ${sel.length}?`,
+            cuerpo: `<p style="margin:0">${uno ? 'Hoy no está en nuestra base, pero salimos a rastrearlo' : 'Hoy no están en nuestra base, pero salimos a rastrearlos'} y te avisamos por mail apenas haya novedades.</p><ul>${lista}</ul>`,
             texto: 'Comentario (opcional)',
             placeholder: 'Ej: lo necesito antes de fin de mes, me sirve usado…',
-            ok: uno ? 'Pedir que me lo consigan' : 'Pedir que me los consigan',
+            ok: 'Activar la búsqueda',
         });
         if (nota === null) return;
         btn.disabled = true;
@@ -222,9 +222,9 @@ async function agregarAlCarrito(itemId, btn) {
             contar();
             actualizarBarra();
             const ver = await modal({
-                icono: '🙌',
-                titulo: '¡Listo, lo vamos a buscar!',
-                cuerpo: `<p style="margin:0">Tu pedido quedó <b>pendiente</b>. Te mandamos un mail con el detalle y te avisamos cuando ${uno ? 'lo consigamos' : 'los consigamos'}.</p>`,
+                icono: '⚡',
+                titulo: '¡Misión aceptada!',
+                cuerpo: `<p style="margin:0">Tu pedido quedó <b>pendiente</b> y ya salimos a buscar${uno ? 'lo' : 'los'}. Te mandamos un mail con el detalle y te avisamos apenas ${uno ? 'lo rescatemos' : 'los rescatemos'}.</p>`,
                 ok: 'Ver mis faltantes',
                 cancelar: 'Seguir mirando',
             });

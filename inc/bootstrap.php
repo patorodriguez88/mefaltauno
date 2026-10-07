@@ -217,8 +217,8 @@ const ESTADOS_PEDIDO = [
     'pendiente'  => ['Recibido',          'Recibimos tu pedido. En breve te contactamos para confirmar el pago.', 'amarillo'],
     'confirmado' => ['Confirmado',        'El pago está confirmado.', 'azul'],
     'preparando' => ['En preparación',    'Estamos preparando tu pedido.', 'azul'],
-    'enviado'    => ['Enviado',           'Tu pedido está en camino.', 'azul'],
-    'entregado'  => ['Entregado',         '¡Listo! Ya los sumamos a tu colección.', 'verde'],
+    'enviado'    => ['Listo para retirar', 'Tu pedido ya está en el punto de retiro. ¡Pasá a buscarlo!', 'azul'],
+    'entregado'  => ['Retirado',          '¡Listo! Ya los sumamos a tu colección.', 'verde'],
     'cancelado'  => ['Cancelado',         'El pedido fue cancelado.', 'gris'],
 ];
 
@@ -231,14 +231,19 @@ const ESTADOS_SOLICITUD = [
 ];
 
 const ENVIO_METODOS = [
-    'domicilio' => 'Envío a domicilio',
-    'kiosco'    => 'Retiro en kiosco',
+    'retiro'    => 'Retiro en punto de retiro',
+    'domicilio' => 'Envío a domicilio',   // histórico: ya no se ofrece
 ];
 
 const PAGO_METODOS = [
     'mercadopago'    => 'Mercado Pago',
     'contra_entrega' => 'Pago contra entrega',
 ];
+
+function puntos_retiro_activos(): array {
+    return q("SELECT id, nombre, direccion, localidad, provincia, telefono, horario, notas, lat+0 AS lat, lng+0 AS lng
+              FROM puntos_retiro WHERE activo=1 AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY localidad, nombre")->fetchAll();
+}
 
 function badge_estado(string $estado, array $mapa): string {
     [$label, , $color] = $mapa[$estado] ?? [$estado, '', 'gris'];

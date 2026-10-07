@@ -154,6 +154,28 @@ function schema_pasos(): array {
                 KEY idx_ent (entidad, entidad_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // Puntos de retiro (kioscos) en lugar de envío a domicilio
+        2 => [
+            "CREATE TABLE IF NOT EXISTS puntos_retiro (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                nombre VARCHAR(160) NOT NULL,
+                direccion VARCHAR(200) NOT NULL,
+                localidad VARCHAR(100) NOT NULL,
+                provincia VARCHAR(100) NULL,
+                cp VARCHAR(12) NULL,
+                telefono VARCHAR(40) NULL,
+                horario VARCHAR(200) NULL,
+                notas VARCHAR(255) NULL,
+                lat DECIMAL(10,7) NULL,
+                lng DECIMAL(10,7) NULL,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "ALTER TABLE pedidos ADD COLUMN punto_id INT NULL AFTER envio_metodo",
+            "ALTER TABLE pedidos ADD COLUMN envio_punto VARCHAR(160) NULL AFTER punto_id",
+            "ALTER TABLE pedidos ADD CONSTRAINT fk_ped_punto FOREIGN KEY (punto_id) REFERENCES puntos_retiro(id) ON DELETE SET NULL",
+        ],
     ];
 }
 

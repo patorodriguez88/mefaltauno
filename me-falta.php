@@ -39,7 +39,7 @@ require __DIR__ . '/inc/header.php';
 <div class="container" style="max-width:640px;margin:40px auto">
     <div class="card">
         <h1 style="font-size:2rem">¿Te falta uno?</h1>
-        <p class="muted">Contanos qué número te falta para completar tu colección. Lo buscamos, te avisamos cuando lo conseguimos y coordinamos la entrega.</p>
+        <p class="muted">Danos la pista y salimos a buscarlo: colección, número y cualquier dato que sirva. Te avisamos apenas lo rescatamos.</p>
         <?php foreach ($errores as $er): ?><div class="flash flash-error" style="margin-bottom:8px"><?= e($er) ?></div><?php endforeach; ?>
 
         <?php if (!$cli): ?>
@@ -65,7 +65,7 @@ require __DIR__ . '/inc/header.php';
             <label class="campo">Comentario <small>(opcional)</small>
                 <textarea name="mensaje" placeholder="Cualquier dato que nos ayude a encontrarlo"><?= e($d['mensaje']) ?></textarea>
             </label>
-            <button class="btn btn-primario" type="submit" <?= $cli ? '' : 'disabled' ?>>Pedir que me lo consigan</button>
+            <button class="btn btn-primario" type="submit" <?= $cli ? '' : 'disabled' ?>>Activar la búsqueda</button>
         </form>
     </div>
 </div>

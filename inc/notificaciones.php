@@ -30,9 +30,8 @@ function notificar_pedido_nuevo(int $ped_id): void {
     $filas[] = ['<b>Total</b>', '', '<b>' . precio((float)$p['total']) . '</b>'];
     $detalle = mail_tabla($filas)
         . mail_tabla([
-            ['Entrega', e(ENVIO_METODOS[$p['envio_metodo']] ?? $p['envio_metodo'])],
-            ['Dirección', e(trim($p['envio_direccion'] . ', ' . $p['envio_localidad'] . ' ' . $p['envio_provincia'] . ' ' . $p['envio_cp'], ', '))],
-            ['Teléfono', e($p['envio_telefono'])],
+            ['Retiro en', '<b>' . e($p['envio_punto'] ?: (ENVIO_METODOS[$p['envio_metodo']] ?? '')) . '</b><br>' . e(trim($p['envio_direccion'] . ', ' . $p['envio_localidad'], ', '))],
+            ['Retira', e($p['envio_nombre'] . ' · ' . $p['envio_telefono'])],
             ['Pago', e(PAGO_METODOS[$p['pago_metodo']] ?? $p['pago_metodo'])],
         ])
         . ($p['notas'] ? '<p><b>Notas:</b> ' . nl2br(e($p['notas'])) . '</p>' : '');
@@ -43,7 +42,8 @@ function notificar_pedido_nuevo(int $ped_id): void {
 
     $pago = $p['pago_metodo'] === 'mercadopago'
         ? 'Te vamos a enviar el link de pago de Mercado Pago para confirmarlo.'
-        : 'Lo pagás cuando lo recibís.';
+        : 'Lo pagás cuando lo retirás.';
+    $pago .= ' Te avisamos por mail cuando esté listo para retirar.';
     mail_enviar($p['email'], "Recibimos tu pedido #$ped_id",
         '<p>Hola ' . e($p['nombre']) . ', ¡gracias por tu compra!</p>' . $detalle . "<p>$pago</p>"
         . mail_link("pedido.php?id=$ped_id", 'Ver mi pedido'));

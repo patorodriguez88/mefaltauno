@@ -21,7 +21,7 @@ $en_carrito = carrito();
 
 $chips = [
     'tengo'     => '<span class="badge badge-verde">Lo tengo</span>',
-    'buscando'  => '<span class="badge badge-amarillo">Te lo conseguimos</span>',
+    'buscando'  => '<span class="badge badge-amarillo">En búsqueda</span>',
     'en_camino' => '<span class="badge badge-azul">En camino</span>',
 ];
 
@@ -57,8 +57,8 @@ require __DIR__ . '/inc/header.php';
                 </div>
             <?php else: ?>
                 <div class="mi-progreso">
-                    <strong>¿Ya tenés algunos?</strong>
-                    <p class="muted small" style="margin:4px 0 12px">Creá tu cuenta, marcá los números que tenés y pedinos los que te faltan.</p>
+                    <strong>¿Ya tenés parte del equipo?</strong>
+                    <p class="muted small" style="margin:4px 0 12px">Creá tu cuenta, pasá lista de los que ya tenés y salimos a buscar al resto.</p>
                     <a class="btn btn-teal btn-chico" href="<?= url('registro.php') ?>">Crear mi cuenta</a>
                     <a class="btn btn-texto" href="<?= url('ingresar.php') ?>">Ya tengo cuenta</a>
                 </div>
@@ -94,7 +94,7 @@ require __DIR__ . '/inc/header.php';
                             <?php if ($p < (float)$it['precio']): ?><s><?= precio((float)$it['precio']) ?></s><?php endif; ?>
                         </div>
                         <div class="item-stock <?= $stock > 0 ? 'si' : 'no' ?>">
-                            <?= $stock > 0 ? ($stock <= 3 ? "¡Últimas $stock!" : 'Disponible') : 'Sin stock · te lo conseguimos' ?>
+                            <?= $stock > 0 ? ($stock <= 3 ? "¡Últimas $stock!" : 'Disponible') : 'Sin stock · salimos a buscarlo' ?>
                         </div>
                         <div class="item-acciones">
                             <?php if ($cli): ?>

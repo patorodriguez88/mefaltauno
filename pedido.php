@@ -6,6 +6,7 @@ $p = q("SELECT * FROM pedidos WHERE id=? AND cliente_id=?", [(int)($_GET['id'] ?
 if (!$p) redirect('cuenta.php?tab=pedidos');
 $lineas = q("SELECT pi.*, i.imagen FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$p['id']])->fetchAll();
 $hist = historial('pedido', (int)$p['id']);
+$punto = $p['punto_id'] ? q("SELECT horario, lat, lng FROM puntos_retiro WHERE id=?", [$p['punto_id']])->fetch() : null;
 
 $titulo = 'Pedido #' . $p['id'];
 require __DIR__ . '/inc/header.php';
@@ -38,11 +39,13 @@ require __DIR__ . '/inc/header.php';
 
             <aside>
                 <div class="card">
-                    <h3>Entrega y pago</h3>
+                    <h3>Retiro y pago</h3>
                     <p class="small" style="margin:0">
-                        <b><?= e(ENVIO_METODOS[$p['envio_metodo']] ?? '') ?></b><br>
-                        <?= e($p['envio_nombre']) ?> · <?= e($p['envio_telefono']) ?><br>
-                        <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?> <?= e($p['envio_provincia']) ?> <?= e($p['envio_cp']) ?><br><br>
+                        <b><?= e($p['envio_punto'] ?: (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?></b><br>
+                        <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?><br>
+                        <?php if (!empty($punto['horario'])): ?><span class="muted"><?= e($punto['horario']) ?></span><br><?php endif; ?>
+                        <?php if (!empty($punto['lat'])): ?><a href="https://www.google.com/maps/search/?api=1&query=<?= e($punto['lat'] . ',' . $punto['lng']) ?>" target="_blank" rel="noopener">Cómo llegar ↗</a><br><?php endif; ?>
+                        <br>Retira: <?= e($p['envio_nombre']) ?> · <?= e($p['envio_telefono']) ?><br><br>
                         <b><?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?></b>
                     </p>
                 </div>

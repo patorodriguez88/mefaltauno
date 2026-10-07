@@ -368,3 +368,27 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 }
 .modal [hidden] { display: none !important; }
 .progreso-txt { gap: 12px; } .progreso-txt > span:first-child { white-space: nowrap; } .progreso-txt > span:last-child { text-align: right; }
+
+/* ── Puntos de retiro / mapa ────────────────────────────── */
+.buscador-dir { display: flex; gap: 8px; }
+.buscador-dir input { flex: 1; min-width: 0; }
+.buscar-pie { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 12px; }
+.mapa { height: 340px; border-radius: var(--radius-sm); border: 1px solid var(--line); z-index: 0; background: var(--teal-50); }
+.mapa.alto { height: 420px; }
+.puntos-lista { display: grid; gap: 8px; margin-top: 12px; max-height: 360px; overflow: auto; }
+.punto { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; background: var(--white); }
+.punto.activo { border-color: var(--teal); background: var(--teal-50); }
+.punto input { margin-top: 4px; accent-color: var(--teal); }
+.punto strong { display: block; }
+.punto span { display: block; font-size: .875rem; }
+.punto em { font-style: normal; font-weight: 700; color: var(--teal); font-size: .85rem; white-space: nowrap; }
+.punto-elegido { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--green-100); color: #14633a; font-size: .92rem; }
+.pin { background: none; border: 0; }
+.pin span { display: block; width: 26px; height: 26px; margin: 2px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--teal); border: 3px solid var(--white); box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
+.pin.activo span { background: var(--yellow-600); width: 30px; height: 30px; margin: 0; }
+.pin.yo span { background: var(--red); border-radius: 50%; transform: none; width: 18px; height: 18px; margin: 6px; }
+.leaflet-popup-content { font-family: var(--font); font-size: .9rem; }
+@media (max-width: 560px) {
+    .buscador-dir { flex-direction: column; }
+    .mapa { height: 280px; }
+}

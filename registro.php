@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         q("INSERT INTO clientes (nombre, apellido, email, telefono, password_hash) VALUES (?,?,?,?,?)",
           [$d['nombre'], $d['apellido'], $d['email'], $d['telefono'] ?: null, password_hash($pass, PASSWORD_DEFAULT)]);
         login_cliente(q("SELECT * FROM clientes WHERE id=?", [db()->lastInsertId()])->fetch());
-        flash('ok', '¡Bienvenido/a, ' . $d['nombre'] . '! Entrá a una colección y marcá los números que ya tenés.');
+        flash('ok', '¡Bienvenido/a a la liga, ' . $d['nombre'] . '! Entrá a una colección y pasá lista de los que ya tenés.');
         header('Location: ' . destino_post_login());
         exit;
     }
@@ -32,8 +32,8 @@ require __DIR__ . '/inc/header.php';
 
 <div class="container auth-wrap">
     <div class="card">
-        <h1 style="font-size:1.8rem">Armá tu colección</h1>
-        <p class="muted">Con tu cuenta marcás los números que tenés, ves los que te faltan y te avisamos cuando los conseguimos.</p>
+        <h1 style="font-size:1.8rem">Sumate a la liga</h1>
+        <p class="muted">Tu base de coleccionista: marcá los que tenés, mirá quién falta en tu equipo y te avisamos cuando lo rescatamos.</p>
         <?php foreach ($errores as $er): ?><div class="flash flash-error" style="margin-bottom:8px"><?= e($er) ?></div><?php endforeach; ?>
         <form method="post" class="form">
             <?= csrf_field() ?>
