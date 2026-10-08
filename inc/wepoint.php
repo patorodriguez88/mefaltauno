@@ -173,33 +173,46 @@ function wepoint_crear_orden(int $pedido_id): string {
 }
 
 // ─── Estado de las órdenes ──────────────────────────────────────────────────
-// WePoint: Emitida → (picking) → Empaquetada → (orden de envío) → Entregada/Completada.
+// WePoint: Emitida → Empaquetada → Listo para enviar → (en camino) → Entregada/Completada.
 // En la web: confirmado → preparando ("Preparando el equipo") → enviado ("Listo para retirar").
+// Cada cambio de estado en WePoint queda en el historial; el mail solo sale cuando cambia el estado de la web.
+
 function wepoint_estado_web(array $ov): ?string {
-    $e = mb_strtolower((string)($ov['estado'] ?? ''));
+    $e = mb_strtolower(trim((string)($ov['estado'] ?? '')));
     if (in_array($e, ['completada', 'entregada', 'cerrada'], true)) return 'enviado';
-    if (!empty($ov['tiene_envio_listo']) && empty($ov['tiene_envio_no_entregado'])) return 'enviado';
-    if ($e === 'empaquetada' || !empty($ov['picking_existe'])) return 'preparando';
+    if ($e !== 'emitida' || !empty($ov['picking_existe'])) return 'preparando';
     return null;
 }
 
-// Recorre los pedidos enviados a WePoint que siguen en curso y los avanza. Devuelve cuántos cambiaron.
+// Texto para el cliente según el estado de WePoint
+function wepoint_texto_estado(array $ov): string {
+    $e = mb_strtolower(trim((string)($ov['estado'] ?? '')));
+    $paq = $ov['paquetes'][0]['nro_paquete'] ?? null;
+    if ($e === 'empaquetada') return 'Empaquetamos tu pedido' . ($paq ? " (paquete $paq)" : '') . '.';
+    if (strpos($e, 'listo para enviar') !== false) return 'Tu pedido está listo para salir hacia el punto de encuentro.';
+    if (preg_match('/enviad|despachad|camino|transito|tránsito/u', $e)) return 'Tu pedido va en camino al punto de encuentro.';
+    if (in_array($e, ['completada', 'entregada', 'cerrada'], true)) return 'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!';
+    return 'Actualización del depósito: ' . ($ov['estado'] ?? '—') . '.';
+}
+
+// Recorre los pedidos enviados a WePoint que siguen en curso y los actualiza.
 function wepoint_sincronizar_pedidos(): array {
     require_once __DIR__ . '/notificaciones.php';
     $orden = ['confirmado' => 1, 'preparando' => 2, 'enviado' => 3];
     $res = ['revisados' => 0, 'actualizados' => 0, 'errores' => []];
-    foreach (q("SELECT id, estado, wepoint_orden_id FROM pedidos WHERE wepoint_orden_id IS NOT NULL AND estado IN ('confirmado','preparando')")->fetchAll() as $p) {
+    foreach (q("SELECT id, estado, wepoint_orden_id, wepoint_estado FROM pedidos WHERE wepoint_orden_id IS NOT NULL AND estado IN ('confirmado','preparando')")->fetchAll() as $p) {
         $res['revisados']++;
         try {
             $ov = wepoint_api('GET', 'v2/egresos/productos/' . rawurlencode($p['wepoint_orden_id']))['data'] ?? [];
+            $estado_wp = trim((string)($ov['estado'] ?? ''));
+            if ($estado_wp === '' || $estado_wp === $p['wepoint_estado']) continue;   // sin cambios en WePoint
+            $texto = wepoint_texto_estado($ov);
             $nuevo = wepoint_estado_web($ov);
-            if (!$nuevo || $orden[$nuevo] <= $orden[$p['estado']]) continue;   // nunca retrocede
-            $nota = $nuevo === 'enviado'
-                ? 'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!'
-                : 'WePoint está preparando tu pedido' . (!empty($ov['paquetes'][0]['nro_paquete']) ? ' (paquete ' . $ov['paquetes'][0]['nro_paquete'] . ')' : '') . '.';
-            q("UPDATE pedidos SET estado=? WHERE id=?", [$nuevo, $p['id']]);
-            registrar_historial('pedido', (int)$p['id'], $nuevo, $nota, 'WePoint · ' . ($ov['estado'] ?? ''));
-            notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'enviado' ? null : $nota);
+            $avanza = $nuevo && $orden[$nuevo] > $orden[$p['estado']];   // nunca retrocede
+            $estado_web = $avanza ? $nuevo : $p['estado'];
+            q("UPDATE pedidos SET estado=?, wepoint_estado=? WHERE id=?", [$estado_web, $estado_wp, $p['id']]);
+            registrar_historial('pedido', (int)$p['id'], $estado_web, $texto, 'WePoint · ' . $estado_wp);
+            if ($avanza) notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'enviado' ? null : $texto);
             $res['actualizados']++;
         } catch (Exception $e) {
             $res['errores'][] = '#' . $p['id'] . ': ' . $e->getMessage();

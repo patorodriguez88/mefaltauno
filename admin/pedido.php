@@ -89,7 +89,9 @@ admin_header('Pedido #' . $id, 'pedidos');
         <div class="card">
             <h3>WePoint</h3>
             <?php if ($p['wepoint_orden_id']): ?>
-                <p class="small" style="margin:0"><span class="badge badge-verde">Orden enviada</span> <b><?= e($p['wepoint_orden_id']) ?></b><br><span class="muted">WePoint la prepara y la lleva al punto de retiro.</span></p>
+                <p class="small" style="margin:0"><span class="badge badge-verde">Orden enviada</span> <b>id <?= e($p['wepoint_orden_id']) ?></b> · ref MFU-<?= (int)$p['id'] ?><br>
+                    Estado en WePoint: <b><?= e($p['wepoint_estado'] ?: 'Emitida') ?></b><br>
+                    <span class="muted">Se actualiza solo con el cron (cada 5 min) o desde Admin → WePoint.</span></p>
             <?php elseif (!wepoint_listo()): ?>
                 <p class="muted small" style="margin:0">WePoint todavía no está conectado. Cuando lo esté, la orden se envía sola al marcar “Pago confirmado”.</p>
             <?php elseif (!wepoint_ordenes_activas()): ?>

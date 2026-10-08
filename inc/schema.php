@@ -242,6 +242,11 @@ function schema_pasos(): array {
                 CONSTRAINT fk_sus_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // Último estado de la orden en WePoint (para registrar cada cambio en el historial)
+        8 => [
+            "ALTER TABLE pedidos ADD COLUMN wepoint_estado VARCHAR(40) NULL AFTER wepoint_orden_id",
+        ],
     ];
 }
 
