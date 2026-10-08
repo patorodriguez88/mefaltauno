@@ -91,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = wepoint_sincronizar_stock();
             $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia.';
         }
+        if ($accion === 'crear_transportista') {
+            $nombre = trim(mb_substr($_POST['nombre'] ?? '', 0, 100)) ?: 'Retiro en kiosco · MeFaltaUno';
+            $r = wepoint_api('POST', 'v2/transportistas', ['nombre' => $nombre]);
+            $tid = $r['data']['id_transportista'] ?? $r['data']['id'] ?? null;
+            if (!$tid) throw new Exception('WePoint no devolvió el id del transportista: ' . json_encode($r, JSON_UNESCAPED_UNICODE));
+            q("REPLACE INTO ajustes (clave, valor) VALUES ('wepoint_id_transportista', ?)", [(string)$tid]);
+            $log[] = "Transportista “{$nombre}” creado en WePoint (id $tid) y elegido para las órdenes.";
+        }
         if ($accion === 'transportista') {
             $t = preg_replace('/\D/', '', $_POST['id_transportista'] ?? '');
             q("REPLACE INTO ajustes (clave, valor) VALUES ('wepoint_id_transportista', ?)", [$t]);
@@ -186,6 +194,12 @@ admin_header('WePoint', 'wepoint');
             </select>
             <button class="btn btn-teal btn-chico" type="submit">Usar</button>
         </form>
+        <form method="post" style="display:flex;gap:8px;margin-bottom:12px">
+            <?= csrf_field() ?><input type="hidden" name="accion" value="crear_transportista">
+            <input type="text" name="nombre" placeholder="Retiro en kiosco · MeFaltaUno" style="flex:1">
+            <button class="btn btn-linea btn-chico" type="submit">Crear propio</button>
+        </form>
+        <p class="muted small">Los transportistas de WePoint necesitan que ellos los habiliten; uno propio de la empresa se puede usar enseguida.</p>
         <?php foreach ($transportistas as $t): ?>
             <div class="small" style="padding:6px 0;border-bottom:1px dashed var(--line)"><b>id <?= e((string)($t['id_transportista'] ?? $t['id'] ?? '?')) ?></b> · <?= e($t['nombre'] ?? $t['razon_social'] ?? json_encode($t, JSON_UNESCAPED_UNICODE)) ?></div>
         <?php endforeach; ?>
