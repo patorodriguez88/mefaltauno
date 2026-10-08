@@ -15,7 +15,8 @@ foreach (q("SELECT categoria_id, imagen FROM colecciones WHERE activa=1 AND imag
 }
 
 $cli = cliente();
-$mis = $cli ? mis_colecciones((int)$cli['id'], 3) : [];
+$op = es_admin($cli);
+$mis = $cli && !$op ? mis_colecciones((int)$cli['id'], 3) : [];
 
 require __DIR__ . '/inc/header.php';
 ?>
@@ -28,7 +29,7 @@ require __DIR__ . '/inc/header.php';
             <p class="lead">Todo gran equipo tiene un integrante que todavía no llegó. Marcá los que ya custodiás en tu estante y nosotros salimos a rescatar al que falta. <strong>Ningún héroe queda atrás.</strong></p>
             <div class="hero-cta">
                 <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Explorar colecciones</a>
-                <a class="btn btn-claro" href="<?= url($cli ? 'cuenta.php' : 'registro.php') ?>"><?= $cli ? 'Ir a mi base' : 'Armá tu equipo' ?></a>
+                <a class="btn btn-claro" href="<?= url($op ? 'admin/' : ($cli ? 'cuenta.php' : 'registro.php')) ?>"><?= $op ? 'Ir al panel' : ($cli ? 'Ir a mi base' : 'Armá tu equipo') ?></a>
             </div>
         </div>
         <div class="hero-album" aria-hidden="true">

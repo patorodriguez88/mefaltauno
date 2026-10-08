@@ -2,7 +2,7 @@
 require __DIR__ . '/inc/bootstrap.php';
 require __DIR__ . '/inc/auth_volver.php';
 
-if (cliente()) redirect('cuenta.php');
+if ($c = cliente()) redirect(es_admin($c) ? 'admin/' : 'cuenta.php');
 
 $d = ['nombre' => '', 'apellido' => '', 'email' => '', 'telefono' => ''];
 $errores = [];

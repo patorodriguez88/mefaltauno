@@ -21,12 +21,11 @@ function admin_header(string $titulo_pag, string $activo): void {
         'wepoint'     => ['wepoint.php', 'WePoint'],
         'ajustes'     => ['ajustes.php', 'Ajustes'],
     ];
-    echo '<div class="admin-bar"><div class="container"><b style="color:#fff">Admin</b>';
+    echo '<div class="admin-bar"><div class="container"><b style="color:#fff">Admin</b><nav class="admin-bar-links">';
     foreach ($links as $k => [$href, $label]) {
         echo '<a href="' . url('admin/' . $href) . '" class="' . ($k === $activo ? 'activo' : '') . '">' . e($label) . '</a>';
     }
-    echo '<span class="admin-bar-der">' . e($admin['email'])
-        . ' <form method="post" action="' . url('salir.php') . '">' . csrf_field() . '<button type="submit">Cerrar sesión</button></form></span>';
+    echo '</nav><span class="admin-bar-der">' . e($admin['email']) . '</span>';
     echo '</div></div><section class="section" style="padding-top:28px"><div class="container">';
 }
 

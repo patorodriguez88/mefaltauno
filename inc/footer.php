@@ -33,10 +33,17 @@
             <?php endforeach; ?>
         </div>
         <div>
-            <h4>Tu cuenta</h4>
-            <a href="<?= url('cuenta.php') ?>">Mis colecciones</a>
-            <a href="<?= url('cuenta.php?tab=pedidos') ?>">Mis pedidos</a>
-            <a href="<?= url('me-falta.php') ?>">Pedir un número que me falta</a>
+            <?php if (es_admin()): ?>
+                <h4>Operador</h4>
+                <a href="<?= url('admin/') ?>">Panel</a>
+                <a href="<?= url('admin/pedidos.php') ?>">Pedidos</a>
+                <a href="<?= url('admin/faltantes.php') ?>">Faltantes</a>
+            <?php else: ?>
+                <h4>Tu cuenta</h4>
+                <a href="<?= url('cuenta.php') ?>">Mis colecciones</a>
+                <a href="<?= url('cuenta.php?tab=pedidos') ?>">Mis pedidos</a>
+                <a href="<?= url('me-falta.php') ?>">Pedir un número que me falta</a>
+            <?php endif; ?>
         </div>
     </div>
     <div class="container footer-legal">&copy; <?= date('Y') ?> MeFaltaUno · Dinter S.A.</div>

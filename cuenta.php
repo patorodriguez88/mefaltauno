@@ -3,6 +3,7 @@ require __DIR__ . '/inc/bootstrap.php';
 require __DIR__ . '/inc/vistas.php';
 
 $cli = requiere_login();
+if (es_admin($cli)) redirect('admin/');
 $tab = $_GET['tab'] ?? 'colecciones';
 if (!in_array($tab, ['colecciones', 'pedidos', 'faltantes', 'datos'], true)) $tab = 'colecciones';
 

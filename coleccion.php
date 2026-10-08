@@ -15,6 +15,8 @@ if (!$col) {
 
 $items = q("SELECT * FROM items WHERE coleccion_id=? AND activo=1 ORDER BY numero", [$col['id']])->fetchAll();
 $cli = cliente();
+$op = es_admin($cli);           // el operador no tiene base propia
+$socio = $cli && !$op;          // cliente logueado
 $estados = $cli ? estados_items((int)$cli['id'], (int)$col['id']) : [];
 $siguiendo = $cli && q("SELECT 1 FROM cliente_colecciones WHERE cliente_id=? AND coleccion_id=?", [$cli['id'], $col['id']])->fetchColumn();
 $suscripto = suscripto($cli, (int)$col['id']);
@@ -58,7 +60,12 @@ require __DIR__ . '/inc/header.php';
             <div class="col-desc recortada" id="col-desc"><?= e($col['descripcion']) ?></div>
             <button class="btn-texto" type="button" data-vermas="col-desc">Ver más</button>
 
-            <?php if ($cli): ?>
+            <?php if ($op): ?>
+                <div class="aviso-op">
+                    <span>🛠️ Estás viendo la tienda como <b>operador</b>.</span>
+                    <a class="btn btn-teal btn-chico" href="<?= url('admin/coleccion.php?id=' . (int)$col['id']) ?>">Editar colección</a>
+                </div>
+            <?php elseif ($socio): ?>
                 <div class="mi-progreso">
                     <div class="progreso"><span id="prog-bar" style="width:0"></span></div>
                     <div class="progreso-txt"><span id="prog-txt"></span></div>
@@ -88,7 +95,7 @@ require __DIR__ . '/inc/header.php';
 
 <section class="section" style="padding-top:28px">
     <div class="container">
-        <?php if ($cli): ?>
+        <?php if ($socio): ?>
             <div class="filtros" role="tablist">
                 <button class="filtro activo" data-filtro="todos" type="button">Todos <span class="cnt" data-cnt="todos"></span></button>
                 <button class="filtro" data-filtro="tengo" type="button">Los tengo <span class="cnt" data-cnt="tengo"></span></button>
@@ -96,7 +103,7 @@ require __DIR__ . '/inc/header.php';
             </div>
         <?php endif; ?>
 
-        <div class="grid-items" id="grid-items" data-logueado="<?= $cli ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>">
+        <div class="grid-items" id="grid-items" data-logueado="<?= $socio ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>">
             <?php foreach ($items as $it):
                 $estado = $estados[$it['id']] ?? 'falta';
                 $p = precio_item($it);
@@ -116,7 +123,7 @@ require __DIR__ . '/inc/header.php';
                             <?= $stock > 0 ? ($stock <= 3 ? "¡Quedan solo $stock!" : 'Disponible') : 'Sin stock · salimos a buscarlo' ?>
                         </div>
                         <div class="item-acciones">
-                            <?php if ($cli): ?>
+                            <?php if ($socio): ?>
                                 <label class="tengo-toggle"><input type="checkbox" <?= $estado === 'tengo' ? 'checked' : '' ?>> Lo tengo</label>
                                 <label class="sel-toggle" <?= $estado !== 'falta' ? 'hidden' : '' ?>><input type="checkbox"> Lo quiero</label>
                             <?php endif; ?>
@@ -135,7 +142,7 @@ require __DIR__ . '/inc/header.php';
     </div>
 </section>
 
-<?php if ($cli): ?>
+<?php if ($socio): ?>
 <div class="barra-sel" id="barra-sel">
     <div class="container">
         <div class="info"></div>
