@@ -171,3 +171,40 @@ function wepoint_crear_orden(int $pedido_id): string {
         throw $e;
     }
 }
+
+// ─── Estado de las órdenes ──────────────────────────────────────────────────
+// WePoint: Emitida → (picking) → Empaquetada → (orden de envío) → Entregada/Completada.
+// En la web: confirmado → preparando ("Preparando el equipo") → enviado ("Listo para retirar").
+function wepoint_estado_web(array $ov): ?string {
+    $e = mb_strtolower((string)($ov['estado'] ?? ''));
+    if (in_array($e, ['completada', 'entregada', 'cerrada'], true)) return 'enviado';
+    if (!empty($ov['tiene_envio_listo']) && empty($ov['tiene_envio_no_entregado'])) return 'enviado';
+    if ($e === 'empaquetada' || !empty($ov['picking_existe'])) return 'preparando';
+    return null;
+}
+
+// Recorre los pedidos enviados a WePoint que siguen en curso y los avanza. Devuelve cuántos cambiaron.
+function wepoint_sincronizar_pedidos(): array {
+    require_once __DIR__ . '/notificaciones.php';
+    $orden = ['confirmado' => 1, 'preparando' => 2, 'enviado' => 3];
+    $res = ['revisados' => 0, 'actualizados' => 0, 'errores' => []];
+    foreach (q("SELECT id, estado, wepoint_orden_id FROM pedidos WHERE wepoint_orden_id IS NOT NULL AND estado IN ('confirmado','preparando')")->fetchAll() as $p) {
+        $res['revisados']++;
+        try {
+            $ov = wepoint_api('GET', 'v2/egresos/productos/' . rawurlencode($p['wepoint_orden_id']))['data'] ?? [];
+            $nuevo = wepoint_estado_web($ov);
+            if (!$nuevo || $orden[$nuevo] <= $orden[$p['estado']]) continue;   // nunca retrocede
+            $nota = $nuevo === 'enviado'
+                ? 'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!'
+                : 'WePoint está preparando tu pedido' . (!empty($ov['paquetes'][0]['nro_paquete']) ? ' (paquete ' . $ov['paquetes'][0]['nro_paquete'] . ')' : '') . '.';
+            q("UPDATE pedidos SET estado=? WHERE id=?", [$nuevo, $p['id']]);
+            registrar_historial('pedido', (int)$p['id'], $nuevo, $nota, 'WePoint · ' . ($ov['estado'] ?? ''));
+            notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'enviado' ? null : $nota);
+            $res['actualizados']++;
+        } catch (Exception $e) {
+            $res['errores'][] = '#' . $p['id'] . ': ' . $e->getMessage();
+        }
+    }
+    wepoint_ajuste_set('wepoint_ultima_sync_pedidos', date('Y-m-d H:i:s'));
+    return $res;
+}

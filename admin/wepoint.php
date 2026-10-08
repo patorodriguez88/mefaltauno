@@ -87,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $log[] = 'Recepción registrada: ' . count($rec) . ' líneas.';
         }
 
+        if ($accion === 'pedidos') {
+            $s = wepoint_sincronizar_pedidos();
+            $log[] = "Pedidos revisados: {$s['revisados']} · actualizados: {$s['actualizados']}" . ($s['errores'] ? ' · ' . implode(' | ', $s['errores']) : '');
+        }
         if (in_array($accion, ['cargar_stock', 'sincronizar'], true)) {
             $s = wepoint_sincronizar_stock();
             $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia.';
@@ -156,6 +160,7 @@ admin_header('WePoint', 'wepoint');
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="probar"><button class="btn btn-linea btn-chico">Probar conexión</button></form>
                 <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="sincronizar"><button class="btn btn-teal btn-chico">Sincronizar stock</button></form>
+                <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="pedidos"><button class="btn btn-teal btn-chico">Actualizar estados de pedidos</button></form>
             </div>
         </div>
 
