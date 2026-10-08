@@ -247,6 +247,19 @@ function schema_pasos(): array {
         8 => [
             "ALTER TABLE pedidos ADD COLUMN wepoint_estado VARCHAR(40) NULL AFTER wepoint_orden_id",
         ],
+
+        // Productos de la cuenta de WePoint que la web todavía no tiene: bandeja "Por publicar"
+        9 => [
+            "CREATE TABLE IF NOT EXISTS wepoint_nuevos (
+                wepoint_id VARCHAR(40) PRIMARY KEY,
+                sku VARCHAR(64) NULL,
+                nombre VARCHAR(255) NULL,
+                precio DECIMAL(12,2) NULL,
+                stock INT NOT NULL DEFAULT 0,
+                visto_at DATETIME NOT NULL,
+                KEY idx_sku (sku)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
     ];
 }
 

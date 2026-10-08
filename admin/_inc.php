@@ -9,11 +9,12 @@ function admin_header(string $titulo_pag, string $activo): void {
     require dirname(__DIR__) . '/inc/header.php';
     $pend_sol = (int)q("SELECT COUNT(*) FROM solicitudes WHERE estado='pendiente'")->fetchColumn();
     $pend_ped = (int)q("SELECT COUNT(*) FROM pedidos WHERE estado='pendiente'")->fetchColumn();
+    $pend_pub = wepoint_nuevos_pendientes();
     $links = [
         'inicio'      => ['', 'Resumen'],
         'pedidos'     => ['pedidos.php', 'Pedidos' . ($pend_ped ? " ($pend_ped)" : '')],
         'faltantes'   => ['faltantes.php', 'Me faltan' . ($pend_sol ? " ($pend_sol)" : '')],
-        'colecciones' => ['colecciones.php', 'Colecciones y stock'],
+        'colecciones' => ['colecciones.php', 'Colecciones y stock' . ($pend_pub ? " ($pend_pub)" : '')],
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
         'suscripciones' => ['suscripciones.php', 'Suscripciones'],

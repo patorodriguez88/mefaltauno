@@ -472,6 +472,18 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .foto-mini:hover::after { content: '📷'; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 57, 60, .45); font-size: 1.1rem; }
 .fila-congelada td { background: #eef6ff; }
 .fila-oculta td { opacity: .55; }
+/* Bandeja "Por publicar" (productos nuevos de WePoint) */
+.aviso-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-decoration: none; margin-bottom: 16px; }
+.nuevos { display: grid; gap: 12px; }
+.nuevo-card { display: flex; gap: 16px; align-items: flex-start; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.nuevo-card .foto-nuevo { width: 96px; height: 96px; flex: none; text-align: center; font-size: 1.4rem; line-height: 1.1; }
+.nuevo-card .foto-nuevo small { font-size: .7rem; color: var(--muted); }
+.nuevo-datos { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.nuevo-wp { font-size: .9rem; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.nuevo-campos { display: grid; grid-template-columns: minmax(160px, 1.2fr) 80px minmax(160px, 2fr) 110px; gap: 10px; align-items: end; }
+.nuevo-campos input, .nuevo-campos select { padding: 8px 10px; font-size: .92rem; }
+.nuevo-acciones { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 760px) { .nuevo-campos { grid-template-columns: 1fr 1fr; } .nuevo-card { flex-direction: column; } }
 .tabla-items td { padding: 8px 6px; }
 .tabla-items th { padding: 10px 6px; }
 .tabla-items input[type=text], .tabla-items input[type=number] { padding: 6px 8px; font-size: .9rem; }

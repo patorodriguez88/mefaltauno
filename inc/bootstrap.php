@@ -202,6 +202,15 @@ function precio_item(array $it): float {
 }
 
 // URL de una imagen: externa (http…) o subida por el operador (uploads/…)
+// Requisitos para que un número se vea en la tienda. Devuelve lo que falta (vacío = se puede publicar).
+function item_falta_para_publicar(?string $imagen, string $titulo, float $precio): array {
+    $falta = [];
+    if (!$imagen) $falta[] = 'foto';
+    if (trim($titulo) === '') $falta[] = 'título';
+    if ($precio <= 0) $falta[] = 'precio';
+    return $falta;
+}
+
 function img(?string $v): string {
     if (!$v) return '';
     return preg_match('#^https?://#', $v) ? $v : url($v);

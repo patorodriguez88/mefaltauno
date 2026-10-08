@@ -32,8 +32,16 @@ $cols = q("SELECT c.*, cat.nombre AS categoria, COUNT(i.id) AS total, SUM(i.stoc
            FROM colecciones c LEFT JOIN categorias cat ON cat.id=c.categoria_id LEFT JOIN items i ON i.coleccion_id=c.id AND i.activo=1
            GROUP BY c.id " . ($sin_stock ? 'HAVING sin_stock > 0' : '') . " ORDER BY c.activa DESC, c.orden, c.nombre")->fetchAll();
 
+$por_publicar = wepoint_nuevos_pendientes();
 admin_header('Colecciones', 'colecciones');
 ?>
+
+<?php if ($por_publicar): ?>
+    <a class="aviso aviso-link" href="<?= url('admin/nuevos.php') ?>">
+        <span>📦 <b><?= $por_publicar ?> producto<?= $por_publicar > 1 ? 's' : '' ?> de WePoint</b> esperando foto para publicarse en la web.</span>
+        <span class="btn btn-primario btn-chico">Ver por publicar</span>
+    </a>
+<?php endif; ?>
 
 <div class="section-head">
     <h1 style="margin:0">Colecciones y stock</h1>

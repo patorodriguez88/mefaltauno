@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (in_array($accion, ['cargar_stock', 'sincronizar'], true)) {
             $s = wepoint_sincronizar_stock();
-            $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia.';
+            $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia · ' . $s['nuevos'] . ' productos nuevos por publicar.';
         }
         if ($accion === 'crear_transportista') {
             $nombre = trim(mb_substr($_POST['nombre'] ?? '', 0, 100)) ?: 'Retiro en kiosco · MeFaltaUno';

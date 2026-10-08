@@ -100,33 +100,73 @@ function wepoint_disponible_de(array $p): ?int {
     return null;
 }
 
-// Trae todos los productos de WePoint y actualiza stock + id por SKU. Devuelve un resumen.
+// Trae todos los productos de WePoint y actualiza stock + id. Cada número se vincula por SKU o, si no tiene, por id de WePoint.
 function wepoint_sincronizar_stock(): array {
-    $por_sku = [];
+    $todos = [];
     $pagina = 1;
     do {
         [$filas, $ultima] = wepoint_filas(wepoint_api('GET', 'v2/productos?per_page=100&page=' . $pagina));
         foreach ($filas as $p) {
-            $sku = strtoupper(trim((string)($p['sku'] ?? '')));
-            if ($sku !== '') $por_sku[$sku] = $p;
+            $id = $p['id_producto'] ?? $p['id'] ?? null;
+            if ($id !== null) $todos[(string)$id] = $p;
         }
         $pagina++;
     } while ($pagina <= $ultima && $pagina <= 100);
+    $por_sku = [];
+    foreach ($todos as $p) {
+        $sku = strtoupper(trim((string)($p['sku'] ?? '')));
+        if ($sku !== '') $por_sku[$sku] = $p;
+    }
 
-    $res = ['wepoint' => count($por_sku), 'actualizados' => 0, 'sin_sku' => 0, 'no_encontrados' => [], 'sin_dato_stock' => 0];
-    foreach (q("SELECT i.id, i.sku, i.numero, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
+    $res = ['wepoint' => count($todos), 'actualizados' => 0, 'sin_sku' => 0, 'no_encontrados' => [], 'sin_dato_stock' => 0];
+    foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.numero, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
         $sku = strtoupper(trim((string)$it['sku']));
-        if ($sku === '') { $res['sin_sku']++; continue; }
-        if (!isset($por_sku[$sku])) { $res['no_encontrados'][] = $it['nombre'] . ' ' . num((int)$it['numero']) . " ($sku)"; continue; }
-        $p = $por_sku[$sku];
+        $p = ($sku !== '' ? $por_sku[$sku] ?? null : null) ?? ($it['wepoint_id'] ? $todos[(string)$it['wepoint_id']] ?? null : null);
+        if (!$p) {
+            if ($sku === '' && !$it['wepoint_id']) $res['sin_sku']++;
+            else $res['no_encontrados'][] = $it['nombre'] . ' ' . num((int)$it['numero']) . ($sku !== '' ? " ($sku)" : '');
+            continue;
+        }
         $disp = wepoint_disponible_de($p);
         if ($disp === null) { $res['sin_dato_stock']++; continue; }
         q("UPDATE items SET stock=?, wepoint_id=?, stock_sync_at=NOW() WHERE id=?", [max(0, $disp), $p['id_producto'] ?? $p['id'] ?? null, $it['id']]);
         $res['actualizados']++;
     }
+    $res['nuevos'] = wepoint_registrar_nuevos($todos);
     wepoint_ajuste_set('wepoint_ultima_sync', date('Y-m-d H:i:s'));
     wepoint_ajuste_set('wepoint_ultimo_resultado', json_encode($res, JSON_UNESCAPED_UNICODE));
     return $res;
+}
+
+// Todo lo que hay en la cuenta de WePoint es para vender en la web: lo que todavía no es un número de la web
+// va a la bandeja "Por publicar". Devuelve cuántos hay pendientes.
+function wepoint_registrar_nuevos(array $todos): int {
+    $en_web_sku = array_flip(array_map('strtoupper', q("SELECT sku FROM items WHERE sku IS NOT NULL AND sku<>''")->fetchAll(PDO::FETCH_COLUMN)));
+    $en_web_id = array_flip(q("SELECT wepoint_id FROM items WHERE wepoint_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN));
+    foreach ($todos as $id => $p) {
+        $sku = strtoupper(trim((string)($p['sku'] ?? '')));
+        if (isset($en_web_id[$id]) || ($sku !== '' && isset($en_web_sku[$sku]))) continue;
+        $precio = $p['precio_venta'] ?? $p['precio'] ?? null;
+        q("INSERT INTO wepoint_nuevos (wepoint_id, sku, nombre, precio, stock, visto_at) VALUES (?,?,?,?,?,NOW())
+           ON DUPLICATE KEY UPDATE sku=VALUES(sku), nombre=VALUES(nombre), precio=VALUES(precio), stock=VALUES(stock), visto_at=NOW()",
+          [(string)$id, $sku ?: null, mb_substr((string)($p['nombre'] ?? ''), 0, 255) ?: null, is_numeric($precio) ? (float)$precio : null, max(0, (int)wepoint_disponible_de($p))]);
+    }
+    // Salen de la bandeja los que ya son números de la web y los que ya no están en WePoint
+    q("DELETE n FROM wepoint_nuevos n JOIN items i ON i.wepoint_id=n.wepoint_id OR (n.sku IS NOT NULL AND UPPER(i.sku)=n.sku)");
+    if ($todos) {
+        $marcas = implode(',', array_fill(0, count($todos), '?'));
+        q("DELETE FROM wepoint_nuevos WHERE wepoint_id NOT IN ($marcas)", array_map('strval', array_keys($todos)));
+    }
+    return wepoint_nuevos_pendientes();
+}
+
+function wepoint_nuevos_pendientes(): int {
+    return (int)q("SELECT COUNT(*) FROM wepoint_nuevos")->fetchColumn();
+}
+
+// SKU MFU-<id colección>-<número> → [coleccion_id, numero] (si tiene ese formato)
+function wepoint_sku_partes(?string $sku): array {
+    return preg_match('/^MFU-(\d+)-(\d+)$/i', trim((string)$sku), $m) ? [(int)$m[1], (int)$m[2]] : [null, null];
 }
 
 // Crea la orden de venta en WePoint para un pedido confirmado. Guarda el id o el error en el pedido.

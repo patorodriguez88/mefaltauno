@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         $fotos = archivos_por_id('foto_item');
+        $sin_publicar = [];
         foreach ((array)($_POST['items'] ?? []) as $iid => $it) {
             $titulo = trim($it['titulo'] ?? '');
             if ($titulo === '') continue;
@@ -48,10 +49,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $limite = trim((string)($it['limite'] ?? '')) === '' ? null : max(0, (int)$it['limite']);
             // Con WePoint el stock no se toca desde acá; sin WePoint (modo manual) sí
             $stock = $con_wepoint ? (int)$actual['stock'] : max(0, (int)($it['stock'] ?? 0));
+            $precio = monto($it['precio']) ?? 0;
+            $activo = !empty($it['activo']) ? 1 : 0;
+            if ($activo && ($falta = item_falta_para_publicar($foto, $titulo, $precio))) {
+                $activo = 0;
+                $sin_publicar[] = num((int)$it['numero']) . ' (falta ' . implode(', ', $falta) . ')';
+            }
             q("UPDATE items SET numero=?, titulo=?, imagen=?, precio=?, precio_promo=?, stock=?, congelado=?, limite=?, sku=?, activo=? WHERE id=? AND coleccion_id=?", [
-                (int)$it['numero'], $titulo, $foto, monto($it['precio']) ?? 0, monto($it['precio_promo']),
+                (int)$it['numero'], $titulo, $foto, $precio, monto($it['precio_promo']),
                 $stock, !empty($it['congelado']) ? 1 : 0, $limite, strtoupper(trim($it['sku'] ?? '')) ?: null,
-                !empty($it['activo']) ? 1 : 0, (int)$iid, $id,
+                $activo, (int)$iid, $id,
             ]);
         }
 
@@ -59,11 +66,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (trim($nuevo['titulo'] ?? '') !== '') {
             $num = (int)($nuevo['numero'] ?? 0) ?: ((int)q("SELECT COALESCE(MAX(numero),0) FROM items WHERE coleccion_id=?", [$id])->fetchColumn() + 1);
             $foto = subir_imagen($_FILES['foto_nuevo'] ?? null, 'items', $col['slug'] . '-' . $num);
-            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, precio, stock, sku) VALUES (?,?,?,?,?,0,?)",
-              [$id, $num, trim($nuevo['titulo']), $foto, monto($nuevo['precio'] ?? '') ?? 0, strtoupper(trim($nuevo['sku'] ?? '')) ?: null]);
+            $precio = monto($nuevo['precio'] ?? '') ?? 0;
+            $activo = item_falta_para_publicar($foto, $nuevo['titulo'], $precio) ? 0 : 1;
+            if (!$activo) $sin_publicar[] = num($num) . ' (queda sin publicar hasta tener foto y precio)';
+            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, precio, stock, sku, activo) VALUES (?,?,?,?,?,0,?,?)",
+              [$id, $num, trim($nuevo['titulo']), $foto, $precio, strtoupper(trim($nuevo['sku'] ?? '')) ?: null, $activo]);
         }
         $db->commit();
         flash('ok', 'Cambios guardados.');
+        if ($sin_publicar) flash('error', 'No se publicaron: ' . implode(' · ', $sin_publicar) . '. Para publicar un número hace falta foto, título y precio.');
     } catch (PDOException $e) {
         $db->rollBack();
         flash('error', $e->getCode() == 23000 ? 'Hay dos números repetidos en la colección.' : 'No se pudo guardar: ' . $e->getMessage());
@@ -148,7 +159,8 @@ admin_header($col['nombre'], 'colecciones');
                     </td>
                     <td><input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" class="in-num" title="Vender como máximo esta cantidad. Vacío = sin tope"></td>
                     <td class="td-estado">
-                        <label title="Visible en la tienda"><input type="checkbox" name="<?= $n ?>[activo]" value="1" <?= $it['activo'] ? 'checked' : '' ?>> Publicado</label>
+                        <label title="<?= $it['imagen'] ? 'Visible en la tienda' : 'Subí una foto para poder publicarlo' ?>"><input type="checkbox" name="<?= $n ?>[activo]" value="1" <?= $it['activo'] ? 'checked' : '' ?> <?= $it['imagen'] ? '' : 'disabled data-sin-foto' ?>> Publicado</label>
+                        <?php if (!$it['imagen']): ?><div class="small" style="color:var(--amber)">Falta foto</div><?php endif; ?>
                         <label title="Congelado: no se vende aunque haya stock"><input type="checkbox" name="<?= $n ?>[congelado]" value="1" <?= $it['congelado'] ? 'checked' : '' ?>> Congelado</label>
                     </td>
                     <td><input type="text" name="<?= $n ?>[sku]" value="<?= e($it['sku']) ?>" class="in-sku"><?= $it['wepoint_id'] ? '<div class="small" style="color:var(--green)">✓ WePoint</div>' : '' ?></td>
@@ -176,6 +188,9 @@ function previewFoto(input) {
     let img = cont.querySelector('img');
     if (!img) { img = document.createElement('img'); cont.prepend(img); const s = cont.querySelector('span, .sin-foto'); if (s) s.remove(); }
     img.src = URL.createObjectURL(f);
+    // Con foto ya se puede publicar
+    const pub = input.closest('tr')?.querySelector('input[data-sin-foto]');
+    if (pub) { pub.disabled = false; pub.checked = true; pub.closest('label').title = 'Visible en la tienda'; pub.closest('td').querySelector('.small')?.remove(); }
     toast('Foto lista: se guarda al tocar “Guardar todo”');
 }
 </script>
