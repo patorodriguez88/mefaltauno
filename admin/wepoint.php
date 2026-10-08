@@ -91,6 +91,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $s = wepoint_sincronizar_stock();
             $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia.';
         }
+        if ($accion === 'transportista') {
+            $t = preg_replace('/\D/', '', $_POST['id_transportista'] ?? '');
+            q("REPLACE INTO ajustes (clave, valor) VALUES ('wepoint_id_transportista', ?)", [$t]);
+            $log[] = $t !== '' ? "Transportista para las órdenes: id $t" : 'Transportista: se usa el de config.php';
+        }
         if ($accion === 'probar') {
             $pw = trim(WEPOINT_PASSWORD);
             $log[] = 'Diagnóstico: email «' . trim(WEPOINT_EMAIL) . '» · contraseña de ' . mb_strlen($pw) . ' caracteres'
@@ -171,7 +176,16 @@ admin_header('WePoint', 'wepoint');
     </div>
     <aside class="card">
         <h3>Transportistas</h3>
-        <p class="muted small">El id del que corresponda va en <code>WEPOINT_ID_TRANSPORTISTA</code> (config.php).</p>
+        <p class="muted small">Elegí con cuál se crean las órdenes de venta. Actual: <b><?= e(wepoint_transportista() ?: 'ninguno') ?></b></p>
+        <form method="post" style="display:flex;gap:8px;margin-bottom:12px">
+            <?= csrf_field() ?><input type="hidden" name="accion" value="transportista">
+            <select name="id_transportista" style="flex:1">
+                <?php foreach ($transportistas as $t): $tid = (string)($t['id_transportista'] ?? $t['id'] ?? ''); ?>
+                    <option value="<?= e($tid) ?>" <?= $tid === wepoint_transportista() ? 'selected' : '' ?>><?= e($tid . ' · ' . ($t['nombre'] ?? $t['razon_social'] ?? '')) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button class="btn btn-teal btn-chico" type="submit">Usar</button>
+        </form>
         <?php foreach ($transportistas as $t): ?>
             <div class="small" style="padding:6px 0;border-bottom:1px dashed var(--line)"><b>id <?= e((string)($t['id_transportista'] ?? $t['id'] ?? '?')) ?></b> · <?= e($t['nombre'] ?? $t['razon_social'] ?? json_encode($t, JSON_UNESCAPED_UNICODE)) ?></div>
         <?php endforeach; ?>

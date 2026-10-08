@@ -13,6 +13,13 @@ function wepoint_ordenes_activas(): bool {
     return wepoint_listo() && defined('WEPOINT_CREAR_ORDENES') && WEPOINT_CREAR_ORDENES === true;
 }
 
+// Transportista para las órdenes: el elegido en Admin → WePoint, o el de config.php
+function wepoint_transportista(): string {
+    $t = ajuste('wepoint_id_transportista');
+    if ($t !== '') return $t;
+    return defined('WEPOINT_ID_TRANSPORTISTA') ? (string)WEPOINT_ID_TRANSPORTISTA : '';
+}
+
 function wepoint_listo(): bool {
     return defined('WEPOINT_URL') && WEPOINT_URL !== '' && defined('WEPOINT_EMAIL') && WEPOINT_EMAIL !== ''
         && defined('WEPOINT_PASSWORD') && WEPOINT_PASSWORD !== '';
@@ -132,7 +139,7 @@ function wepoint_crear_orden(int $pedido_id): string {
     if ($p['wepoint_orden_id']) return $p['wepoint_orden_id'];
     if (!wepoint_ordenes_activas()) throw new Exception('El envío de órdenes a WePoint está apagado (WEPOINT_CREAR_ORDENES en config.php).');
     try {
-        if (!defined('WEPOINT_ID_TRANSPORTISTA') || WEPOINT_ID_TRANSPORTISTA === '') throw new Exception('Falta WEPOINT_ID_TRANSPORTISTA en config.php.');
+        if (wepoint_transportista() === '') throw new Exception('Falta elegir el transportista en Admin → WePoint.');
         if (!$p['envio_cp']) throw new Exception('El punto de retiro “' . $p['envio_punto'] . '” no tiene código postal: cargalo en Puntos de retiro y reenviá.');
         $detalle = [];
         foreach (q("SELECT pi.*, i.wepoint_id, i.sku FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$pedido_id]) as $l) {
@@ -142,7 +149,7 @@ function wepoint_crear_orden(int $pedido_id): string {
         $r = wepoint_api('POST', 'v2/egresos/productos', [
             'no_referencia'       => 'MFU-' . $pedido_id,
             'fecha'               => date('Y-m-d'),
-            'id_transportista'    => (string)WEPOINT_ID_TRANSPORTISTA,
+            'id_transportista'    => wepoint_transportista(),
             'notas'               => 'Retiro en ' . $p['envio_punto'] . ' (' . $p['envio_direccion'] . ', ' . $p['envio_localidad'] . ')' . ($p['notas'] ? ' · ' . $p['notas'] : ''),
             'destinatario'        => [
                 'nombre'        => mb_substr($p['envio_nombre'] ?: nombre_cliente($p), 0, 100),
