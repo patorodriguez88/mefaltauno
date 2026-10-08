@@ -24,6 +24,17 @@ function wepoint_transportista(): string {
 // Los transportistas de WePoint (Caddy, Retira Cliente…) dan "No tienes acceso"; uno propio se usa enseguida.
 const WEPOINT_TRANSPORTISTA_PROPIO = 'Retiro en kiosco · MeFaltaUno';
 function wepoint_transportista_propio(): string {
+    // Primero se busca por nombre (puede existir con otro id que el guardado); si no está, se crea
+    [$filas] = wepoint_filas(wepoint_api('GET', 'v2/transportistas'));
+    foreach ($filas as $t) {
+        if (mb_strtolower(trim((string)($t['nombre'] ?? ''))) === mb_strtolower(WEPOINT_TRANSPORTISTA_PROPIO)) {
+            $tid = (string)($t['id_transportista'] ?? $t['id'] ?? '');
+            if ($tid !== '') {
+                wepoint_ajuste_set('wepoint_id_transportista', $tid);
+                return $tid;
+            }
+        }
+    }
     $r = wepoint_api('POST', 'v2/transportistas', ['nombre' => WEPOINT_TRANSPORTISTA_PROPIO]);
     $tid = (string)($r['data']['id_transportista'] ?? $r['data']['id'] ?? '');
     if ($tid === '') throw new Exception('WePoint no devolvió el id del transportista: ' . json_encode($r, JSON_UNESCAPED_UNICODE));
