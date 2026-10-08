@@ -284,7 +284,8 @@ body.con-barra .toast { bottom: 100px; }
 @media (max-width: 900px) { .layout-2 { grid-template-columns: 1fr; } }
 .linea { display: grid; grid-template-columns: 72px 1fr auto; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .linea:last-child { border-bottom: 0; }
-.linea img { width: 72px; height: 72px; border-radius: var(--radius-sm); object-fit: cover; background: var(--teal-50); }
+.linea img, .linea .foto-vacia { width: 72px; height: 72px; flex: none; border-radius: var(--radius-sm); object-fit: cover; background: var(--teal-50); }
+.foto-vacia { display: inline-grid; place-items: center; font-size: 1.6rem; color: var(--muted); background: var(--teal-50); }
 .linea-titulo { font-weight: 600; line-height: 1.3; }
 .linea-sub { font-size: .85rem; color: var(--muted); }
 .linea-der { text-align: right; display: grid; gap: 6px; justify-items: end; }

@@ -25,7 +25,7 @@ require __DIR__ . '/inc/header.php';
             <div class="card">
                 <?php foreach ($lineas as $l): ?>
                     <div class="linea">
-                        <img src="<?= e(img($l['imagen'] ?? '')) ?>" alt="" loading="lazy">
+                        <?= foto($l['imagen'] ?? '') ?>
                         <div>
                             <div class="linea-sub"><?= e($l['coleccion']) ?> · <?= num((int)$l['numero']) ?></div>
                             <div class="linea-titulo"><?= e($l['titulo']) ?></div>

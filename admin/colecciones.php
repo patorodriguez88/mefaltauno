@@ -53,7 +53,7 @@ admin_header('Colecciones', 'colecciones');
         <tr><th></th><th>Colección</th><th>Categoría</th><th>Números</th><th>Sin stock</th><th>Unidades</th><th>La siguen</th><th>Estado</th></tr>
         <?php foreach ($cols as $c): ?>
             <tr class="clic" onclick="location='<?= url('admin/coleccion.php?id=' . (int)$c['id']) ?>'">
-                <td><img src="<?= e(img($c['imagen'] ?? '')) ?>" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--teal-50)"></td>
+                <td><?= foto($c['imagen'] ?? '', '📚', 'width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--teal-50);font-size:1.1rem') ?></td>
                 <td><b><?= e($c['nombre']) ?></b><?= $c['destacada'] ? ' <span class="badge badge-amarillo">Destacada</span>' : '' ?></td>
                 <td class="small"><?= e($c['categoria'] ?? '—') ?></td>
                 <td><?= (int)$c['total'] ?></td>

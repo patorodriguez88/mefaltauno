@@ -231,6 +231,13 @@ function img(?string $v): string {
     return preg_match('#^https?://#', $v) ? $v : url($v);
 }
 
+// <img> de una foto o, si no hay, un recuadro con ícono del mismo tamaño (evita la imagen rota)
+function foto(?string $v, string $icono = '📦', string $estilo = ''): string {
+    $st = $estilo !== '' ? ' style="' . e($estilo) . '"' : '';
+    if (!$v) return '<span class="foto-vacia"' . $st . ' aria-hidden="true">' . $icono . '</span>';
+    return '<img src="' . e(img($v)) . '" alt="" loading="lazy"' . $st . '>';
+}
+
 // Unidades que se pueden vender: el stock lo informa WePoint; el operador solo
 // puede congelar el número o ponerle un tope (nunca sumar unidades).
 function disponible(array $it): int {

@@ -48,7 +48,7 @@ require __DIR__ . '/inc/header.php';
                 <div class="card">
                     <?php foreach ($c['lineas'] as $l): $it = $l['item']; ?>
                         <div class="linea">
-                            <img src="<?= e(img($it['imagen'] ?: $it['coleccion_imagen'])) ?>" alt="" loading="lazy">
+                            <?= foto($it['imagen'] ?: $it['coleccion_imagen']) ?>
                             <div>
                                 <div class="linea-sub"><a href="<?= url('coleccion.php?c=' . urlencode($it['coleccion_slug'])) ?>"><?= e($it['coleccion']) ?></a> · <?= num((int)$it['numero']) ?></div>
                                 <div class="linea-titulo"><?= e($it['titulo']) ?></div>
