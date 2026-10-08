@@ -33,9 +33,22 @@ require __DIR__ . '/inc/header.php';
 
 <section class="col-hero">
     <div class="container col-hero-grid">
-        <?php if ($col['imagen']): ?>
-            <img class="col-hero-img" src="<?= e(img($col['imagen'])) ?>" alt="<?= e($col['nombre']) ?>">
-        <?php endif; ?>
+        <div class="col-hero-izq">
+            <?php if ($col['imagen']): ?>
+                <img class="col-hero-img" src="<?= e(img($col['imagen'])) ?>" alt="<?= e($col['nombre']) ?>">
+            <?php endif; ?>
+            <?php if (!$cli): ?>
+                <div class="suscribir-mini">
+                    <strong>🔔 Novedades de esta colección</strong>
+                    <p class="muted small">Te avisamos de números nuevos y reposiciones.</p>
+                    <form class="form-suscribir" data-coleccion="<?= (int)$col['id'] ?>" data-origen="coleccion">
+                        <input type="email" name="email" placeholder="Tu email" required autocomplete="email">
+                        <input type="text" name="web" class="trampa" tabindex="-1" autocomplete="off" aria-hidden="true">
+                        <button class="btn btn-teal btn-chico" type="submit">Avisarme</button>
+                    </form>
+                </div>
+            <?php endif; ?>
+        </div>
         <div>
             <div class="crumbs">
                 <a href="<?= url('colecciones.php') ?>">Colecciones</a>
@@ -55,29 +68,11 @@ require __DIR__ . '/inc/header.php';
                         <?= $siguiendo ? '✓ En mi base' : '+ Sumar a mi base' ?>
                     </button>
                     <button class="btn btn-primario btn-chico" type="button" onclick="seleccionarFaltantes()">Seleccionar los que me faltan</button>
+                    <button type="button" class="btn btn-texto btn-chico" data-suscripto="<?= $suscripto ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>" onclick="toggleSuscripcion(this)" title="<?= $suscripto ? 'Tocá para dejar de recibir avisos' : 'Te avisamos de números nuevos, reposiciones y lanzamientos' ?>">
+                        <?= $suscripto ? '🔔 Suscripto a novedades' : '🔔 Avisarme novedades' ?>
+                    </button>
                 </div>
             <?php endif; ?>
-
-            <div class="suscribir-card" id="suscribir-card">
-                <div class="suscribir-icono">🔔</div>
-                <div class="suscribir-cuerpo">
-                    <strong>Suscribite a esta colección</strong>
-                    <p class="muted small">Te avisamos cuando lleguen números nuevos, reposiciones o lanzamientos de <?= e($col['nombre']) ?>.</p>
-                    <?php if ($cli): ?>
-                        <button type="button" class="btn btn-chico <?= $suscripto ? 'btn-linea' : 'btn-teal' ?>" data-suscripto="<?= $suscripto ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>" onclick="toggleSuscripcion(this)">
-                            <?= $suscripto ? '✓ Suscripto · darme de baja' : '🔔 Avisarme novedades' ?>
-                        </button>
-                    <?php else: ?>
-                        <form class="form-suscribir" data-coleccion="<?= (int)$col['id'] ?>" data-origen="coleccion">
-                            <input type="email" name="email" placeholder="Tu email" required autocomplete="email">
-                            <input type="text" name="nombre" placeholder="Nombre (opcional)" autocomplete="given-name">
-                            <input type="tel" name="telefono" placeholder="WhatsApp (opcional)" autocomplete="tel">
-                            <input type="text" name="web" class="trampa" tabindex="-1" autocomplete="off" aria-hidden="true">
-                            <button class="btn btn-teal btn-chico" type="submit">Suscribirme</button>
-                        </form>
-                    <?php endif; ?>
-                </div>
-            </div>
 
             <?php if (!$cli): ?>
                 <div class="mi-progreso">

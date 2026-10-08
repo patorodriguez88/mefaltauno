@@ -117,7 +117,7 @@ admin_header($col['nombre'], 'colecciones');
     </div>
     <div class="tabla-wrap">
         <table class="tabla tabla-items">
-            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio</th><th>Promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope</th><th>Se vende</th><th>Congelar</th><th>Publicado</th><th>SKU</th><th>Lo piden</th></tr>
+            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope</th><th>Estado</th><th>SKU</th></tr>
             <?php foreach ($items as $it): $n = 'items[' . (int)$it['id'] . ']'; $disp = disponible($it); ?>
                 <tr class="<?= $it['congelado'] ? 'fila-congelada' : '' ?><?= !$it['activo'] ? ' fila-oculta' : '' ?>">
                     <td>
@@ -126,34 +126,41 @@ admin_header($col['nombre'], 'colecciones');
                             <input type="file" name="foto_item[<?= (int)$it['id'] ?>]" accept="image/jpeg,image/png,image/webp" hidden onchange="previewFoto(this)">
                         </label>
                     </td>
-                    <td><input type="number" name="<?= $n ?>[numero]" value="<?= (int)$it['numero'] ?>" style="width:64px"></td>
-                    <td><input type="text" name="<?= $n ?>[titulo]" value="<?= e($it['titulo']) ?>" style="min-width:210px"></td>
-                    <td><input type="text" name="<?= $n ?>[precio]" value="<?= e((float)$it['precio']) ?>" inputmode="decimal" style="width:92px"></td>
-                    <td><input type="text" name="<?= $n ?>[precio_promo]" value="<?= $it['precio_promo'] !== null ? e((float)$it['precio_promo']) : '' ?>" inputmode="decimal" style="width:92px"></td>
+                    <td><input type="number" name="<?= $n ?>[numero]" value="<?= (int)$it['numero'] ?>" class="in-num"></td>
+                    <td class="td-titulo">
+                        <input type="text" name="<?= $n ?>[titulo]" value="<?= e($it['titulo']) ?>">
+                        <?php if ($it['pedidos']): ?><div class="small" style="margin-top:4px"><span class="badge badge-amarillo"><?= (int)$it['pedidos'] ?> lo piden</span></div><?php endif; ?>
+                    </td>
                     <td>
+                        <div class="precio-par">
+                            <input type="text" name="<?= $n ?>[precio]" value="<?= e((float)$it['precio']) ?>" inputmode="decimal" title="Precio">
+                            <input type="text" name="<?= $n ?>[precio_promo]" value="<?= $it['precio_promo'] !== null ? e((float)$it['precio_promo']) : '' ?>" inputmode="decimal" placeholder="Promo" title="Precio promo (vacío = sin promo)" class="in-promo">
+                        </div>
+                    </td>
+                    <td class="td-stock">
                         <?php if ($con_wepoint): ?>
                             <b><?= (int)$it['stock'] ?></b>
-                            <div class="muted small"><?= $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : 'sin sincronizar' ?></div>
                         <?php else: ?>
-                            <input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" style="width:74px">
+                            <input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num">
                         <?php endif; ?>
+                        <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>" title="Se vende">se vende <?= $disp ?></span>
+                        <?php if ($con_wepoint): ?><div class="muted small"><?= $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : 'sin sincronizar' ?></div><?php endif; ?>
                     </td>
-                    <td><input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" style="width:70px" title="Vender como máximo esta cantidad. Vacío = sin tope"></td>
-                    <td><?= $disp > 0 ? '<span class="badge badge-verde">' . $disp . '</span>' : '<span class="badge badge-gris">0</span>' ?></td>
-                    <td style="text-align:center"><input type="checkbox" name="<?= $n ?>[congelado]" value="1" <?= $it['congelado'] ? 'checked' : '' ?> title="Congelado: no se vende aunque haya stock"></td>
-                    <td style="text-align:center"><input type="checkbox" name="<?= $n ?>[activo]" value="1" <?= $it['activo'] ? 'checked' : '' ?> title="Visible en la tienda"></td>
-                    <td><input type="text" name="<?= $n ?>[sku]" value="<?= e($it['sku']) ?>" style="width:110px;text-transform:uppercase"><?= $it['wepoint_id'] ? '<div class="small" style="color:var(--green)">✓ WePoint</div>' : '' ?></td>
-                    <td><?= $it['pedidos'] ? '<span class="badge badge-amarillo">' . (int)$it['pedidos'] . '</span>' : '' ?></td>
+                    <td><input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" class="in-num" title="Vender como máximo esta cantidad. Vacío = sin tope"></td>
+                    <td class="td-estado">
+                        <label title="Visible en la tienda"><input type="checkbox" name="<?= $n ?>[activo]" value="1" <?= $it['activo'] ? 'checked' : '' ?>> Publicado</label>
+                        <label title="Congelado: no se vende aunque haya stock"><input type="checkbox" name="<?= $n ?>[congelado]" value="1" <?= $it['congelado'] ? 'checked' : '' ?>> Congelado</label>
+                    </td>
+                    <td><input type="text" name="<?= $n ?>[sku]" value="<?= e($it['sku']) ?>" class="in-sku"><?= $it['wepoint_id'] ? '<div class="small" style="color:var(--green)">✓ WePoint</div>' : '' ?></td>
                 </tr>
             <?php endforeach; ?>
             <tr style="background:var(--teal-50)">
                 <td><label class="foto-mini" title="Foto"><span>📷</span><input type="file" name="foto_nuevo" accept="image/jpeg,image/png,image/webp" hidden onchange="previewFoto(this)"></label></td>
-                <td><input type="number" name="nuevo[numero]" placeholder="auto" style="width:64px"></td>
-                <td><input type="text" name="nuevo[titulo]" placeholder="+ Agregar número…" style="min-width:210px"></td>
-                <td><input type="text" name="nuevo[precio]" inputmode="decimal" style="width:92px"></td>
-                <td colspan="6" class="muted small">El stock lo va a traer WePoint por el SKU.</td>
-                <td><input type="text" name="nuevo[sku]" style="width:110px;text-transform:uppercase"></td>
-                <td></td>
+                <td><input type="number" name="nuevo[numero]" placeholder="auto" class="in-num"></td>
+                <td class="td-titulo"><input type="text" name="nuevo[titulo]" placeholder="+ Agregar número…"></td>
+                <td><div class="precio-par"><input type="text" name="nuevo[precio]" inputmode="decimal" placeholder="Precio"></div></td>
+                <td colspan="3" class="muted small">El stock lo va a traer WePoint por el SKU.</td>
+                <td><input type="text" name="nuevo[sku]" class="in-sku" placeholder="SKU"></td>
             </tr>
         </table>
     </div>

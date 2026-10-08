@@ -352,9 +352,8 @@ async function toggleSuscripcion(btn) {
     try {
         const r = await api(activo ? 'desuscribir' : 'suscribir', { coleccion_id: btn.dataset.coleccion, origen: 'coleccion' });
         btn.dataset.suscripto = activo ? '0' : '1';
-        btn.textContent = activo ? '🔔 Avisarme novedades' : '✓ Suscripto · darme de baja';
-        btn.classList.toggle('btn-teal', activo);
-        btn.classList.toggle('btn-linea', !activo);
+        btn.textContent = activo ? '🔔 Avisarme novedades' : '🔔 Suscripto a novedades';
+        btn.title = activo ? 'Te avisamos de números nuevos, reposiciones y lanzamientos' : 'Tocá para dejar de recibir avisos';
         toast(r.mensaje);
     } catch (e) { }
     btn.disabled = false;

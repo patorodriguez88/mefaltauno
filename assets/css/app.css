@@ -154,17 +154,25 @@ p { margin: 0 0 1em; }
 /* ── Página de colección ────────────────────────────────── */
 .col-hero { background: var(--teal-50); border-bottom: 1px solid var(--line); }
 .col-hero-grid { display: grid; grid-template-columns: 300px 1fr; gap: 32px; padding: 32px 16px; align-items: start; }
+.col-hero-izq { display: grid; gap: 14px; }
+.suscribir-mini { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.suscribir-mini strong { font-family: var(--font-display); color: var(--teal-900); font-size: .95rem; }
+.suscribir-mini p { margin: 2px 0 10px; }
+.suscribir-mini .form-suscribir input { flex: 1 1 100%; }
 .col-hero-img { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: var(--white); aspect-ratio: 1; object-fit: cover; width: 100%; }
 .col-hero .crumbs { font-size: .85rem; margin-bottom: 8px; }
 .col-hero .crumbs a { color: var(--muted); text-decoration: none; }
 .col-desc { color: var(--muted); max-width: 680px; white-space: pre-line; }
 .col-desc.recortada { max-height: 7.5em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
 .col-acciones { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.col-acciones .btn-texto { text-decoration: none; }
 .mi-progreso { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-top: 16px; max-width: 520px; }
 .mi-progreso strong { font-family: var(--font-display); color: var(--teal-900); }
 @media (max-width: 760px) {
     .col-hero-grid { grid-template-columns: 1fr; padding: 20px 16px; gap: 20px; }
     .col-hero-img { max-width: 260px; }
+    .col-hero-izq { display: contents; }
+    .suscribir-mini { order: 2; }
 }
 
 .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -464,7 +472,19 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .foto-mini:hover::after { content: '📷'; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 57, 60, .45); font-size: 1.1rem; }
 .fila-congelada td { background: #eef6ff; }
 .fila-oculta td { opacity: .55; }
-.tabla-items td { padding: 8px; }
+.tabla-items td { padding: 8px 6px; }
+.tabla-items th { padding: 10px 6px; }
+.tabla-items input[type=text], .tabla-items input[type=number] { padding: 6px 8px; font-size: .9rem; }
+.tabla-items .in-num { width: 62px; }
+.tabla-items .in-sku { width: 104px; text-transform: uppercase; }
+.tabla-items .td-titulo { width: 100%; min-width: 140px; }
+.precio-par { display: grid; gap: 4px; width: 88px; }
+.precio-par .in-promo { border-style: dashed; }
+.precio-par .in-promo:not(:placeholder-shown) { border-style: solid; border-color: var(--yellow-600); background: var(--amber-100); }
+.td-stock { white-space: nowrap; }
+.td-stock .badge { margin-left: 4px; }
+.td-estado label { display: flex; align-items: center; gap: 6px; font-size: .82rem; white-space: nowrap; cursor: pointer; }
+.td-estado label + label { margin-top: 4px; }
 
 .layout-cupones { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 24px; align-items: start; }
 .acciones-cupon { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -475,11 +495,6 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .sin-sesion-botones { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
 
 /* ── Suscripciones ──────────────────────────────────────── */
-.suscribir-card { display: flex; gap: 14px; align-items: flex-start; background: var(--white); border: 1px solid var(--line); border-left: 5px solid var(--yellow-600); border-radius: var(--radius); padding: 16px; margin-top: 16px; max-width: 620px; }
-.suscribir-icono { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--yellow); display: grid; place-items: center; font-size: 1.2rem; }
-.suscribir-cuerpo { flex: 1; min-width: 0; }
-.suscribir-cuerpo strong { font-family: var(--font-display); color: var(--teal-900); }
-.suscribir-cuerpo p { margin: 2px 0 10px; }
 .form-suscribir { display: flex; gap: 8px; flex-wrap: wrap; }
 .form-suscribir input { flex: 1 1 160px; padding: 9px 12px; font-size: .92rem; }
 .form-suscribir .trampa { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
