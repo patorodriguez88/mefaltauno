@@ -20,6 +20,17 @@ function wepoint_transportista(): string {
     return defined('WEPOINT_ID_TRANSPORTISTA') ? (string)WEPOINT_ID_TRANSPORTISTA : '';
 }
 
+// Busca (o crea) el transportista propio de la empresa en WePoint y lo deja elegido para las órdenes.
+// Los transportistas de WePoint (Caddy, Retira Cliente…) dan "No tienes acceso"; uno propio se usa enseguida.
+const WEPOINT_TRANSPORTISTA_PROPIO = 'Retiro en kiosco · MeFaltaUno';
+function wepoint_transportista_propio(): string {
+    $r = wepoint_api('POST', 'v2/transportistas', ['nombre' => WEPOINT_TRANSPORTISTA_PROPIO]);
+    $tid = (string)($r['data']['id_transportista'] ?? $r['data']['id'] ?? '');
+    if ($tid === '') throw new Exception('WePoint no devolvió el id del transportista: ' . json_encode($r, JSON_UNESCAPED_UNICODE));
+    wepoint_ajuste_set('wepoint_id_transportista', $tid);
+    return $tid;
+}
+
 function wepoint_listo(): bool {
     return defined('WEPOINT_URL') && WEPOINT_URL !== '' && defined('WEPOINT_EMAIL') && WEPOINT_EMAIL !== ''
         && defined('WEPOINT_PASSWORD') && WEPOINT_PASSWORD !== '';
@@ -186,7 +197,7 @@ function wepoint_crear_orden(int $pedido_id): string {
             if (!$l['wepoint_id']) throw new Exception($l['coleccion'] . ' ' . num((int)$l['numero']) . ' no está vinculado a WePoint (falta SKU o sincronizar stock).');
             $detalle[] = ['id_producto' => (int)$l['wepoint_id'], 'cantidad' => (int)$l['cantidad'], 'precio' => max(0.01, (float)$l['precio'])];
         }
-        $r = wepoint_api('POST', 'v2/egresos/productos', [
+        $orden = [
             'no_referencia'       => 'MFU-' . $pedido_id,
             'fecha'               => date('Y-m-d'),
             'id_transportista'    => wepoint_transportista(),
@@ -201,7 +212,16 @@ function wepoint_crear_orden(int $pedido_id): string {
                 'codigo_postal' => $p['envio_cp'],
             ],
             'detalle_orden_venta' => $detalle,
-        ]);
+        ];
+        try {
+            $r = wepoint_api('POST', 'v2/egresos/productos', $orden);
+        } catch (Exception $e) {
+            // El sandbox de WePoint se borra cada noche y se lleva el transportista propio:
+            // se vuelve a crear y se reintenta una vez.
+            if (stripos($e->getMessage(), 'acceso a este transportista') === false) throw $e;
+            $orden['id_transportista'] = wepoint_transportista_propio();
+            $r = wepoint_api('POST', 'v2/egresos/productos', $orden);
+        }
         $id = (string)($r['data']['id_orden_venta'] ?? $r['data']['id'] ?? $r['id'] ?? 'MFU-' . $pedido_id);
         q("UPDATE pedidos SET wepoint_orden_id=?, wepoint_error=NULL WHERE id=?", [$id, $pedido_id]);
         registrar_historial('pedido', $pedido_id, $p['estado'], 'Orden de venta creada en WePoint: ' . $id, 'WePoint');
