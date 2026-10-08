@@ -13,6 +13,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'wepoi
     redirect('admin/pedido.php?id=' . $id);
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'caddy') {
+    csrf_exigir();
+    try {
+        $seg = caddy_crear_envio($id);
+        flash('ok', "Envío creado en Caddy ($seg).");
+    } catch (Exception $e) {
+        flash('error', 'Caddy: ' . $e->getMessage());
+    }
+    redirect('admin/pedido.php?id=' . $id);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
     try {
@@ -100,6 +111,21 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <?php if ($p['wepoint_error']): ?><div class="aviso" style="background:var(--red-100);color:var(--red);margin-bottom:10px"><?= e($p['wepoint_error']) ?></div><?php endif; ?>
                 <p class="muted small">La orden se envía sola al marcar “Pago confirmado”. Si falló o querés mandarla ahora:</p>
                 <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="wepoint"><button class="btn btn-teal btn-chico" type="submit">Enviar a WePoint</button></form>
+            <?php endif; ?>
+        </div>
+        <div class="card">
+            <h3>Caddy</h3>
+            <?php if ($p['caddy_seguimiento']): ?>
+                <p class="small" style="margin:0"><span class="badge badge-verde">Envío creado</span> Seguimiento <b><?= e($p['caddy_seguimiento']) ?></b><br>
+                    <span class="muted">Creado el <?= e(fecha($p['caddy_creado_at'])) ?> hacia el kiosco <?= e($p['envio_punto']) ?>.</span></p>
+            <?php elseif (!caddy_listo()): ?>
+                <p class="muted small" style="margin:0">Caddy todavía no está conectado (CADDY_URL / CADDY_USUARIO en config.php).</p>
+            <?php elseif (!caddy_envios_activos()): ?>
+                <p class="muted small" style="margin:0"><span class="badge badge-gris">Creación de envíos apagada</span><br>Se activa con <code>CADDY_CREAR_ENVIOS</code> en config.php<?= stripos(CADDY_URL, 'sandbox') !== false ? ' (apunta a sandbox)' : '' ?>.</p>
+            <?php else: ?>
+                <?php if ($p['caddy_error']): ?><div class="aviso" style="background:var(--red-100);color:var(--red);margin-bottom:10px"><?= e($p['caddy_error']) ?></div><?php endif; ?>
+                <p class="muted small">El envío se crea solo cuando WePoint deja el pedido “Listo para enviar”<?= stripos(CADDY_URL, 'sandbox') !== false ? ' (sandbox)' : '' ?>. Si falló o querés crearlo ahora:</p>
+                <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="caddy"><button class="btn btn-teal btn-chico" type="submit">Crear envío en Caddy</button></form>
             <?php endif; ?>
         </div>
         <div class="card">

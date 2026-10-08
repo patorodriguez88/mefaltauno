@@ -255,6 +255,14 @@ function wepoint_sincronizar_pedidos(): array {
             registrar_historial('pedido', (int)$p['id'], $estado_web, $texto, 'WePoint · ' . $estado_wp);
             if ($avanza) notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'enviado' ? null : $texto);
             $res['actualizados']++;
+            // Listo para enviar en el depósito → se crea el envío en Caddy hacia el kiosco
+            if (stripos($estado_wp, 'listo para enviar') !== false && caddy_envios_activos()) {
+                try {
+                    caddy_crear_envio((int)$p['id']);
+                } catch (Exception $e) {
+                    $res['errores'][] = '#' . $p['id'] . ' Caddy: ' . $e->getMessage();
+                }
+            }
         } catch (Exception $e) {
             $res['errores'][] = '#' . $p['id'] . ': ' . $e->getMessage();
         }

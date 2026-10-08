@@ -350,6 +350,7 @@ function historial(string $entidad, int $id): array {
 
 require __DIR__ . '/cupones.php';
 require __DIR__ . '/wepoint.php';
+require __DIR__ . '/caddy.php';
 require __DIR__ . '/suscripciones.php';
 require __DIR__ . '/carrito.php';
 require __DIR__ . '/mail.php';

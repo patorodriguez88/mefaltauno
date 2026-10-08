@@ -260,6 +260,11 @@ function schema_pasos(): array {
                 KEY idx_sku (sku)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // Envío en Caddy (se crea cuando WePoint deja el pedido "Listo para enviar")
+        10 => [
+            "ALTER TABLE pedidos ADD COLUMN caddy_seguimiento VARCHAR(40) NULL, ADD COLUMN caddy_error TEXT NULL, ADD COLUMN caddy_creado_at DATETIME NULL",
+        ],
     ];
 }
 

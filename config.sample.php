@@ -25,6 +25,14 @@ define('WEPOINT_ID_TRANSPORTISTA', '');   // transportista para las órdenes de 
 define('WEPOINT_CREAR_ORDENES',    false);  // true = los pedidos confirmados se mandan al depósito (¡solo en producción real!)
 define('WEPOINT_CRON_TOKEN',       '');   // clave para que el cron de cPanel sincronice el stock
 
+// Caddy (envíos al kiosco): se crea el envío cuando WePoint deja el pedido "Listo para enviar".
+// Sandbox: https://api.caddy.com.ar/sandbox · Producción: https://api.caddy.com.ar/api
+define('CADDY_URL',          'https://api.caddy.com.ar/sandbox');
+define('CADDY_USUARIO',      '');      // cuenta de MeFaltaUno en plataforma.caddy.com.ar
+define('CADDY_PASSWORD',     '');
+define('CADDY_BOX',          ['Length' => 20, 'Width' => 15, 'Height' => 10, 'Weight' => 1]);   // medidas por defecto (cm, kg)
+define('CADDY_CREAR_ENVIOS', false);   // true = se crean envíos reales en Caddy
+
 // Emails con acceso al panel admin (separados por coma)
 define('ADMIN_EMAILS', '');
 
