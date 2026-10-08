@@ -179,8 +179,23 @@ function requiere_login(): array {
 function requiere_admin(): array {
     $c = requiere_login();
     if (!es_admin($c)) {
+        // Un cliente que abre el panel: pantalla con el diseño del sitio y una salida clara
         http_response_code(403);
-        exit('No tenés acceso a esta sección.');
+        $titulo = 'Solo para operadores';
+        require __DIR__ . '/header.php';
+        $aca = $_SERVER['REQUEST_URI'] ?? url('admin/');
+        echo '<div class="container" style="max-width:560px;margin:48px auto"><div class="card sin-sesion" style="border-top:0">'
+            . '<div class="modal-icono">🛡️</div>'
+            . '<h3>Esta sección es para operadores</h3>'
+            . '<p class="muted">Entraste como <b>' . e($c['email']) . '</b>, que es una cuenta de cliente. Para gestionar pedidos y stock, ingresá con la cuenta de operador.</p>'
+            . '<div class="sin-sesion-botones">'
+            . '<a class="btn btn-primario" href="' . url('cuenta.php') . '">Ir a mi cuenta</a>'
+            . '<form method="post" action="' . url('salir.php') . '" style="margin:0">' . csrf_field()
+            . '<input type="hidden" name="volver" value="' . e($aca) . '">'
+            . '<button class="btn btn-linea" type="submit">Entrar como operador</button></form>'
+            . '</div></div></div>';
+        require __DIR__ . '/footer.php';
+        exit;
     }
     return $c;
 }
