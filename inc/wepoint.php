@@ -179,7 +179,7 @@ function wepoint_crear_orden(int $pedido_id): string {
 
 function wepoint_estado_web(array $ov): ?string {
     $e = mb_strtolower(trim((string)($ov['estado'] ?? '')));
-    if (in_array($e, ['completada', 'entregada', 'cerrada'], true)) return 'enviado';
+    if (in_array($e, ['completada', 'entregada', 'entregado', 'cerrada'], true)) return 'enviado';
     if ($e !== 'emitida' || !empty($ov['picking_existe'])) return 'preparando';
     return null;
 }
@@ -190,8 +190,9 @@ function wepoint_texto_estado(array $ov): string {
     $paq = $ov['paquetes'][0]['nro_paquete'] ?? null;
     if ($e === 'empaquetada') return 'Empaquetamos tu pedido' . ($paq ? " (paquete $paq)" : '') . '.';
     if (strpos($e, 'listo para enviar') !== false) return 'Tu pedido está listo para salir hacia el punto de encuentro.';
+    if (strpos($e, 'transportista') !== false) return 'Tu pedido salió del depósito y va en camino al punto de encuentro.';
     if (preg_match('/enviad|despachad|camino|transito|tránsito/u', $e)) return 'Tu pedido va en camino al punto de encuentro.';
-    if (in_array($e, ['completada', 'entregada', 'cerrada'], true)) return 'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!';
+    if (in_array($e, ['completada', 'entregada', 'entregado', 'cerrada'], true)) return 'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!';
     return 'Actualización del depósito: ' . ($ov['estado'] ?? '—') . '.';
 }
 
