@@ -33,11 +33,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nombre = trim($_POST['nombre'] ?? '');
         if ($nombre === '') throw new Exception('El nombre no puede quedar vacío.');
         $portada = subir_imagen($_FILES['foto_portada'] ?? null, 'colecciones', $col['slug']) ?? $col['imagen'];
-        q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, orden=? WHERE id=?", [
+        q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, proximamente=?, lanzamiento=?, orden=? WHERE id=?", [
             $nombre, (int)($_POST['categoria_id'] ?? 0) ?: null, trim($_POST['bajada'] ?? '') ?: null, trim($_POST['descripcion'] ?? '') ?: null,
-            $portada, !empty($_POST['activa']) ? 1 : 0, !empty($_POST['destacada']) ? 1 : 0, (int)($_POST['orden'] ?? 0), $id,
+            $portada, !empty($_POST['activa']) ? 1 : 0, !empty($_POST['destacada']) ? 1 : 0,
+            !empty($_POST['proximamente']) ? 1 : 0, mb_substr(trim($_POST['lanzamiento'] ?? ''), 0, 60) ?: null, (int)($_POST['orden'] ?? 0), $id,
         ]);
 
+        // Atajo: mismo máximo por cliente para todos los números
+        if (trim((string)($_POST['max_todos'] ?? '')) !== '') {
+            $m = max(0, (int)$_POST['max_todos']);
+            foreach ($_POST['items'] ?? [] as $k => $_) $_POST['items'][$k]['max_por_cliente'] = $m ?: '';
+        }
         $fotos = archivos_por_id('foto_item');
         $sin_publicar = [];
         foreach ((array)($_POST['items'] ?? []) as $iid => $it) {
@@ -47,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$actual) continue;
             $foto = subir_imagen($fotos[$iid] ?? null, 'items', $col['slug'] . '-' . (int)$it['numero']) ?? $actual['imagen'];
             $limite = trim((string)($it['limite'] ?? '')) === '' ? null : max(0, (int)$it['limite']);
+            $max_cli = trim((string)($it['max_por_cliente'] ?? '')) === '' ? null : max(1, (int)$it['max_por_cliente']);
             // Con WePoint el stock no se toca desde acá; sin WePoint (modo manual) sí
             $stock = $con_wepoint ? (int)$actual['stock'] : max(0, (int)($it['stock'] ?? 0));
             $precio = monto($it['precio']) ?? 0;
@@ -55,9 +62,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activo = 0;
                 $sin_publicar[] = num((int)$it['numero']) . ' (falta ' . implode(', ', $falta) . ')';
             }
-            q("UPDATE items SET numero=?, titulo=?, imagen=?, precio=?, precio_promo=?, stock=?, congelado=?, limite=?, sku=?, activo=? WHERE id=? AND coleccion_id=?", [
+            q("UPDATE items SET numero=?, titulo=?, imagen=?, precio=?, precio_promo=?, stock=?, congelado=?, limite=?, max_por_cliente=?, sku=?, activo=? WHERE id=? AND coleccion_id=?", [
                 (int)$it['numero'], $titulo, $foto, $precio, monto($it['precio_promo']),
-                $stock, !empty($it['congelado']) ? 1 : 0, $limite, strtoupper(trim($it['sku'] ?? '')) ?: null,
+                $stock, !empty($it['congelado']) ? 1 : 0, $limite, $max_cli, strtoupper(trim($it['sku'] ?? '')) ?: null,
                 $activo, (int)$iid, $id,
             ]);
         }
@@ -74,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $db->commit();
         flash('ok', 'Cambios guardados.');
+        if ($n = reservas_asignar()) flash('ok', "$n números quedaron reservados para quienes los buscaban.");
         if ($sin_publicar) flash('error', 'No se publicaron: ' . implode(' · ', $sin_publicar) . '. Para publicar un número hace falta foto, título y precio.');
     } catch (PDOException $e) {
         $db->rollBack();
@@ -95,12 +103,12 @@ admin_header($col['nombre'], 'colecciones');
 
 <form method="post" class="form" enctype="multipart/form-data">
     <?= csrf_field() ?>
-    <div class="layout-2">
+    <div class="layout-2 layout-col">
         <div class="card form">
             <h3>Datos de la colección</h3>
             <label class="campo">Nombre<input type="text" name="nombre" value="<?= e($col['nombre']) ?>" required></label>
             <label class="campo">Bajada <small>(una línea, para buscadores)</small><input type="text" name="bajada" value="<?= e($col['bajada']) ?>"></label>
-            <label class="campo">Descripción<textarea name="descripcion" rows="6"><?= e($col['descripcion']) ?></textarea></label>
+            <label class="campo campo-desc">Descripción<textarea name="descripcion" rows="6"><?= e($col['descripcion']) ?></textarea></label>
         </div>
         <aside class="card form">
             <div class="foto-portada">
@@ -114,6 +122,9 @@ admin_header($col['nombre'], 'colecciones');
             <label class="campo">Orden<input type="number" name="orden" value="<?= (int)$col['orden'] ?>"></label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="activa" value="1" <?= $col['activa'] ? 'checked' : '' ?>> Publicada en la tienda</label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="destacada" value="1" <?= $col['destacada'] ? 'checked' : '' ?>> Destacada en el inicio</label>
+            <label class="tengo-toggle" style="color:var(--ink)" title="Se ve en la tienda y la pueden seguir y suscribirse, pero todavía no se vende"><input type="checkbox" name="proximamente" value="1" <?= $col['proximamente'] ? 'checked' : '' ?>> Próximamente <small class="muted">(se ve, no se vende)</small></label>
+            <label class="campo">Lanzamiento <small>(opcional, ej: “Noviembre 2026”)</small><input type="text" name="lanzamiento" maxlength="60" value="<?= e($col['lanzamiento']) ?>"></label>
+            <label class="campo">Máximo por cliente <small>(para todos los números; vacío = no cambiar)</small><input type="number" name="max_todos" min="0" placeholder="Ej: 2 · 0 = sin máximo"></label>
             <button class="btn btn-primario" type="submit">Guardar todo</button>
         </aside>
     </div>
@@ -128,7 +139,7 @@ admin_header($col['nombre'], 'colecciones');
     </div>
     <div class="tabla-wrap">
         <table class="tabla tabla-items">
-            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope</th><th>Estado</th><th>SKU</th></tr>
+            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope / x cliente</th><th>Estado</th><th>SKU</th></tr>
             <?php foreach ($items as $it): $n = 'items[' . (int)$it['id'] . ']'; $disp = disponible($it); ?>
                 <tr class="<?= $it['congelado'] ? 'fila-congelada' : '' ?><?= !$it['activo'] ? ' fila-oculta' : '' ?>">
                     <td>
@@ -154,10 +165,14 @@ admin_header($col['nombre'], 'colecciones');
                         <?php else: ?>
                             <input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num">
                         <?php endif; ?>
-                        <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>" title="Se vende">se vende <?= $disp ?></span>
+                        <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>" title="Se vende al público">se vende <?= $disp ?></span>
+                        <?php if ($res = array_sum(reservas_mapa()[(int)$it['id']] ?? [])): ?><span class="badge badge-amarillo" title="Guardado para quien lo buscaba (<?= RESERVA_HORAS ?> h)">reservado <?= $res ?></span><?php endif; ?>
                         <?php if ($con_wepoint): ?><div class="muted small"><?= $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : 'sin sincronizar' ?></div><?php endif; ?>
                     </td>
-                    <td><input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" class="in-num" title="Vender como máximo esta cantidad. Vacío = sin tope"></td>
+                    <td class="td-topes">
+                        <input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" class="in-num" title="Tope total: vender como máximo esta cantidad. Vacío = sin tope">
+                        <input type="number" name="<?= $n ?>[max_por_cliente]" value="<?= $it['max_por_cliente'] !== null ? (int)$it['max_por_cliente'] : '' ?>" min="1" placeholder="x cli." class="in-num" title="Máximo que puede comprar cada cliente (sumando sus pedidos). Vacío = sin máximo">
+                    </td>
                     <td class="td-estado">
                         <label title="<?= $it['imagen'] ? 'Visible en la tienda' : 'Subí una foto para poder publicarlo' ?>"><input type="checkbox" name="<?= $n ?>[activo]" value="1" <?= $it['activo'] ? 'checked' : '' ?> <?= $it['imagen'] ? '' : 'disabled data-sin-foto' ?>> Publicado</label>
                         <?php if (!$it['imagen']): ?><div class="small" style="color:var(--amber)">Falta foto</div><?php endif; ?>

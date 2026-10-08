@@ -40,16 +40,17 @@ function carrito_lineas(): array {
     $in = implode(',', array_fill(0, count($ids), '?'));
     $rows = q("SELECT i.*, c.nombre AS coleccion, c.slug AS coleccion_slug, c.imagen AS coleccion_imagen
                FROM items i JOIN colecciones c ON c.id=i.coleccion_id
-               WHERE i.id IN ($in) AND i.activo=1 AND c.activa=1", $ids)->fetchAll();
+               WHERE i.id IN ($in) AND i.activo=1 AND c.activa=1 AND c.proximamente=0", $ids)->fetchAll();
     $out = $vacio;
     $vistos = [];
     foreach ($rows as $it) {
         $vistos[] = (int)$it['id'];
         $cant = (int)$c[$it['id']];
-        $disp = disponible($it);
+        $disp = comprable($it);
         if ($cant > $disp) {
             $cant = $disp;
-            $out['ajustes'][] = $it['coleccion'] . ' ' . num((int)$it['numero']) . ($cant ? ": quedan $cant" : ': ya no está disponible');
+            $tope = isset($it['max_por_cliente']) && $it['max_por_cliente'] !== null && $disp < disponible($it);
+            $out['ajustes'][] = $it['coleccion'] . ' ' . num((int)$it['numero']) . ($tope ? ': máximo ' . (int)$it['max_por_cliente'] . ' por cliente' : ($cant ? ": quedan $cant" : ': ya no está disponible'));
             carrito_set((int)$it['id'], $cant);
             if (!$cant) continue;
         }

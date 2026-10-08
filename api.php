@@ -16,7 +16,7 @@ function exigir_login(?array $cli): array {
 
 function item_activo(int $id): array {
     $it = q("SELECT i.*, c.nombre AS coleccion FROM items i JOIN colecciones c ON c.id=i.coleccion_id
-             WHERE i.id=? AND i.activo=1 AND c.activa=1", [$id])->fetch();
+             WHERE i.id=? AND i.activo=1 AND c.activa=1 AND c.proximamente=0", [$id])->fetch();
     if (!$it) throw new Exception('Ese número ya no está disponible.');
     return $it;
 }
@@ -36,8 +36,8 @@ try {
     case 'carrito_agregar':
         $it = item_activo((int)($_POST['item_id'] ?? 0));
         $actual = carrito()[$it['id']] ?? 0;
-        $disp = disponible($it);
-        if ($actual + 1 > $disp) throw new Exception($disp > 0 ? 'No quedan más unidades de ese número.' : 'Sin stock: activá la búsqueda y salimos a buscarlo.');
+        $disp = comprable($it);
+        if ($actual + 1 > $disp) throw new Exception(disponible($it) > 0 ? motivo_tope($it, $disp) : 'Sin stock: activá la búsqueda y salimos a buscarlo.');
         carrito_set((int)$it['id'], $actual + 1);
         json_out(['ok' => true, 'carrito' => carrito_cantidad(), 'mensaje' => num((int)$it['numero']) . ' se sumó a tu equipo ⚡']);
 
@@ -46,7 +46,7 @@ try {
         foreach ((array)($_POST['item_ids'] ?? []) as $id) {
             try { $it = item_activo((int)$id); } catch (Exception $e) { continue; }
             $actual = carrito()[$it['id']] ?? 0;
-            if ($actual + 1 > disponible($it)) continue;
+            if ($actual + 1 > comprable($it)) continue;
             carrito_set((int)$it['id'], $actual + 1);
             $n++;
         }
@@ -58,7 +58,7 @@ try {
         $cant = max(0, (int)($_POST['cantidad'] ?? 0));
         if ($cant > 0) {
             $it = item_activo($id);
-            if ($cant > disponible($it)) throw new Exception('Solo quedan ' . disponible($it) . ' unidades.');
+            if ($cant > ($puede = comprable($it))) throw new Exception(motivo_tope($it, $puede));
         }
         carrito_set($id, $cant);
         json_out(['ok' => true, 'carrito' => carrito_cantidad()]);

@@ -240,10 +240,17 @@ function foto(?string $v, string $icono = '📦', string $estilo = ''): string {
 
 // Unidades que se pueden vender: el stock lo informa WePoint; el operador solo
 // puede congelar el número o ponerle un tope (nunca sumar unidades).
-function disponible(array $it): int {
+// Unidades que puede comprar quien está mirando: lo que hay, menos lo reservado para otros clientes
+// (inc/reservas.php). $cliente_id = -1 → el cliente con sesión; null → el público en general.
+function disponible(array $it, ?int $cliente_id = -1): int {
     if (!empty($it['congelado'])) return 0;
     $st = max(0, (int)$it['stock']);
-    return isset($it['limite']) && $it['limite'] !== null ? min($st, max(0, (int)$it['limite'])) : $st;
+    if (isset($it['limite']) && $it['limite'] !== null) $st = min($st, max(0, (int)$it['limite']));
+    if (empty($it['id'])) return $st;
+    if ($cliente_id === -1) $cliente_id = (int)(cliente()['id'] ?? 0) ?: null;
+    $res = reservas_mapa()[(int)$it['id']] ?? [];
+    $de_otros = array_sum($res) - ($cliente_id ? ($res[$cliente_id] ?? 0) : 0);
+    return max(0, $st - $de_otros);
 }
 
 function num(int $n): string {
@@ -373,6 +380,7 @@ function historial(string $entidad, int $id): array {
 require __DIR__ . '/cupones.php';
 require __DIR__ . '/wepoint.php';
 require __DIR__ . '/caddy.php';
+require __DIR__ . '/reservas.php';
 require __DIR__ . '/suscripciones.php';
 require __DIR__ . '/carrito.php';
 require __DIR__ . '/mail.php';

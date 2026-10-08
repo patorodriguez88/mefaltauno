@@ -5,7 +5,7 @@ function tarjeta_coleccion(array $c): string {
     $img = $c['imagen'] ? ' style="background-image:url(\'' . e(img($c['imagen'])) . '\')"' : '';
     $cant = !empty($c['total']) ? (int)$c['total'] . ' números' : '';
     return '<a class="col-card" href="' . url('coleccion.php?c=' . urlencode($c['slug'])) . '">'
-        . '<div class="col-card-img"' . $img . '></div>'
+        . '<div class="col-card-img"' . $img . '>' . (!empty($c['proximamente']) ? '<span class="chip chip-amarillo">Próximamente' . (!empty($c['lanzamiento']) ? ' · ' . e($c['lanzamiento']) : '') . '</span>' : '') . '</div>'
         . '<div class="col-card-body"><h3>' . e($c['nombre']) . '</h3>'
         . '<div class="col-card-meta"><span class="muted">' . $cant . '</span><strong>' . precio((float)($c['desde'] ?? 0)) . '</strong></div>'
         . '</div></a>';

@@ -57,6 +57,9 @@ require __DIR__ . '/inc/header.php';
                 <?php if ($col['categoria']): ?> / <a href="<?= url('colecciones.php?cat=' . urlencode($col['categoria_slug'])) ?>"><?= e($col['categoria']) ?></a><?php endif; ?>
             </div>
             <h1><?= e($col['nombre']) ?></h1>
+            <?php if ($col['proximamente']): ?>
+                <div class="proximamente-banner">🚀 <b>Próximamente<?= $col['lanzamiento'] ? ' · ' . e($col['lanzamiento']) : '' ?>.</b> Todavía no se vende: sumala a tu base y activá las novedades para enterarte primero.</div>
+            <?php endif; ?>
             <div class="col-desc recortada" id="col-desc"><?= e($col['descripcion']) ?></div>
             <button class="btn-texto" type="button" data-vermas="col-desc">Ver más</button>
 
@@ -119,15 +122,21 @@ require __DIR__ . '/inc/header.php';
                             <strong><?= precio($p) ?></strong>
                             <?php if ($p < (float)$it['precio']): ?><s><?= precio((float)$it['precio']) ?></s><?php endif; ?>
                         </div>
-                        <div class="item-stock <?= $stock > 0 ? 'si' : 'no' ?>">
-                            <?= $stock > 0 ? ($stock <= 3 ? "¡Quedan solo $stock!" : 'Disponible') : 'Sin stock · salimos a buscarlo' ?>
+                        <?php $mi_res = $socio ? reserva_de((int)$it['id'], (int)$cli['id']) : null; ?>
+                        <div class="item-stock <?= $stock > 0 && !$col['proximamente'] ? 'si' : 'no' ?>">
+                            <?php if ($col['proximamente']): ?>Próximamente
+                            <?php elseif ($mi_res): ?>🎯 Te lo guardamos hasta el <?= e(fecha($mi_res['vence_at'])) ?>
+                            <?php elseif ($stock > 0): ?><?= $stock <= 3 ? "¡Quedan solo $stock!" : 'Disponible' ?><?= $it['max_por_cliente'] ? ' · máx. ' . (int)$it['max_por_cliente'] . ' por cliente' : '' ?>
+                            <?php else: ?>Sin stock · salimos a buscarlo<?php endif; ?>
                         </div>
                         <div class="item-acciones">
                             <?php if ($socio): ?>
                                 <label class="tengo-toggle"><input type="checkbox" <?= $estado === 'tengo' ? 'checked' : '' ?>> Lo tengo</label>
                                 <label class="sel-toggle" <?= $estado !== 'falta' ? 'hidden' : '' ?>><input type="checkbox"> Lo quiero</label>
                             <?php endif; ?>
-                            <?php if ($stock > 0): ?>
+                            <?php if ($col['proximamente']): ?>
+                                <span class="btn btn-linea btn-chico btn-bloque" aria-disabled="true" style="pointer-events:none;opacity:.7">Próximamente</span>
+                            <?php elseif ($stock > 0): ?>
                                 <button class="btn btn-teal btn-chico btn-bloque btn-carrito" type="button" onclick="agregarAlCarrito(<?= (int)$it['id'] ?>, this)">
                                     <?= isset($en_carrito[$it['id']]) ? 'Agregar otro' : 'Agregar al carrito' ?>
                                 </button>

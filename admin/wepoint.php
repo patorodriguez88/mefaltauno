@@ -93,6 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (in_array($accion, ['cargar_stock', 'sincronizar'], true)) {
             $s = wepoint_sincronizar_stock();
+            reservas_vencer();
+            $reservadas = reservas_asignar();
+            if ($reservadas) $log[] = "$reservadas números encontrados quedaron reservados para quienes los buscaban.";
             $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia · ' . $s['nuevos'] . ' productos nuevos por publicar.';
         }
         if ($accion === 'crear_transportista') {

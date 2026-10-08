@@ -33,7 +33,7 @@ $cols = q("SELECT c.*, cat.nombre AS categoria, COUNT(i.id) AS total, SUM(i.stoc
            GROUP BY c.id " . ($sin_stock ? 'HAVING sin_stock > 0' : '') . " ORDER BY c.activa DESC, c.orden, c.nombre")->fetchAll();
 
 $por_publicar = wepoint_nuevos_pendientes();
-admin_header('Colecciones', 'colecciones');
+admin_header('Stock', 'colecciones');
 ?>
 
 <?php if ($por_publicar): ?>
@@ -44,7 +44,7 @@ admin_header('Colecciones', 'colecciones');
 <?php endif; ?>
 
 <div class="section-head">
-    <h1 style="margin:0">Colecciones y stock</h1>
+    <h1 style="margin:0">Stock</h1>
     <?php if ($sin_stock): ?><a href="<?= url('admin/colecciones.php') ?>">Ver todas</a><?php endif; ?>
 </div>
 

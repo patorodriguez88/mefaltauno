@@ -265,6 +265,33 @@ function schema_pasos(): array {
         10 => [
             "ALTER TABLE pedidos ADD COLUMN caddy_seguimiento VARCHAR(40) NULL, ADD COLUMN caddy_error TEXT NULL, ADD COLUMN caddy_creado_at DATETIME NULL",
         ],
+
+        // Reservas: el número encontrado se le guarda 72 h a quien lo buscaba (inc/reservas.php)
+        11 => [
+            "CREATE TABLE IF NOT EXISTS reservas (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id INT NOT NULL,
+                cliente_id INT NOT NULL,
+                solicitud_item_id INT NULL,
+                cantidad INT NOT NULL DEFAULT 1,
+                estado VARCHAR(12) NOT NULL DEFAULT 'activa',
+                origen VARCHAR(10) NOT NULL DEFAULT 'auto',
+                vence_at DATETIME NOT NULL,
+                pedido_id INT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_item_estado (item_id, estado),
+                KEY idx_cli (cliente_id),
+                KEY idx_si (solicitud_item_id),
+                CONSTRAINT fk_res_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+                CONSTRAINT fk_res_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
+
+        // Colecciones "Próximamente" (visibles, sin venta) y máximo de compra por cliente
+        12 => [
+            "ALTER TABLE colecciones ADD COLUMN proximamente TINYINT(1) NOT NULL DEFAULT 0 AFTER destacada, ADD COLUMN lanzamiento VARCHAR(60) NULL AFTER proximamente",
+            "ALTER TABLE items ADD COLUMN max_por_cliente INT NULL AFTER limite",
+        ],
     ];
 }
 

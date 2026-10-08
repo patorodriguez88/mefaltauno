@@ -14,7 +14,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'inicio'      => ['', 'Resumen'],
         'pedidos'     => ['pedidos.php', 'Pedidos' . ($pend_ped ? " ($pend_ped)" : '')],
         'faltantes'   => ['faltantes.php', 'Me faltan' . ($pend_sol ? " ($pend_sol)" : '')],
-        'colecciones' => ['colecciones.php', 'Colecciones y stock' . ($pend_pub ? " ($pend_pub)" : '')],
+        'colecciones' => ['colecciones.php', 'Stock' . ($pend_pub ? " ($pend_pub)" : '')],
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
         'suscripciones' => ['suscripciones.php', 'Suscripciones'],

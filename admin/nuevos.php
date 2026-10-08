@@ -14,18 +14,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$col) throw new Exception('Elegí la colección.');
         $numero = (int)($_POST['numero'] ?? 0);
         if ($numero <= 0) throw new Exception('Indicá el número.');
-        if (q("SELECT 1 FROM items WHERE coleccion_id=? AND numero=?", [$col['id'], $numero])->fetchColumn()) {
-            throw new Exception($col['nombre'] . ' ya tiene el ' . num($numero) . '. Elegí otro número' . ($n['sku'] ? ' o, si es el mismo, cargale el SKU ' . $n['sku'] . ' desde la colección' : '') . '.');
-        }
         $titulo = trim($_POST['titulo'] ?? '');
-        if ($titulo === '') throw new Exception('Poné el título.');
         $precio = (float)str_replace(['.', ','], ['', '.'], (string)($_POST['precio'] ?? '0'));
         $foto = subir_imagen($_FILES['foto'] ?? null, 'items', $col['slug'] . '-' . $numero);
-        $falta = item_falta_para_publicar($foto, $titulo, $precio);
-        q("INSERT INTO items (coleccion_id, numero, titulo, imagen, precio, stock, sku, wepoint_id, stock_sync_at, activo) VALUES (?,?,?,?,?,?,?,?,NOW(),?)",
-          [$col['id'], $numero, $titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1]);
+        $existe = q("SELECT * FROM items WHERE coleccion_id=? AND numero=?", [$col['id'], $numero])->fetch();
+        if ($existe) {
+            // El número ya estaba cargado (ej: colección "Próximamente"): se vincula a este producto de WePoint
+            if ($existe['wepoint_id'] && (string)$existe['wepoint_id'] !== (string)$n['wepoint_id']) {
+                throw new Exception($col['nombre'] . ' ' . num($numero) . ' ya está vinculado a otro producto de WePoint (id ' . $existe['wepoint_id'] . '). Elegí otro número.');
+            }
+            $titulo = $existe['titulo'] !== '' ? $existe['titulo'] : $titulo;
+            $precio = (float)$existe['precio'] > 0 ? (float)$existe['precio'] : $precio;
+            $foto = $foto ?: $existe['imagen'];
+            $falta = item_falta_para_publicar($foto, $titulo, $precio);
+            q("UPDATE items SET titulo=?, imagen=?, precio=?, stock=?, sku=COALESCE(NULLIF(sku,''), ?), wepoint_id=?, stock_sync_at=NOW(), activo=? WHERE id=?",
+              [$titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1, $existe['id']]);
+            $item_id = (int)$existe['id'];
+            flash('ok', 'Vinculado al ' . num($numero) . ' que ya existía en ' . $col['nombre'] . '.');
+        } else {
+            if ($titulo === '') throw new Exception('Poné el título.');
+            $falta = item_falta_para_publicar($foto, $titulo, $precio);
+            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, precio, stock, sku, wepoint_id, stock_sync_at, activo) VALUES (?,?,?,?,?,?,?,?,NOW(),?)",
+              [$col['id'], $numero, $titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1]);
+            $item_id = (int)db()->lastInsertId();
+        }
         q("DELETE FROM wepoint_nuevos WHERE wepoint_id=?", [$wid]);
-        if ($falta) flash('error', num($numero) . ' de ' . $col['nombre'] . ' quedó creado pero sin publicar: falta ' . implode(', ', $falta) . '.');
+        // ¿Es lo que pidió alguien en "Me falta"? Se vincula y, si hay stock, se le reserva
+        $si_id = (int)($_POST['solicitud_item_id'] ?? 0);
+        if ($si_id && q("UPDATE solicitud_items SET item_id=? WHERE id=? AND item_id IS NULL", [$item_id, $si_id])->rowCount()) {
+            if (reservas_asignar()) flash('ok', 'Quedó reservado ' . RESERVA_HORAS . ' h para quien lo buscaba, y le avisamos por mail.');
+        }
+        if ($falta) flash('error', num($numero) . ' de ' . $col['nombre'] . ' quedó cargado pero sin publicar: falta ' . implode(', ', $falta) . '.');
         else flash('ok', num($numero) . ' de ' . $col['nombre'] . ' ya está publicado en la tienda.');
         redirect('admin/coleccion.php?id=' . (int)$col['id']);
     } catch (Exception $e) {
@@ -36,18 +55,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $nuevos = q("SELECT * FROM wepoint_nuevos ORDER BY nombre")->fetchAll();
 $cols = q("SELECT id, nombre FROM colecciones ORDER BY nombre")->fetchAll();
+// Búsquedas libres abiertas (números que no estaban en el catálogo): alguno puede ser este producto
+$libres = q("SELECT si.id, si.descripcion, s.id AS solicitud_id, c.nombre, c.apellido FROM solicitud_items si
+             JOIN solicitudes s ON s.id=si.solicitud_id JOIN clientes c ON c.id=s.cliente_id
+             WHERE si.item_id IS NULL AND s.estado IN ('pendiente','buscando') ORDER BY s.created_at")->fetchAll();
 $ultima = q("SELECT valor FROM ajustes WHERE clave='wepoint_ultima_sync'")->fetchColumn();
 
 admin_header('Por publicar', 'colecciones');
 ?>
 
-<p><a href="<?= url('admin/colecciones.php') ?>">← Colecciones y stock</a></p>
+<p><a href="<?= url('admin/colecciones.php') ?>">← Stock</a></p>
 <div class="section-head">
     <h1 style="margin:0">Por publicar</h1>
 </div>
 <div class="aviso" style="margin-bottom:16px;background:var(--teal-50);color:var(--teal-900)">
     Acá aparece <b>todo lo que está en la cuenta de WePoint</b> y todavía no es un número de la web.
-    Elegí la colección y el número, revisá título y precio, subí la foto y crealo. <b>Sin foto, título o precio se crea pero no se publica.</b>
+    Elegí la colección y el número, revisá título y precio, subí la foto y crealo. <b>Si el número ya existe</b> (por ejemplo, de una colección “Próximamente”), se vincula a ese. <b>Sin foto, título o precio se crea pero no se publica.</b>
     El stock es el disponible para venta: lo recepcionado que el depósito todavía no ubicó cuenta como 0.
     <?php if ($ultima): ?><br><span class="small">Última sincronización con WePoint: <?= e(fecha($ultima)) ?></span><?php endif; ?>
 </div>
@@ -82,8 +105,16 @@ admin_header('Por publicar', 'colecciones');
                     <label class="campo">Título<input type="text" name="titulo" value="<?= e($nv['nombre'] ?? '') ?>" required></label>
                     <label class="campo campo-precio">Precio<input type="text" name="precio" inputmode="decimal" value="<?= $nv['precio'] !== null ? e((float)$nv['precio']) : '' ?>" required></label>
                 </div>
+                <?php if ($libres): ?>
+                    <label class="campo">¿Lo estaba buscando alguien? <small>Se le reserva <?= RESERVA_HORAS ?> h y le avisamos</small>
+                        <select name="solicitud_item_id">
+                            <option value="">No, nadie</option>
+                            <?php foreach ($libres as $l): ?><option value="<?= (int)$l['id'] ?>">#<?= (int)$l['solicitud_id'] ?> · <?= e(nombre_cliente($l)) ?> · <?= e($l['descripcion']) ?></option><?php endforeach; ?>
+                        </select>
+                    </label>
+                <?php endif; ?>
                 <div class="nuevo-acciones">
-                    <button class="btn btn-primario btn-chico" type="submit">Crear número</button>
+                    <button class="btn btn-primario btn-chico" type="submit">Crear o vincular número</button>
                 </div>
             </div>
         </form>

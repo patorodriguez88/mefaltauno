@@ -32,9 +32,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             // Revalidar disponibilidad con bloqueo y descontarla (se devuelve si el pedido se cancela)
             $subtotal = 0;
+            reservas_mapa(true);
             foreach ($c['lineas'] as $l) {
-                $fila = q("SELECT stock, congelado, limite FROM items WHERE id=? FOR UPDATE", [$l['item']['id']])->fetch();
-                if (!$fila || disponible($fila) < $l['cantidad']) throw new Exception('Se agotó ' . $l['item']['coleccion'] . ' ' . num((int)$l['item']['numero']) . '. Revisá tu carrito.');
+                $fila = q("SELECT id, stock, congelado, limite, max_por_cliente FROM items WHERE id=? FOR UPDATE", [$l['item']['id']])->fetch();
+                if (!$fila) throw new Exception('Se agotó ' . $l['item']['coleccion'] . ' ' . num((int)$l['item']['numero']) . '. Revisá tu carrito.');
+                $puede = comprable($fila, (int)$cli['id']);
+                if ($puede < $l['cantidad']) {
+                    throw new Exception($l['item']['coleccion'] . ' ' . num((int)$l['item']['numero']) . ': '
+                        . ($puede < disponible($fila, (int)$cli['id']) ? motivo_tope($fila, $puede) : 'se agotó.') . ' Revisá tu carrito.');
+                }
                 $subtotal += $l['total'];
             }
             // Código de descuento: se revalida y se cuenta el uso dentro de la misma transacción
@@ -58,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 q("INSERT INTO pedido_items (pedido_id, item_id, coleccion, numero, titulo, precio, cantidad) VALUES (?,?,?,?,?,?,?)",
                   [$pid, $it['id'], $it['coleccion'], $it['numero'], $it['titulo'], $l['precio'], $l['cantidad']]);
                 q("UPDATE items SET stock = stock - ?, limite = IF(limite IS NULL, NULL, limite - ?) WHERE id=?", [$l['cantidad'], $l['cantidad'], $it['id']]);
+                reservas_usar((int)$cli['id'], (int)$it['id'], (int)$l['cantidad'], $pid);
                 q("INSERT IGNORE INTO cliente_colecciones (cliente_id, coleccion_id) VALUES (?,?)", [$cli['id'], $it['coleccion_id']]);
             }
             registrar_historial('pedido', $pid, 'pendiente', null, nombre_cliente($cli));
