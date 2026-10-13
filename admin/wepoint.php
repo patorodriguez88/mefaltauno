@@ -35,6 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($accion, ['crear_productos', 'cargar_stock'], true) && !$sandbox) {
             throw new Exception('Solo se pueden crear datos de prueba con WEPOINT_URL apuntando al sandbox.');
         }
+        // Pasar a producción: borra lo que quedó del sandbox. Conserva colecciones, números, fotos, precios y lo de Brihet.
+        if ($accion === 'limpiar_prueba') {
+            if (trim((string)($_POST['confirmar'] ?? '')) !== 'LIMPIAR') throw new Exception('Escribí LIMPIAR para confirmar.');
+            $db = db();
+            $db->beginTransaction();
+            $n_stock = q("UPDATE items SET stock=0, stock_sync_at=NULL WHERE stock<>0")->rowCount();
+            $n_vinc = q("UPDATE items SET wepoint_id=NULL WHERE wepoint_id IS NOT NULL")->rowCount();
+            $n_sku = q("UPDATE items SET sku=NULL WHERE sku LIKE 'MFU-%'")->rowCount();   // SKUs que inventamos para el sandbox
+            $n_nuevos = q("DELETE FROM wepoint_nuevos")->rowCount();
+            $n_res = q("UPDATE reservas SET estado='liberada' WHERE estado='activa' AND stock='fisico'")->rowCount();
+            q("DELETE FROM ajustes WHERE clave IN ('wepoint_token','wepoint_id_transportista','wepoint_ultima_sync','wepoint_ultimo_resultado','wepoint_ultima_sync_pedidos')");
+            $db->commit();
+            $log[] = "Listo: $n_stock números quedaron con stock 0, $n_vinc vínculos y $n_sku SKUs de prueba borrados, $n_nuevos productos sacados de 'Por publicar' y $n_res reservas de depósito liberadas.";
+        }
         if ($accion === 'crear_productos') {
             $items = q("SELECT i.*, c.nombre AS coleccion FROM items i JOIN colecciones c ON c.id=i.coleccion_id ORDER BY i.coleccion_id, i.numero")->fetchAll();
             $n = 0;
@@ -215,5 +229,18 @@ admin_header('WePoint', 'wepoint');
     </aside>
 </div>
 <?php endif; ?>
+
+
+<div class="card" style="border-color:var(--red);margin-top:24px">
+    <h3>Pasar a producción: limpiar el stock de prueba</h3>
+    <p class="small">Pone en <b>0 el stock de depósito</b> de todos los números, borra los vínculos y SKUs del WePoint de prueba, vacía <b>Por publicar</b>, libera las reservas de depósito y olvida el token y el transportista del sandbox.
+        <b>No toca</b> colecciones, números, fotos, precios, lo importado de Brihet (por encargue) ni pedidos.</p>
+    <p class="small muted">Hoy: <?= (int)q("SELECT COUNT(*) FROM items WHERE stock>0")->fetchColumn() ?> números con stock de depósito · <?= $vinculados ?> vinculados · <?= (int)q("SELECT COUNT(*) FROM items WHERE sku LIKE 'MFU-%'")->fetchColumn() ?> SKUs de prueba · <?= (int)q("SELECT COUNT(*) FROM items WHERE sku IS NOT NULL AND sku<>'' AND sku NOT LIKE 'MFU-%'")->fetchColumn() ?> SKUs cargados a mano (se conservan) · <?= (int)q("SELECT COUNT(*) FROM wepoint_nuevos")->fetchColumn() ?> en Por publicar.</p>
+    <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" onsubmit="return confirm('¿Limpiar el stock de prueba? No se puede deshacer.')">
+        <?= csrf_field() ?><input type="hidden" name="accion" value="limpiar_prueba">
+        <input type="text" name="confirmar" placeholder="Escribí LIMPIAR" autocomplete="off" style="width:170px" required>
+        <button class="btn btn-chico" style="background:var(--red);color:#fff" type="submit">Limpiar stock de prueba</button>
+    </form>
+</div>
 
 <?php admin_footer(); ?>
