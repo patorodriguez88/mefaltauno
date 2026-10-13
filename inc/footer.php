@@ -45,12 +45,23 @@
                 <a href="<?= url('me-falta.php') ?>">Pedir un número que me falta</a>
             <?php endif; ?>
         </div>
+        <div>
+            <h4>Ayuda y legales</h4>
+            <a href="<?= url('terminos.php') ?>">Términos y condiciones</a>
+            <a href="<?= url('privacidad.php') ?>">Privacidad y cookies</a>
+            <a class="link-consumidor" href="<?= e(URL_DEFENSA_CONSUMIDOR) ?>" target="_blank" rel="noopener">Defensa de las y los consumidores. Para reclamos ingrese aquí</a>
+            <a class="btn-arrepentimiento" href="<?= url('arrepentimiento.php') ?>">Botón de arrepentimiento</a>
+        </div>
     </div>
-    <div class="container footer-legal">&copy; <?= date('Y') ?> MeFaltaUno · Dinter S.A.</div>
+    <div class="container footer-legal">&copy; <?= date('Y') ?> MeFaltaUno · <?= e(legal('razon_social')) ?><?= legal('cuit') ? ' · CUIT ' . e(legal('cuit')) : '' ?><?= legal('domicilio') ? ' · ' . e(legal('domicilio')) : '' ?></div>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<div class="aviso-cookies" id="aviso-cookies" role="region" aria-label="Aviso de cookies" hidden>
+    <span>🍪 Usamos solo cookies necesarias para que funcionen tu sesión y tu carrito. <a href="<?= url('privacidad.php#cookies') ?>">Más info</a></span>
+    <button class="btn btn-primario btn-chico" type="button">Entendido</button>
+</div>
 <dialog class="modal" id="modal" aria-labelledby="modal-titulo">
     <form method="dialog" class="modal-caja">
         <button class="modal-cerrar" value="cancelar" aria-label="Cerrar">&times;</button>

@@ -25,7 +25,8 @@ function subir_imagen(?array $f, string $carpeta, string $prefijo): ?string {
     if (!is_dir($dir) && !mkdir($dir, 0775, true)) throw new Exception('No se pudo crear la carpeta de fotos.');
     subidas_proteger(dirname(__DIR__) . '/uploads');
     $nombre = slugify($prefijo) . '-' . bin2hex(random_bytes(4)) . '.jpg';
-    if (!imagejpeg($dst, "$dir/$nombre", 85)) throw new Exception('No se pudo guardar la foto.');
+    // Las que no se achican (ej: fotos chicas de Brihet, 400 px) se guardan con más calidad para no perder detalle
+    if (!imagejpeg($dst, "$dir/$nombre", $escala < 1 ? 85 : 92)) throw new Exception('No se pudo guardar la foto.');
     imagedestroy($src);
     imagedestroy($dst);
     return "uploads/$carpeta/$nombre";

@@ -35,7 +35,7 @@ require __DIR__ . '/inc/header.php';
     <?php require __DIR__ . '/inc/auth_panel.php'; ?>
     <div class="auth-form">
         <h1>Volviste, coleccionista</h1>
-        <p class="muted">Tu equipo te estaba esperando. Ingresá para ver tus colecciones y quién falta.</p>
+        <p class="muted">Tu colección te estaba esperando. Ingresá para ver tus colecciones y qué números te faltan.</p>
         <form method="post" class="form">
             <?= csrf_field() ?>
             <input type="hidden" name="volver" value="<?= e(volver_actual()) ?>">

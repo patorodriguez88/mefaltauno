@@ -34,7 +34,7 @@ require __DIR__ . '/inc/header.php';
     <?php require __DIR__ . '/inc/auth_panel.php'; ?>
     <div class="auth-form">
         <h1>Sumate a la liga</h1>
-        <p class="muted">Tu base de coleccionista: marcá los que tenés, mirá quién falta en tu equipo y te avisamos cuando lo rescatamos.</p>
+        <p class="muted">Armá Mis colecciones: marcá los números que tenés, mirá qué te falta y te avisamos cuando lo rescatamos.</p>
         <?php foreach ($errores as $er): ?><div class="flash flash-error" style="margin-bottom:8px"><?= e($er) ?></div><?php endforeach; ?>
         <form method="post" class="form">
             <?= csrf_field() ?>

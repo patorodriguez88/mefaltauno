@@ -86,7 +86,7 @@ async function agregarAlCarrito(itemId, btn) {
         const bar = document.getElementById('prog-bar');
         if (bar) bar.style.width = pct + '%';
         const txt = document.getElementById('prog-txt');
-        if (txt) txt.innerHTML = `Tu equipo: <strong>${tengo}</strong> de ${total}` + (total - tengo ? ` · faltan <strong>${total - tengo}</strong> por reclutar` : ' · ¡Equipo completo, misión cumplida! 🏆');
+        if (txt) txt.innerHTML = `Tu colección: <strong>${tengo}</strong> de ${total}` + (total - tengo ? ` · te faltan <strong>${total - tengo}</strong>` : ' · ¡Colección completa, misión cumplida! 🏆');
         document.querySelectorAll('[data-cnt]').forEach(el => {
             const k = el.dataset.cnt;
             el.textContent = k === 'todos' ? total : k === 'tengo' ? tengo : total - tengo;
@@ -121,7 +121,7 @@ async function agregarAlCarrito(itemId, btn) {
                 contar();
                 actualizarBarra();
                 const seguir = document.getElementById('btn-seguir');
-                if (seguir && r.siguiendo) { seguir.dataset.siguiendo = '1'; seguir.textContent = '✓ En mi base'; }
+                if (seguir && r.siguiendo) { seguir.dataset.siguiendo = '1'; seguir.textContent = '✓ En Mis colecciones'; }
             } catch (e) {
                 ev.target.checked = !tengo;
             }
@@ -165,7 +165,7 @@ async function agregarAlCarrito(itemId, btn) {
             if (cb) cb.checked = !todos;
         });
         actualizarBarra();
-        if (!faltan.length) toast('No falta nadie en tu equipo 🏆');
+        if (!faltan.length) toast('Ya tenés todos los números 🏆');
     };
 
     window.limpiarSeleccion = function () {
@@ -203,7 +203,7 @@ async function agregarAlCarrito(itemId, btn) {
         const nota = await modal({
             icono: '🦸',
             titulo: uno ? '¿Salimos a buscarlo?' : `¿Salimos a buscar a estos ${sel.length}?`,
-            cuerpo: `<p style="margin:0">${uno ? 'Hoy no está en nuestra base, pero salimos a rastrearlo' : 'Hoy no están en nuestra base, pero salimos a rastrearlos'} y te avisamos por mail apenas haya novedades.</p><ul>${lista}</ul>`,
+            cuerpo: `<p style="margin:0">${uno ? 'Hoy no lo tenemos, pero salimos a rastrearlo' : 'Hoy no los tenemos, pero salimos a rastrearlos'} y te avisamos por mail apenas haya novedades.</p><ul>${lista}</ul>`,
             texto: 'Comentario (opcional)',
             placeholder: 'Ej: lo necesito antes de fin de mes, me sirve usado…',
             ok: 'Activar la búsqueda',
@@ -238,8 +238,8 @@ async function agregarAlCarrito(itemId, btn) {
         try {
             await api('seguir', { coleccion_id: coleccionId, seguir: seguir ? 1 : 0 });
             btn.dataset.siguiendo = seguir ? '1' : '0';
-            btn.textContent = seguir ? '✓ En mi base' : '+ Sumar a mi base';
-            toast(seguir ? 'Colección sumada a tu base ⚡' : 'La quitamos de tu base');
+            btn.textContent = seguir ? '✓ En Mis colecciones' : '+ Sumar a Mis colecciones';
+            toast(seguir ? 'Colección sumada a Mis colecciones ⚡' : 'La quitamos de Mis colecciones');
         } catch (e) { }
     };
 
@@ -358,3 +358,47 @@ async function toggleSuscripcion(btn) {
     } catch (e) { }
     btn.disabled = false;
 }
+
+
+// Historietas: aparecen cuando su sección entra en pantalla, una a la vez; cerradas no vuelven en la visita
+(() => {
+    const comics = [...document.querySelectorAll('.comic[data-aparece]')];
+    if (!comics.length || !('IntersectionObserver' in window)) return;
+    const cerrado = id => { try { return sessionStorage.getItem('comic-' + id) === '1'; } catch (e) { return false; } };
+    let actual = null;
+    const mostrar = c => {
+        if (actual === c || cerrado(c.id)) return;
+        if (actual) { actual.classList.remove('visible'); setTimeout(() => (actual && !actual.classList.contains('visible')) && (actual.hidden = true), 400); }
+        actual = c;
+        c.hidden = false;
+        requestAnimationFrame(() => requestAnimationFrame(() => c.classList.add('visible')));
+    };
+    comics.forEach(c => {
+        const destino = document.querySelector(c.dataset.aparece);
+        c.querySelector('.comic-cerrar').addEventListener('click', () => {
+            c.classList.remove('visible');
+            try { sessionStorage.setItem('comic-' + c.id, '1'); } catch (e) {}
+            setTimeout(() => { c.hidden = true; }, 400);
+            if (actual === c) actual = null;
+        });
+        if (!destino) return;
+        // Un momento después de que la sección se ve (no apenas carga la página)
+        new IntersectionObserver((ents, obs) => ents.forEach(en => {
+            if (en.isIntersecting) { setTimeout(() => mostrar(c), 1800); obs.disconnect(); }
+        }), { threshold: .35 }).observe(destino);
+    });
+})();
+
+// Aviso de cookies: solo la primera vez (se recuerda en el navegador)
+(() => {
+    const av = document.getElementById('aviso-cookies');
+    if (!av) return;
+    let visto = false;
+    try { visto = localStorage.getItem('mfu-cookies') === '1'; } catch (e) {}
+    if (visto) return;
+    av.hidden = false;
+    av.querySelector('button').addEventListener('click', () => {
+        av.hidden = true;
+        try { localStorage.setItem('mfu-cookies', '1'); } catch (e) {}
+    });
+})();

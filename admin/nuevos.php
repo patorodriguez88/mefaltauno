@@ -29,13 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $falta = item_falta_para_publicar($foto, $titulo, $precio);
             q("UPDATE items SET titulo=?, imagen=?, precio=?, stock=?, sku=COALESCE(NULLIF(sku,''), ?), wepoint_id=?, stock_sync_at=NOW(), activo=? WHERE id=?",
               [$titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1, $existe['id']]);
+            if ($foto && $foto !== $existe['imagen']) q("UPDATE items SET foto_origen='manual' WHERE id=?", [$existe['id']]);
             $item_id = (int)$existe['id'];
             flash('ok', 'Vinculado al ' . num($numero) . ' que ya existía en ' . $col['nombre'] . '.');
         } else {
             if ($titulo === '') throw new Exception('Poné el título.');
             $falta = item_falta_para_publicar($foto, $titulo, $precio);
-            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, precio, stock, sku, wepoint_id, stock_sync_at, activo) VALUES (?,?,?,?,?,?,?,?,NOW(),?)",
-              [$col['id'], $numero, $titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1]);
+            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, foto_origen, precio, stock, sku, wepoint_id, stock_sync_at, activo) VALUES (?,?,?,?,?,?,?,?,?,NOW(),?)",
+              [$col['id'], $numero, $titulo, $foto, $foto ? 'manual' : null, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1]);
             $item_id = (int)db()->lastInsertId();
         }
         q("DELETE FROM wepoint_nuevos WHERE wepoint_id=?", [$wid]);

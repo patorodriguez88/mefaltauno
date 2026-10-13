@@ -33,12 +33,12 @@ function carrito_set_cupon(?string $codigo): void {
 // Líneas del carrito con datos actuales del catálogo. Ajusta cantidades a lo disponible
 // y aplica el código de descuento si sigue siendo válido.
 function carrito_lineas(): array {
-    $vacio = ['lineas' => [], 'subtotal' => 0, 'descuento' => 0, 'total' => 0, 'cupon' => null, 'cupon_error' => null, 'ajustes' => []];
+    $vacio = ['lineas' => [], 'subtotal' => 0, 'descuento' => 0, 'recargo' => 0, 'unidades' => 0, 'encargue' => 0, 'total' => 0, 'cupon' => null, 'cupon_error' => null, 'ajustes' => []];
     $c = carrito();
     if (!$c) return $vacio;
     $ids = array_map('intval', array_keys($c));
     $in = implode(',', array_fill(0, count($ids), '?'));
-    $rows = q("SELECT i.*, c.nombre AS coleccion, c.slug AS coleccion_slug, c.imagen AS coleccion_imagen
+    $rows = q("SELECT i.*, c.nombre AS coleccion, c.slug AS coleccion_slug, c.imagen AS coleccion_imagen, c.recargo AS coleccion_recargo
                FROM items i JOIN colecciones c ON c.id=i.coleccion_id
                WHERE i.id IN ($in) AND i.activo=1 AND c.activa=1 AND c.proximamente=0", $ids)->fetchAll();
     $out = $vacio;
@@ -49,14 +49,21 @@ function carrito_lineas(): array {
         $disp = comprable($it);
         if ($cant > $disp) {
             $cant = $disp;
-            $tope = isset($it['max_por_cliente']) && $it['max_por_cliente'] !== null && $disp < disponible($it);
+            $tope = isset($it['max_por_cliente']) && $it['max_por_cliente'] !== null && $disp < disponible_total($it);
             $out['ajustes'][] = $it['coleccion'] . ' ' . num((int)$it['numero']) . ($tope ? ': máximo ' . (int)$it['max_por_cliente'] . ' por cliente' : ($cant ? ": quedan $cant" : ': ya no está disponible'));
             carrito_set((int)$it['id'], $cant);
             if (!$cant) continue;
         }
         $p = precio_item($it);
-        $out['lineas'][] = ['item' => $it, 'cantidad' => $cant, 'precio' => $p, 'total' => $p * $cant, 'disponible' => $disp];
+        $rec = recargo_item($it);
+        // Primero sale del depósito (24 h); lo que falte, por encargue a Brihet (plazos del editor)
+        $fisico = min($cant, disponible($it));
+        $out['lineas'][] = ['item' => $it, 'cantidad' => $cant, 'precio' => $p, 'total' => $p * $cant, 'disponible' => $disp, 'recargo' => $rec,
+                            'fisico' => $fisico, 'encargue' => $cant - $fisico];
+        $out['encargue'] = ($out['encargue'] ?? 0) + ($cant - $fisico);
         $out['subtotal'] += $p * $cant;
+        $out['recargo'] += $rec * $cant;
+        $out['unidades'] += $cant;
     }
     foreach (array_diff($ids, $vistos) as $id) carrito_set($id, 0);
 
@@ -69,6 +76,7 @@ function carrito_lineas(): array {
             $out['cupon_error'] = $e->getMessage();
         }
     }
-    $out['total'] = $out['subtotal'] - $out['descuento'];
+    // El código de descuento se aplica sobre los productos; el recargo interior se suma aparte
+    $out['total'] = $out['subtotal'] - $out['descuento'] + $out['recargo'];
     return $out;
 }

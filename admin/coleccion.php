@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/_inc.php';
 require dirname(__DIR__) . '/inc/subidas.php';
+require_once dirname(__DIR__) . '/inc/vistas.php';
 
 $id = (int)($_GET['id'] ?? 0);
 $col = q("SELECT * FROM colecciones WHERE id=?", [$id])->fetch();
@@ -33,10 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nombre = trim($_POST['nombre'] ?? '');
         if ($nombre === '') throw new Exception('El nombre no puede quedar vacío.');
         $portada = subir_imagen($_FILES['foto_portada'] ?? null, 'colecciones', $col['slug']) ?? $col['imagen'];
-        q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, proximamente=?, lanzamiento=?, orden=? WHERE id=?", [
+        $rec_col = trim((string)($_POST['recargo'] ?? '')) === '' ? null : max(0, monto($_POST['recargo']));
+        $tot = (int)($_POST['total_entregas'] ?? 0) ?: null;
+        q("UPDATE colecciones SET total_entregas=? WHERE id=?", [$tot, $id]);
+        q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, proximamente=?, lanzamiento=?, recargo=?, orden=? WHERE id=?", [
             $nombre, (int)($_POST['categoria_id'] ?? 0) ?: null, trim($_POST['bajada'] ?? '') ?: null, trim($_POST['descripcion'] ?? '') ?: null,
             $portada, !empty($_POST['activa']) ? 1 : 0, !empty($_POST['destacada']) ? 1 : 0,
-            !empty($_POST['proximamente']) ? 1 : 0, mb_substr(trim($_POST['lanzamiento'] ?? ''), 0, 60) ?: null, (int)($_POST['orden'] ?? 0), $id,
+            !empty($_POST['proximamente']) ? 1 : 0, mb_substr(trim($_POST['lanzamiento'] ?? ''), 0, 60) ?: null, $rec_col, (int)($_POST['orden'] ?? 0), $id,
         ]);
 
         // Atajo: mismo máximo por cliente para todos los números
@@ -49,13 +53,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ((array)($_POST['items'] ?? []) as $iid => $it) {
             $titulo = trim($it['titulo'] ?? '');
             if ($titulo === '') continue;
-            $actual = q("SELECT imagen, stock FROM items WHERE id=? AND coleccion_id=?", [(int)$iid, $id])->fetch();
+            $actual = q("SELECT imagen, foto_origen, stock FROM items WHERE id=? AND coleccion_id=?", [(int)$iid, $id])->fetch();
             if (!$actual) continue;
-            $foto = subir_imagen($fotos[$iid] ?? null, 'items', $col['slug'] . '-' . (int)$it['numero']) ?? $actual['imagen'];
+            $subida = subir_imagen($fotos[$iid] ?? null, 'items', $col['slug'] . '-' . (int)$it['numero']);
+            $foto = $subida ?? $actual['imagen'];
+            if ($subida) q("UPDATE items SET foto_origen='manual' WHERE id=?", [(int)$iid]);   // subida a mano: no la reemplaza ningún importador
             $limite = trim((string)($it['limite'] ?? '')) === '' ? null : max(0, (int)$it['limite']);
             $max_cli = trim((string)($it['max_por_cliente'] ?? '')) === '' ? null : max(1, (int)$it['max_por_cliente']);
             // Con WePoint el stock no se toca desde acá; sin WePoint (modo manual) sí
             $stock = $con_wepoint ? (int)$actual['stock'] : max(0, (int)($it['stock'] ?? 0));
+            if ($stock > 0 && (int)$actual['stock'] <= 0) q("UPDATE items SET llegada_at=NOW() WHERE id=?", [(int)$iid]);
             $precio = monto($it['precio']) ?? 0;
             $activo = !empty($it['activo']) ? 1 : 0;
             if ($activo && ($falta = item_falta_para_publicar($foto, $titulo, $precio))) {
@@ -76,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $precio = monto($nuevo['precio'] ?? '') ?? 0;
             $activo = item_falta_para_publicar($foto, $nuevo['titulo'], $precio) ? 0 : 1;
             if (!$activo) $sin_publicar[] = num($num) . ' (queda sin publicar hasta tener foto y precio)';
-            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, precio, stock, sku, activo) VALUES (?,?,?,?,?,0,?,?)",
-              [$id, $num, trim($nuevo['titulo']), $foto, $precio, strtoupper(trim($nuevo['sku'] ?? '')) ?: null, $activo]);
+            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, foto_origen, precio, stock, sku, activo) VALUES (?,?,?,?,?,?,0,?,?)",
+              [$id, $num, trim($nuevo['titulo']), $foto, $foto ? 'manual' : null, $precio, strtoupper(trim($nuevo['sku'] ?? '')) ?: null, $activo]);
         }
         $db->commit();
         flash('ok', 'Cambios guardados.');
@@ -93,13 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('admin/coleccion.php?id=' . $id);
 }
 
-$items = q("SELECT i.*, (SELECT COUNT(*) FROM solicitud_items si JOIN solicitudes s ON s.id=si.solicitud_id WHERE si.item_id=i.id AND s.estado IN ('pendiente','buscando')) AS pedidos
+$items = q("SELECT i.*, (SELECT COUNT(*) FROM item_fotos f WHERE f.item_id=i.id) AS fotos_extra, (SELECT COUNT(*) FROM solicitud_items si JOIN solicitudes s ON s.id=si.solicitud_id WHERE si.item_id=i.id AND s.estado IN ('pendiente','buscando')) AS pedidos
             FROM items i WHERE coleccion_id=? ORDER BY numero", [$id])->fetchAll();
 
 admin_header($col['nombre'], 'colecciones');
 ?>
 
-<p><a href="<?= url('admin/colecciones.php') ?>">← Colecciones</a> · <a href="<?= url('coleccion.php?c=' . urlencode($col['slug'])) ?>" target="_blank">Ver en la tienda ↗</a></p>
+<p><a href="<?= url('admin/colecciones.php') ?>">← Colecciones</a> · <a href="<?= url('coleccion.php?c=' . urlencode($col['slug'])) ?>" target="_blank">Ver en la tienda ↗</a> · <a href="<?= url('admin/salvat.php?coleccion=' . (int)$col['id']) ?>">📷 Mejorar fotos desde Salvat</a></p>
 
 <form method="post" class="form" enctype="multipart/form-data">
     <?= csrf_field() ?>
@@ -120,10 +127,12 @@ admin_header($col['nombre'], 'colecciones');
                     <?php foreach (categorias() as $cat): ?><option value="<?= (int)$cat['id'] ?>" <?= $cat['id'] == $col['categoria_id'] ? 'selected' : '' ?>><?= e($cat['nombre']) ?></option><?php endforeach; ?>
                 </select></label>
             <label class="campo">Orden<input type="number" name="orden" value="<?= (int)$col['orden'] ?>"></label>
+            <label class="campo">Total de números de la colección <small>(la colección completa, no los cargados acá<?php if (!$col['total_entregas'] && ($t = coleccion_total($col))): ?>; la descripción dice <?= $t ?><?php endif; ?>)</small><input type="number" name="total_entregas" min="1" value="<?= $col['total_entregas'] ? (int)$col['total_entregas'] : '' ?>" placeholder="<?= e((string)(coleccion_total($col) ?? 'Ej: 120')) ?>"></label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="activa" value="1" <?= $col['activa'] ? 'checked' : '' ?>> Publicada en la tienda</label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="destacada" value="1" <?= $col['destacada'] ? 'checked' : '' ?>> Destacada en el inicio</label>
             <label class="tengo-toggle" style="color:var(--ink)" title="Se ve en la tienda y la pueden seguir y suscribirse, pero todavía no se vende"><input type="checkbox" name="proximamente" value="1" <?= $col['proximamente'] ? 'checked' : '' ?>> Próximamente <small class="muted">(se ve, no se vende)</small></label>
             <label class="campo">Lanzamiento <small>(opcional, ej: “Noviembre 2026”)</small><input type="text" name="lanzamiento" maxlength="60" value="<?= e($col['lanzamiento']) ?>"></label>
+            <label class="campo">Recargo interior por unidad <small>(vacío = el general, <?= precio(recargo_general()) ?>)</small><input type="text" name="recargo" inputmode="decimal" value="<?= $col['recargo'] !== null ? e((float)$col['recargo']) : '' ?>" placeholder="<?= e((string)recargo_general()) ?>"></label>
             <label class="campo">Máximo por cliente <small>(para todos los números; vacío = no cambiar)</small><input type="number" name="max_todos" min="0" placeholder="Ej: 2 · 0 = sin máximo"></label>
             <button class="btn btn-primario" type="submit">Guardar todo</button>
         </aside>
@@ -147,6 +156,7 @@ admin_header($col['nombre'], 'colecciones');
                             <?php if ($it['imagen']): ?><img src="<?= e(img($it['imagen'])) ?>" alt=""><?php else: ?><span>📷</span><?php endif; ?>
                             <input type="file" name="foto_item[<?= (int)$it['id'] ?>]" accept="image/jpeg,image/png,image/webp" hidden onchange="previewFoto(this)">
                         </label>
+                        <a class="mas-fotos" href="<?= url('admin/numero.php?id=' . (int)$it['id']) ?>" title="Más fotos y video">+ fotos<?= $it['fotos_extra'] ? ' (' . (1 + (int)$it['fotos_extra']) . ')' : '' ?><?= $it['video_url'] ? ' ▶' : '' ?></a>
                     </td>
                     <td><input type="number" name="<?= $n ?>[numero]" value="<?= (int)$it['numero'] ?>" class="in-num"></td>
                     <td class="td-titulo">
@@ -168,6 +178,7 @@ admin_header($col['nombre'], 'colecciones');
                         <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>" title="Se vende al público">se vende <?= $disp ?></span>
                         <?php if ($res = array_sum(reservas_mapa()[(int)$it['id']] ?? [])): ?><span class="badge badge-amarillo" title="Guardado para quien lo buscaba (<?= RESERVA_HORAS ?> h)">reservado <?= $res ?></span><?php endif; ?>
                         <?php if ($con_wepoint): ?><div class="muted small"><?= $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : 'sin sincronizar' ?></div><?php endif; ?>
+                        <?php if ($it['brihet_stock'] !== null): ?><div class="small brihet-ref" title="Lo que Brihet informó el <?= e(fecha($it['brihet_stock_at'])) ?>. Solo referencia: no se usa para vender.">Brihet: <b><?= (int)$it['brihet_stock'] ?></b></div><?php endif; ?>
                     </td>
                     <td class="td-topes">
                         <input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" class="in-num" title="Tope total: vender como máximo esta cantidad. Vacío = sin tope">

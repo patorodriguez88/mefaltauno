@@ -18,6 +18,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'puntos'      => ['puntos.php', 'Puntos de retiro'],
         'clientes'    => ['clientes.php', 'Clientes'],
         'suscripciones' => ['suscripciones.php', 'Suscripciones'],
+        'marketing'   => ['marketing.php', 'Marketing'],
         'cupones'     => ['cupones.php', 'Descuentos'],
         'wepoint'     => ['wepoint.php', 'WePoint'],
         'ajustes'     => ['ajustes.php', 'Ajustes'],
@@ -47,9 +48,10 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
     if ($viejo === $nuevo && !$nota) { $db->rollBack(); return; }
     if ($viejo === 'cancelado' && $nuevo !== 'cancelado') throw new Exception('Un pedido cancelado no se puede reabrir: el stock ya se devolvió.');
 
-    $lineas = q("SELECT item_id, cantidad FROM pedido_items WHERE pedido_id=? AND item_id IS NOT NULL", [$id])->fetchAll();
+    $lineas = q("SELECT item_id, cantidad, fisico FROM pedido_items WHERE pedido_id=? AND item_id IS NOT NULL", [$id])->fetchAll();
     if ($nuevo === 'cancelado' && $viejo !== 'cancelado') {
-        foreach ($lineas as $l) q("UPDATE items SET stock = stock + ?, limite = IF(limite IS NULL, NULL, limite + ?) WHERE id=?", [$l['cantidad'], $l['cantidad'], $l['item_id']]);
+        // Vuelve al stock del depósito solo lo físico; lo de encargue nunca salió de ahí
+        foreach ($lineas as $l) q("UPDATE items SET stock = stock + ?, limite = IF(limite IS NULL, NULL, limite + ?) WHERE id=?", [$l['fisico'], $l['cantidad'], $l['item_id']]);
         if ($p['cupon_codigo']) q("UPDATE cupones SET usos = GREATEST(usos - 1, 0) WHERE codigo=?", [$p['cupon_codigo']]);
     }
     if ($nuevo === 'entregado' && $viejo !== 'entregado') {
@@ -58,8 +60,13 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
     q("UPDATE pedidos SET estado=? WHERE id=?", [$nuevo, $id]);
     registrar_historial('pedido', $id, $nuevo, $nota, $usuario);
     $db->commit();
-    // Pago confirmado → WePoint recibe la orden de venta para preparar el pedido
-    if (in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && wepoint_ordenes_activas()) {
+    // Pago confirmado → WePoint recibe la orden de venta para preparar el pedido.
+    // Si tiene unidades por encargue que todavía no llegaron al depósito, la manda el operador cuando lleguen.
+    $encargue_pend = (int)q("SELECT COALESCE(SUM(encargue),0) FROM pedido_items WHERE pedido_id=? AND encargue>0 AND encargue_estado<>'recibido'", [$id])->fetchColumn();
+    if ($encargue_pend && in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id']) {
+        flash('info', "Este pedido tiene $encargue_pend unidades por encargue a Brihet: la orden a WePoint se manda cuando lleguen al depósito.");
+    }
+    if (!$encargue_pend && in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && wepoint_ordenes_activas()) {
         try {
             wepoint_crear_orden($id);
             flash('ok', 'Orden enviada a WePoint para preparar.');

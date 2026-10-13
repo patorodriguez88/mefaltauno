@@ -22,6 +22,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['accion'] ?? '', ['
     redirect('admin/ajustes.php');
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'novedades') {
+    csrf_exigir();
+    q("REPLACE INTO ajustes (clave, valor) VALUES ('novedades_activo', ?)", [!empty($_POST['activo']) ? '1' : '0']);
+    q("REPLACE INTO ajustes (clave, valor) VALUES ('novedades_titulo', ?)", [trim(mb_substr($_POST['titulo'] ?? '', 0, 120))]);
+    q("REPLACE INTO ajustes (clave, valor) VALUES ('novedades_texto', ?)", [trim(mb_substr($_POST['texto'] ?? '', 0, 300))]);
+    flash('ok', 'Ventana de novedades guardada.');
+    redirect('admin/ajustes.php');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'legales') {
+    csrf_exigir();
+    foreach (array_keys(DATOS_LEGALES) as $k) q("REPLACE INTO ajustes (clave, valor) VALUES (?,?)", ['legal_' . $k, trim(mb_substr($_POST[$k] ?? '', 0, 255))]);
+    flash('ok', 'Datos legales guardados: se ven en el pie, los términos y la política de privacidad.');
+    redirect('admin/ajustes.php');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'recargo') {
+    csrf_exigir();
+    $v = max(0, (float)str_replace(['.', ','], ['', '.'], (string)($_POST['recargo_unidad'] ?? '0')));
+    q("REPLACE INTO ajustes (clave, valor) VALUES ('recargo_unidad', ?)", [(string)$v]);
+    flash('ok', 'Recargo interior actualizado: ' . precio($v) . ' por unidad.');
+    redirect('admin/ajustes.php');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
     $cbu = preg_replace('/\D/', '', $_POST['banco_cbu'] ?? '');
@@ -43,6 +67,7 @@ admin_header('Ajustes', 'ajustes');
 <h1>Ajustes</h1>
 
 <div class="layout-2">
+    <div>
     <form method="post" class="card form">
         <?= csrf_field() ?>
         <h3>Datos para transferencia bancaria</h3>
@@ -60,7 +85,34 @@ admin_header('Ajustes', 'ajustes');
             <textarea name="banco_instrucciones" placeholder="Ej: Enviá el comprobante respondiendo el mail del pedido. Reservamos los números por 48 h."><?= e(ajuste('banco_instrucciones')) ?></textarea></label>
         <button class="btn btn-primario" type="submit">Guardar</button>
     </form>
+    <form method="post" class="card form">
+        <?= csrf_field() ?><input type="hidden" name="accion" value="novedades">
+        <h3>Ventana de novedades</h3>
+        <p class="muted small" style="margin-top:-8px">Aparece al entrar a la home con las colecciones <b>Próximamente</b> y las publicadas en los últimos 15 días. Cada visitante la ve una vez; vuelve a aparecer cuando hay novedades nuevas.</p>
+        <?php $n_nov = (int)q("SELECT COUNT(*) FROM colecciones WHERE activa=1 AND (proximamente=1 OR created_at >= DATE_SUB(NOW(), INTERVAL 15 DAY))")->fetchColumn(); ?>
+        <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="activo" value="1" <?= ajuste('novedades_activo', '1') === '1' ? 'checked' : '' ?>> Mostrar la ventana <small class="muted">(hoy hay <?= $n_nov ?> novedades<?= $n_nov ? '' : ': no se muestra' ?>)</small></label>
+        <label class="campo">Título<input type="text" name="titulo" maxlength="120" value="<?= e(ajuste('novedades_titulo')) ?>" placeholder="Lo que llega a la base"></label>
+        <label class="campo">Texto<input type="text" name="texto" maxlength="300" value="<?= e(ajuste('novedades_texto')) ?>" placeholder="Lanzamientos y colecciones que están por llegar…"></label>
+        <button class="btn btn-primario" type="submit">Guardar</button>
+    </form>
+    <form method="post" class="card form">
+        <?= csrf_field() ?><input type="hidden" name="accion" value="legales">
+        <h3>Datos legales de la empresa</h3>
+        <p class="muted small" style="margin-top:-8px">La ley de Defensa del Consumidor pide mostrarlos: van en el pie de la web, en los Términos y en la Política de privacidad.</p>
+        <?php foreach (DATOS_LEGALES as $k => $lbl): ?>
+            <label class="campo"><?= e($lbl) ?><input type="text" name="<?= $k ?>" value="<?= e(ajuste('legal_' . $k)) ?>" placeholder="<?= e(legal($k)) ?>"></label>
+        <?php endforeach; ?>
+        <button class="btn btn-primario" type="submit">Guardar datos legales</button>
+    </form>
+    </div>
     <aside>
+        <form method="post" class="card form">
+            <?= csrf_field() ?><input type="hidden" name="accion" value="recargo">
+            <h3>Recargo interior</h3>
+            <p class="muted small" style="margin-top:-8px">Monto fijo por unidad que se suma en el carrito (no cambia el precio que se ve en la tienda). Se puede cambiar para una colección o un número puntual desde su ficha.</p>
+            <label class="campo">Por unidad<input type="text" name="recargo_unidad" inputmode="decimal" value="<?= e((string)recargo_general()) ?>"></label>
+            <button class="btn btn-primario btn-chico" type="submit">Guardar recargo</button>
+        </form>
         <div class="card">
             <h3>Así lo ve el cliente</h3>
             <?= html_datos_bancarios(19390) ?>

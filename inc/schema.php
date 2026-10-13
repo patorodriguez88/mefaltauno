@@ -292,6 +292,126 @@ function schema_pasos(): array {
             "ALTER TABLE colecciones ADD COLUMN proximamente TINYINT(1) NOT NULL DEFAULT 0 AFTER destacada, ADD COLUMN lanzamiento VARCHAR(60) NULL AFTER proximamente",
             "ALTER TABLE items ADD COLUMN max_por_cliente INT NULL AFTER limite",
         ],
+
+        // Galería (fotos extra de cada número) y video (link de YouTube / Instagram)
+        13 => [
+            "CREATE TABLE IF NOT EXISTS item_fotos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id INT NOT NULL,
+                imagen VARCHAR(500) NOT NULL,
+                orden INT NOT NULL DEFAULT 0,
+                KEY idx_item (item_id),
+                CONSTRAINT fk_foto_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "ALTER TABLE items ADD COLUMN video_url VARCHAR(300) NULL AFTER imagen",
+        ],
+
+        // Importación desde brihet.com.ar: de qué producto/variante viene cada cosa y el último precio traído
+        14 => [
+            "ALTER TABLE colecciones ADD COLUMN brihet_id INT NULL, ADD UNIQUE KEY uniq_brihet (brihet_id)",
+            "ALTER TABLE items ADD COLUMN brihet_id INT NULL, ADD COLUMN brihet_precio DECIMAL(12,2) NULL, ADD KEY idx_brihet (brihet_id)",
+        ],
+
+        // Recargo interior: monto fijo por unidad que se suma en el carrito (general en Ajustes; se puede
+        // cambiar por colección o por número). Queda guardado en el pedido.
+        15 => [
+            "ALTER TABLE colecciones ADD COLUMN recargo DECIMAL(12,2) NULL",
+            "ALTER TABLE items ADD COLUMN recargo DECIMAL(12,2) NULL",
+            "ALTER TABLE pedidos ADD COLUMN recargo DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER descuento",
+            "ALTER TABLE pedido_items ADD COLUMN recargo DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER precio",
+        ],
+
+        // Cantidad que Brihet tiene de cada número: dato de referencia para el operador, no se usa para vender
+        16 => [
+            "ALTER TABLE items ADD COLUMN brihet_stock INT NULL AFTER brihet_precio, ADD COLUMN brihet_stock_at DATETIME NULL AFTER brihet_stock",
+        ],
+
+        // Venta por encargue (stock virtual de Brihet): cada línea del pedido dice cuántas salen del depósito
+        // (WePoint, 24 h) y cuántas hay que pedirle a Brihet, y en qué quedó ese encargue.
+        17 => [
+            "ALTER TABLE pedido_items ADD COLUMN fisico INT NOT NULL DEFAULT 0 AFTER cantidad, ADD COLUMN encargue INT NOT NULL DEFAULT 0 AFTER fisico, ADD COLUMN encargue_estado VARCHAR(12) NULL AFTER encargue",
+            "UPDATE pedido_items SET fisico = cantidad",
+        ],
+
+        // De dónde salió la foto principal (brihet / salvat / manual): las de Brihet (chicas) se pueden
+        // reemplazar por las de Salvat; las subidas a mano no se tocan.
+        18 => [
+            "ALTER TABLE items ADD COLUMN foto_origen VARCHAR(10) NULL AFTER imagen, ADD COLUMN salvat_url VARCHAR(300) NULL AFTER foto_origen",
+            "UPDATE items SET foto_origen='brihet' WHERE brihet_id IS NOT NULL AND imagen LIKE 'uploads/%'",
+        ],
+
+        // Categorías administrables: cuáles van en el menú de arriba
+        19 => [
+            "ALTER TABLE categorias ADD COLUMN en_menu TINYINT(1) NOT NULL DEFAULT 1",
+        ],
+
+        // Botón de arrepentimiento (Res. 424/2020): cada pedido de revocación con su código de trámite
+        20 => [
+            "CREATE TABLE IF NOT EXISTS arrepentimientos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                codigo VARCHAR(16) NOT NULL UNIQUE,
+                cliente_id INT NULL,
+                pedido_id INT NULL,
+                nombre VARCHAR(160) NOT NULL,
+                email VARCHAR(160) NOT NULL,
+                telefono VARCHAR(60) NULL,
+                motivo TEXT NULL,
+                estado VARCHAR(12) NOT NULL DEFAULT 'pendiente',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_estado (estado)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
+
+        // Reservas también sobre el stock de Brihet (por encargue), no solo sobre el del depósito
+        21 => [
+            "ALTER TABLE reservas ADD COLUMN stock VARCHAR(10) NOT NULL DEFAULT 'fisico' AFTER cantidad",
+        ],
+
+        // Marketing: llegadas (un número pasó de 0 a tener stock) y campañas de mail enviadas por tandas
+        22 => [
+            "ALTER TABLE items ADD COLUMN llegada_at DATETIME NULL, ADD KEY idx_llegada (llegada_at)",
+            "CREATE TABLE IF NOT EXISTS campanas (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                asunto VARCHAR(160) NOT NULL,
+                titulo VARCHAR(160) NOT NULL,
+                intro TEXT NULL,
+                item_ids TEXT NOT NULL,
+                audiencia VARCHAR(12) NOT NULL DEFAULT 'interesados',
+                estado VARCHAR(12) NOT NULL DEFAULT 'borrador',
+                lote INT NOT NULL DEFAULT 100,
+                intervalo_min INT NOT NULL DEFAULT 15,
+                total INT NOT NULL DEFAULT 0,
+                enviados INT NOT NULL DEFAULT 0,
+                ultimo_lote_at DATETIME NULL,
+                creada_por VARCHAR(160) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "CREATE TABLE IF NOT EXISTS campana_destinos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                campana_id INT NOT NULL,
+                email VARCHAR(160) NOT NULL,
+                nombre VARCHAR(160) NULL,
+                estado VARCHAR(10) NOT NULL DEFAULT 'pendiente',
+                enviado_at DATETIME NULL,
+                UNIQUE KEY uniq_camp_email (campana_id, email),
+                KEY idx_estado (campana_id, estado),
+                CONSTRAINT fk_cd_camp FOREIGN KEY (campana_id) REFERENCES campanas(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "CREATE TABLE IF NOT EXISTS mailing_bajas (
+                email VARCHAR(160) PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
+
+        // Total de números de la colección completa (no los cargados en la web): ficha de la colección
+        23 => [
+            "ALTER TABLE colecciones ADD COLUMN total_entregas INT NULL AFTER lanzamiento",
+        ],
+
+        // Campañas de una colección elegida a mano (ej. una Próximamente), además de las de llegadas
+        24 => [
+            "ALTER TABLE campanas ADD COLUMN coleccion_id INT NULL AFTER item_ids",
+        ],
     ];
 }
 

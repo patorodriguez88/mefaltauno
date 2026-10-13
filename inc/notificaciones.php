@@ -25,9 +25,11 @@ function notificar_pedido_nuevo(int $ped_id): void {
     if (!$p) return;
     $filas = [];
     foreach (q("SELECT * FROM pedido_items WHERE pedido_id=?", [$ped_id]) as $l) {
-        $filas[] = [e($l['coleccion'] . ' ' . num((int)$l['numero']) . ' — ' . $l['titulo']), 'x' . (int)$l['cantidad'], precio($l['precio'] * $l['cantidad'])];
+        $filas[] = [e($l['coleccion'] . ' ' . num((int)$l['numero']) . ' — ' . $l['titulo']) . ((int)$l['encargue'] ? '<br><small>' . linea_entrega((int)$l['fisico'], (int)$l['encargue']) . '</small>' : ''),
+                    'x' . (int)$l['cantidad'], precio($l['precio'] * $l['cantidad'])];
     }
     if ((float)$p['descuento'] > 0) $filas[] = ['Código ' . e($p['cupon_codigo']), '', '−' . precio((float)$p['descuento'])];
+    if ((float)$p['recargo'] > 0) $filas[] = ['Recargo interior', '', '+' . precio((float)$p['recargo'])];
     $filas[] = ['<b>Total</b>', '', '<b>' . precio((float)$p['total']) . '</b>'];
     $detalle = mail_tabla($filas)
         . mail_tabla([
@@ -53,7 +55,7 @@ function notificar_pedido_nuevo(int $ped_id): void {
     }
     $pago .= '<p>Te avisamos por mail cuando esté listo para retirar.</p>';
     mail_enviar($p['email'], "Misión en marcha: tu pedido #$ped_id",
-        '<p>Hola ' . e($p['nombre']) . ', ¡gracias! Tu equipo está a punto de crecer.</p>' . $detalle . $pago
+        '<p>Hola ' . e($p['nombre']) . ', ¡gracias! Tu colección está a punto de crecer.</p>' . $detalle . $pago
         . mail_link("pedido.php?id=$ped_id", 'Ver mi pedido'));
 }
 

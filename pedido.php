@@ -30,6 +30,7 @@ require __DIR__ . '/inc/header.php';
                             <div class="linea-sub"><?= e($l['coleccion']) ?> · <?= num((int)$l['numero']) ?></div>
                             <div class="linea-titulo"><?= e($l['titulo']) ?></div>
                             <div class="linea-sub"><?= (int)$l['cantidad'] ?> × <?= precio((float)$l['precio']) ?></div>
+                            <?php if ((int)$l['encargue']): ?><div class="linea-sub"><?= linea_entrega((int)$l['fisico'], (int)$l['encargue']) ?></div><?php endif; ?>
                         </div>
                         <div class="linea-der"><strong><?= precio($l['precio'] * $l['cantidad']) ?></strong></div>
                     </div>
@@ -37,6 +38,7 @@ require __DIR__ . '/inc/header.php';
                 <?php if ((float)$p['descuento'] > 0): ?>
                     <div class="resumen-fila descuento"><span>Código <b><?= e($p['cupon_codigo']) ?></b></span><span>−<?= precio((float)$p['descuento']) ?></span></div>
                 <?php endif; ?>
+                <?= fila_recargo((float)$p['recargo'], (int)array_sum(array_column($lineas, 'cantidad'))) ?>
                 <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio((float)$p['total']) ?></span></div>
             </div>
 

@@ -13,6 +13,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'wepoi
     redirect('admin/pedido.php?id=' . $id);
 }
 
+// Encargue a Brihet: el operador marca en qué quedó cada línea (falta pedir → pedido → recibido en depósito)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'encargue') {
+    csrf_exigir();
+    $nuevo = $_POST['encargue_estado'] ?? '';
+    $l = q("SELECT * FROM pedido_items WHERE id=? AND pedido_id=? AND encargue>0", [(int)($_POST['linea_id'] ?? 0), $id])->fetch();
+    if ($l && isset(ESTADOS_ENCARGUE[$nuevo]) && $nuevo !== $l['encargue_estado']) {
+        q("UPDATE pedido_items SET encargue_estado=? WHERE id=?", [$nuevo, $l['id']]);
+        $estado = q("SELECT estado FROM pedidos WHERE id=?", [$id])->fetchColumn();
+        registrar_historial('pedido', $id, $estado, 'Encargue ' . $l['coleccion'] . ' ' . num((int)$l['numero']) . ' ×' . (int)$l['encargue'] . ': ' . ESTADOS_ENCARGUE[$nuevo][0] . '.', nombre_cliente($admin));
+        $faltan = (int)q("SELECT COUNT(*) FROM pedido_items WHERE pedido_id=? AND encargue>0 AND encargue_estado<>'recibido'", [$id])->fetchColumn();
+        flash('ok', ESTADOS_ENCARGUE[$nuevo][0] . '.' . (!$faltan ? ' Ya llegó todo lo de Brihet: podés mandar el pedido a WePoint.' : ''));
+    }
+    redirect('admin/pedido.php?id=' . $id);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'caddy') {
     csrf_exigir();
     try {
@@ -38,7 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $p = q("SELECT p.*, c.nombre, c.apellido, c.email, c.telefono FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.id=?", [$id])->fetch();
 if (!$p) redirect('admin/pedidos.php');
-$lineas = q("SELECT pi.*, i.imagen, i.stock FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$id])->fetchAll();
+$lineas = q("SELECT pi.*, i.imagen, i.stock, i.brihet_stock, i.brihet_stock_at FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$id])->fetchAll();
+$encargues = array_values(array_filter($lineas, fn($l) => (int)$l['encargue'] > 0));
+$enc_pend = array_sum(array_map(fn($l) => $l['encargue_estado'] !== 'recibido' ? (int)$l['encargue'] : 0, $encargues));
 $hist = historial('pedido', $id);
 
 admin_header('Pedido #' . $id, 'pedidos');
@@ -50,6 +67,34 @@ admin_header('Pedido #' . $id, 'pedidos');
     <?= badge_estado($p['estado'], ESTADOS_PEDIDO) ?>
 </div>
 
+<?php if ($encargues): ?>
+    <div class="card encargue-panel <?= $enc_pend ? 'pendiente' : 'listo' ?>">
+        <div class="encargue-head">
+            <h3 style="margin:0">📦 Encargue a Brihet</h3>
+            <?php if ($enc_pend): ?><span class="badge badge-rojo"><?= $enc_pend ?> unidades por conseguir</span><?php else: ?><span class="badge badge-verde">Todo recibido en depósito</span><?php endif; ?>
+        </div>
+        <p class="muted small" style="margin:6px 0 12px">Estas unidades se vendieron con el stock de Brihet (entrega sujeta a los plazos del editor). Pedíselas a Brihet y marcá cada paso.
+            <?= $enc_pend ? 'La orden a WePoint no sale hasta que esté todo <b>recibido en depósito</b>.' : 'Ya podés mandar el pedido a WePoint.' ?></p>
+        <div class="tabla-wrap"><table class="tabla">
+            <tr><th>Número</th><th>Por encargue</th><th>Brihet tiene</th><th>Estado</th></tr>
+            <?php foreach ($encargues as $l): ?>
+                <tr>
+                    <td><b><?= e($l['coleccion']) ?> <?= num((int)$l['numero']) ?></b><div class="small muted"><?= e($l['titulo']) ?></div></td>
+                    <td><b><?= (int)$l['encargue'] ?></b> <span class="muted small">de <?= (int)$l['cantidad'] ?></span></td>
+                    <td class="small"><?= $l['brihet_stock'] !== null ? (int)$l['brihet_stock'] . '<div class="muted">' . e(fecha($l['brihet_stock_at'])) . '</div>' : '—' ?></td>
+                    <td>
+                        <form method="post" class="encargue-form"><?= csrf_field() ?><input type="hidden" name="accion" value="encargue"><input type="hidden" name="linea_id" value="<?= (int)$l['id'] ?>">
+                            <select name="encargue_estado" onchange="this.form.submit()">
+                                <?php foreach (ESTADOS_ENCARGUE as $k => [$lbl]): ?><option value="<?= $k ?>" <?= $l['encargue_estado'] === $k ? 'selected' : '' ?>><?= e($lbl) ?></option><?php endforeach; ?>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </table></div>
+    </div>
+<?php endif; ?>
+
 <div class="layout-2">
     <div>
         <div class="card">
@@ -59,7 +104,8 @@ admin_header('Pedido #' . $id, 'pedidos');
                     <div>
                         <div class="linea-sub"><?= e($l['coleccion']) ?> · <?= num((int)$l['numero']) ?></div>
                         <div class="linea-titulo"><?= e($l['titulo']) ?></div>
-                        <div class="linea-sub"><?= (int)$l['cantidad'] ?> × <?= precio((float)$l['precio']) ?></div>
+                        <div class="linea-sub"><?= (int)$l['cantidad'] ?> × <?= precio((float)$l['precio']) ?>
+                            <?php if ((int)$l['encargue'] > 0): ?> · <?= (int)$l['fisico'] ? (int)$l['fisico'] . ' en depósito · ' : '' ?><b class="txt-encargue"><?= (int)$l['encargue'] ?> por encargue</b><?php endif; ?></div>
                     </div>
                     <div class="linea-der"><strong><?= precio($l['precio'] * $l['cantidad']) ?></strong></div>
                 </div>
@@ -67,6 +113,7 @@ admin_header('Pedido #' . $id, 'pedidos');
             <?php if ((float)$p['descuento'] > 0): ?>
                 <div class="resumen-fila descuento"><span>Código <b><?= e($p['cupon_codigo']) ?></b></span><span>−<?= precio((float)$p['descuento']) ?></span></div>
             <?php endif; ?>
+            <?= fila_recargo((float)$p['recargo'], (int)array_sum(array_column($lineas, 'cantidad'))) ?>
             <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio((float)$p['total']) ?></span></div>
         </div>
 
@@ -99,7 +146,9 @@ admin_header('Pedido #' . $id, 'pedidos');
         </form>
         <div class="card">
             <h3>WePoint</h3>
-            <?php if ($p['wepoint_orden_id']): ?>
+            <?php if (!$p['wepoint_orden_id'] && $enc_pend): ?>
+                <p class="small" style="margin:0"><span class="badge badge-amarillo">Esperando encargue</span><br><span class="muted">Faltan <?= $enc_pend ?> unidades de Brihet. Cuando estén todas recibidas en depósito, mandá la orden desde acá.</span></p>
+            <?php elseif ($p['wepoint_orden_id']): ?>
                 <p class="small" style="margin:0"><span class="badge badge-verde">Orden enviada</span> <b>id <?= e($p['wepoint_orden_id']) ?></b> · ref MFU-<?= (int)$p['id'] ?><br>
                     Estado en WePoint: <b><?= e($p['wepoint_estado'] ?: 'Emitida') ?></b><br>
                     <span class="muted">Se actualiza solo con el cron (cada 5 min) o desde Admin → WePoint.</span></p>

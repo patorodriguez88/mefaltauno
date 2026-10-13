@@ -21,6 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('carrito.php');
 }
 
+// Stock y precio de Brihet al día para lo que está en el carrito (solo esos números, sin fotos)
+require_once __DIR__ . '/inc/brihet.php';
+brihet_refrescar_items(array_keys(carrito()));
 $c = carrito_lineas();
 foreach ($c['ajustes'] as $a) flash('info', "Ajustamos tu carrito por stock — $a");
 if ($c['cupon_error']) {
@@ -35,7 +38,7 @@ require __DIR__ . '/inc/header.php';
 <section class="section">
     <div class="container">
         <h1>Tu carrito</h1>
-        <?php if ($c['lineas']): ?><p class="muted" style="margin-top:-8px">El equipo está casi listo. Solo falta confirmar.</p><?php endif; ?>
+        <?php if ($c['lineas']): ?><p class="muted" style="margin-top:-8px">Tu pedido está casi listo. Solo falta confirmar.</p><?php endif; ?>
 
         <?php if (!$c['lineas']): ?>
             <div class="card vacio">
@@ -53,6 +56,7 @@ require __DIR__ . '/inc/header.php';
                                 <div class="linea-sub"><a href="<?= url('coleccion.php?c=' . urlencode($it['coleccion_slug'])) ?>"><?= e($it['coleccion']) ?></a> · <?= num((int)$it['numero']) ?></div>
                                 <div class="linea-titulo"><?= e($it['titulo']) ?></div>
                                 <div class="linea-sub"><?= precio($l['precio']) ?> c/u</div>
+                                <div class="linea-sub entrega"><?= linea_entrega($l['fisico'], $l['encargue']) ?></div>
                             </div>
                             <div class="linea-der">
                                 <strong><?= precio($l['total']) ?></strong>
@@ -82,6 +86,8 @@ require __DIR__ . '/inc/header.php';
                             <button class="btn btn-linea btn-chico" type="submit">Aplicar</button>
                         </form>
                     <?php endif; ?>
+                    <?= fila_recargo($c['recargo'], $c['unidades']) ?>
+                    <?php if ($c['encargue']): ?><div class="aviso small" style="margin:8px 0">📦 <?= $c['encargue'] ?> <?= $c['encargue'] === 1 ? 'unidad va' : 'unidades van' ?> por encargue: la entrega queda sujeta a los plazos del editor y te contactamos para coordinarla.</div><?php endif; ?>
                     <div class="resumen-fila muted"><span>Retiro</span><span>Sin cargo</span></div>
                     <div class="resumen-fila resumen-total"><span>Total</span><span><?= precio($c['total']) ?></span></div>
                     <a class="btn btn-primario btn-bloque" style="margin-top:16px" href="<?= url('checkout.php') ?>">Finalizar compra</a>

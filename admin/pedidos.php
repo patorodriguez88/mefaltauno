@@ -15,7 +15,8 @@ if ($buscar !== '') {
     $where .= ' AND (c.nombre LIKE ? OR c.apellido LIKE ? OR c.email LIKE ? OR p.id = ?)';
     array_push($params, "%$buscar%", "%$buscar%", "%$buscar%", (int)$buscar);
 }
-$peds = q("SELECT p.*, c.nombre, c.apellido, c.email, (SELECT SUM(cantidad) FROM pedido_items WHERE pedido_id=p.id) AS unidades
+$peds = q("SELECT p.*, c.nombre, c.apellido, c.email, (SELECT SUM(cantidad) FROM pedido_items WHERE pedido_id=p.id) AS unidades,
+                  (SELECT COALESCE(SUM(encargue),0) FROM pedido_items WHERE pedido_id=p.id AND encargue>0 AND encargue_estado<>'recibido') AS encargue_pend
            FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE $where ORDER BY p.created_at DESC LIMIT 300", $params)->fetchAll();
 
 admin_header('Pedidos', 'pedidos');
@@ -41,7 +42,7 @@ admin_header('Pedidos', 'pedidos');
                 <td><?= (int)$p['id'] ?></td>
                 <td class="small"><?= fecha($p['created_at']) ?></td>
                 <td><?= e(nombre_cliente($p)) ?><div class="muted small"><?= e($p['email']) ?></div></td>
-                <td><?= (int)$p['unidades'] ?></td>
+                <td><?= (int)$p['unidades'] ?><?php if ($p['encargue_pend'] && $p['estado'] !== 'cancelado'): ?> <span class="badge badge-rojo" title="Unidades por encargue que faltan llegar de Brihet">📦 <?= (int)$p['encargue_pend'] ?> encargue</span><?php endif; ?></td>
                 <td class="small"><?= e($p['envio_punto'] ?: (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?><div class="muted"><?= e($p['envio_localidad']) ?></div></td>
                 <td class="small"><?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?></td>
                 <td><b><?= precio((float)$p['total']) ?></b></td>

@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/inc/bootstrap.php';
-require __DIR__ . '/inc/vistas.php';
+require_once __DIR__ . '/inc/vistas.php';
 
 $cat = null;
 $params = [];
@@ -18,7 +18,7 @@ if ($buscar !== '') {
     array_push($params, "%$buscar%", "%$buscar%", "%$buscar%");
 }
 
-$cols = q("SELECT c.*, MIN(COALESCE(NULLIF(i.precio_promo,0), i.precio)) AS desde, COUNT(i.id) AS total
+$cols = q("SELECT c.*, MIN(CASE WHEN i.congelado=0 AND (i.stock>0 OR COALESCE(i.brihet_stock,0)>0) AND c.proximamente=0 THEN COALESCE(NULLIF(i.precio_promo,0), i.precio) END) AS desde, COUNT(i.id) AS total
            FROM colecciones c LEFT JOIN items i ON i.coleccion_id=c.id AND i.activo=1
            WHERE $where GROUP BY c.id ORDER BY c.destacada DESC, c.orden, c.nombre", $params)->fetchAll();
 
@@ -45,7 +45,7 @@ require __DIR__ . '/inc/header.php';
             </div>
         <?php else: ?>
             <div class="vacio">
-                <h3>Ni rastro<?= $buscar ? ' de “' . e($buscar) . '”' : '' ?> en nuestra base</h3>
+                <h3>Ni rastro<?= $buscar ? ' de “' . e($buscar) . '”' : '' ?> en nuestro catálogo</h3>
                 <p>Pero ningún héroe queda atrás: <a href="<?= url('me-falta.php') ?>">danos la pista</a> y salimos a buscarlo.</p>
             </div>
         <?php endif; ?>

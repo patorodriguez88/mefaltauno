@@ -231,6 +231,24 @@ function img(?string $v): string {
     return preg_match('#^https?://#', $v) ? $v : url($v);
 }
 
+// Recargo interior por unidad: el del número, si no el de su colección, si no el general (Admin → Ajustes).
+const RECARGO_DEFECTO = 1600;
+function recargo_general(): float {
+    $v = ajuste('recargo_unidad');
+    return $v === '' ? RECARGO_DEFECTO : (float)$v;
+}
+function recargo_item(array $it): float {
+    if (isset($it['recargo']) && $it['recargo'] !== null) return (float)$it['recargo'];
+    if (isset($it['coleccion_recargo']) && $it['coleccion_recargo'] !== null) return (float)$it['coleccion_recargo'];
+    return recargo_general();
+}
+
+// Fila del resumen (carrito, checkout, pedido): "Recargo interior · 3 unidades  +$4.800"
+function fila_recargo(float $monto, int $unidades): string {
+    if ($monto <= 0) return '';
+    return '<div class="resumen-fila"><span>Recargo interior' . ($unidades ? ' <small class="muted">(' . $unidades . ($unidades === 1 ? ' unidad' : ' unidades') . ')</small>' : '') . '</span><span>+' . precio($monto) . '</span></div>';
+}
+
 // <img> de una foto o, si no hay, un recuadro con ícono del mismo tamaño (evita la imagen rota)
 function foto(?string $v, string $icono = '📦', string $estilo = ''): string {
     $st = $estilo !== '' ? ' style="' . e($estilo) . '"' : '';
@@ -242,6 +260,55 @@ function foto(?string $v, string $icono = '📦', string $estilo = ''): string {
 // puede congelar el número o ponerle un tope (nunca sumar unidades).
 // Unidades que puede comprar quien está mirando: lo que hay, menos lo reservado para otros clientes
 // (inc/reservas.php). $cliente_id = -1 → el cliente con sesión; null → el público en general.
+// Textos de entrega según de dónde sale: depósito propio (WePoint) o encargue a Brihet
+const TXT_ENTREGA_DEPOSITO = 'Entrega en 24 h';
+const TXT_ENTREGA_ENCARGUE = 'Por encargue · entrega sujeta a los plazos del editor';
+
+// "2 · entrega en 24 h / 1 · por encargue" para el carrito, el pedido y el mail
+function linea_entrega(int $fisico, int $encargue): string {
+    $p = [];
+    if ($fisico) $p[] = ($encargue ? $fisico . ' · ' : '') . '✅ ' . TXT_ENTREGA_DEPOSITO;
+    if ($encargue) $p[] = '<span class="txt-encargue">' . ($fisico ? $encargue . ' · ' : '') . '📦 ' . TXT_ENTREGA_ENCARGUE . '</span>';
+    return implode('<br>', $p);
+}
+
+// Disponibilidad para mostrar en la tienda: [hay (bool), texto]
+function texto_disponibilidad(array $it): array {
+    $fis = disponible($it);
+    $enc = disponible_encargue($it);
+    $max = !empty($it['max_por_cliente']) ? ' · máx. ' . (int)$it['max_por_cliente'] . ' por cliente' : '';
+    if ($fis > 0) return [true, ($fis <= 3 && !$enc ? "¡Quedan solo $fis!" : 'Disponible') . ' · ' . TXT_ENTREGA_DEPOSITO . $max];
+    if ($enc > 0) return [true, TXT_ENTREGA_ENCARGUE . $max];
+    return [false, 'Sin stock · salimos a buscarlo'];
+}
+
+// Stock virtual: lo que Brihet informa de ese número, menos lo que ya vendimos por encargue y todavía no
+// le pedimos a Brihet (una vez pedido, ya sale de su stock). Se vende "por encargue" (plazos del editor).
+// $cliente_id: -1 = el de la sesión (ve lo reservado para él), null = nadie (lo libre de verdad)
+function disponible_encargue(array $it, ?int $cliente_id = -1): int {
+    if (!empty($it['congelado']) || empty($it['id']) || empty($it['brihet_stock'])) return 0;
+    if ($cliente_id === -1) $cliente_id = (int)(cliente()['id'] ?? 0) ?: null;
+    $res = reservas_mapa_encargue()[(int)$it['id']] ?? [];
+    $de_otros = array_sum($res) - ($cliente_id ? ($res[$cliente_id] ?? 0) : 0);
+    static $pend = null;
+    if ($pend === null) {
+        $pend = [];
+        foreach (q("SELECT pi.item_id, SUM(pi.encargue) AS n FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id
+                    WHERE pi.encargue > 0 AND pi.encargue_estado='pendiente' AND p.estado<>'cancelado' GROUP BY pi.item_id") as $r) {
+            $pend[(int)$r['item_id']] = (int)$r['n'];
+        }
+    }
+    return max(0, (int)$it['brihet_stock'] - ($pend[(int)$it['id']] ?? 0) - $de_otros);
+}
+
+// Todo lo que se puede vender: físico + encargue (el tope del operador, si hay, limita el total)
+function disponible_total(array $it, ?int $cliente_id = -1): int {
+    $n = disponible($it, $cliente_id) + disponible_encargue($it, $cliente_id);
+    if (isset($it['limite']) && $it['limite'] !== null) $n = min($n, max(0, (int)$it['limite']));
+    return $n;
+}
+
+// Stock físico (WePoint): entrega en 24 h. Descuenta lo reservado para otros clientes.
 function disponible(array $it, ?int $cliente_id = -1): int {
     if (!empty($it['congelado'])) return 0;
     $st = max(0, (int)$it['stock']);
@@ -280,11 +347,18 @@ function estados_items(int $cliente_id, ?int $coleccion_id = null): array {
 
 const ESTADOS_PEDIDO = [
     'pendiente'  => ['Misión recibida',      'Recibimos tu pedido. Apenas confirmemos el pago, arranca la misión.', 'amarillo'],
-    'confirmado' => ['Pago confirmado',      'Pago confirmado: tu equipo ya se está reuniendo.', 'azul'],
-    'preparando' => ['Preparando el equipo', 'Estamos preparando tu pedido con el cuidado que merece.', 'azul'],
+    'confirmado' => ['Pago confirmado',      'Pago confirmado: ya estamos preparando tu pedido.', 'azul'],
+    'preparando' => ['Preparando tu pedido', 'Estamos preparando tu pedido con el cuidado que merece.', 'azul'],
     'enviado'    => ['Listo para retirar',   'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!', 'azul'],
     'entregado'  => ['Misión cumplida',      '¡Misión cumplida! Ya los sumamos a tu colección.', 'verde'],
     'cancelado'  => ['Cancelado',            'El pedido fue cancelado.', 'gris'],
+];
+
+// Unidades vendidas por encargue (stock virtual de Brihet): qué hizo el operador con cada una
+const ESTADOS_ENCARGUE = [
+    'pendiente' => ['Falta pedir a Brihet', 'badge-rojo'],
+    'pedido'    => ['Pedido a Brihet',      'badge-amarillo'],
+    'recibido'  => ['Recibido en depósito', 'badge-verde'],
 ];
 
 const ESTADOS_SOLICITUD = [
@@ -301,7 +375,7 @@ const FRASES_EPICAS = [
     'Toda saga merece su final',
     'Reuní a todos. Sin excepción',
     'El último número es el más épico',
-    'Tu equipo no está completo… todavía',
+    'Tu colección no está completa… todavía',
     'Cada colección tiene su leyenda',
     'Salimos a buscar al que falta',
     'Un estante. Una misión. Ningún hueco',
@@ -320,6 +394,16 @@ const PAGO_METODOS = [
 const PAGO_METODOS_ACTIVOS = ['mercadopago', 'transferencia'];
 
 // ─── Ajustes (tabla `ajustes`, se editan en admin/ajustes.php) ──────────────
+
+// Datos del vendedor que la ley pide mostrar (Ley 24.240): se cargan en Admin → Ajustes
+const DATOS_LEGALES = ['razon_social' => 'Razón social', 'cuit' => 'CUIT', 'domicilio' => 'Domicilio legal', 'email' => 'Mail de contacto', 'telefono' => 'Teléfono'];
+function legal(string $k): string {
+    $v = ajuste('legal_' . $k);
+    if ($v !== '') return $v;
+    return ['razon_social' => 'Dinter S.A.', 'email' => MAIL_OPERADOR][$k] ?? '';
+}
+const DIAS_ARREPENTIMIENTO = 10;   // Ley 24.240 art. 34: ventas a distancia, desde la entrega
+const URL_DEFENSA_CONSUMIDOR = 'https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario';
 
 const DATOS_BANCARIOS = ['banco' => 'Banco', 'titular' => 'Titular', 'cuit' => 'CUIT', 'cbu' => 'CBU', 'alias' => 'Alias'];
 

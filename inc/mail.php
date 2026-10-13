@@ -1,7 +1,7 @@
 <?php
 // Envío de mails. En local (MAIL_MODO = 'log') se escriben en storage/mail.log.
 
-function mail_enviar(string $para, string $asunto, string $cuerpo_html): bool {
+function mail_enviar(string $para, string $asunto, string $cuerpo_html, array $extra_headers = []): bool {
     $html = mail_layout($asunto, $cuerpo_html);
     if (MAIL_MODO === 'log') {
         $dir = dirname(__DIR__) . '/storage';
@@ -16,13 +16,15 @@ function mail_enviar(string $para, string $asunto, string $cuerpo_html): bool {
         'From: MeFaltaUno <' . MAIL_FROM . '>',
         'Reply-To: ' . MAIL_OPERADOR,
     ];
+    $headers = array_merge($headers, $extra_headers);
     $asunto_enc = '=?UTF-8?B?' . base64_encode($asunto) . '?=';
     return @mail($para, $asunto_enc, $html, implode("\r\n", $headers), '-f' . MAIL_FROM);
 }
 
 function mail_layout(string $titulo, string $cuerpo): string {
     $logo = rtrim(SITE_URL, '/') . url('assets/img/logo.jpg');
-    return '<!doctype html><html><body style="margin:0;background:#f4f6f6;font-family:Arial,Helvetica,sans-serif;color:#1f2a2b">'
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
+        . '<body style="margin:0;background:#f4f6f6;font-family:Arial,Helvetica,sans-serif;color:#1f2a2b">'
         . '<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">'
         . '<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden">'
         . '<tr><td style="background:#006368;padding:16px 24px"><img src="' . e($logo) . '" alt="MeFaltaUno" height="44"></td></tr>'

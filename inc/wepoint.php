@@ -151,7 +151,9 @@ function wepoint_sincronizar_stock(): array {
         }
         $disp = wepoint_disponible_de($p);
         if ($disp === null) { $res['sin_dato_stock']++; continue; }
-        q("UPDATE items SET stock=?, wepoint_id=?, stock_sync_at=NOW() WHERE id=?", [max(0, $disp), $p['id_producto'] ?? $p['id'] ?? null, $it['id']]);
+        // llegada_at primero: compara con el stock anterior (sin stock en ningún lado → ahora hay)
+        q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), stock=?, wepoint_id=?, stock_sync_at=NOW() WHERE id=?",
+          [max(0, $disp), max(0, $disp), $p['id_producto'] ?? $p['id'] ?? null, $it['id']]);
         $res['actualizados']++;
     }
     $res['nuevos'] = wepoint_registrar_nuevos($todos);
@@ -245,7 +247,7 @@ function wepoint_crear_orden(int $pedido_id): string {
 
 // ─── Estado de las órdenes ──────────────────────────────────────────────────
 // WePoint: Emitida → Empaquetada → Listo para enviar → (en camino) → Entregada/Completada.
-// En la web: confirmado → preparando ("Preparando el equipo") → enviado ("Listo para retirar").
+// En la web: confirmado → preparando ("Preparando tu pedido") → enviado ("Listo para retirar").
 // Cada cambio de estado en WePoint queda en el historial; el mail solo sale cuando cambia el estado de la web.
 
 function wepoint_estado_web(array $ov): ?string {

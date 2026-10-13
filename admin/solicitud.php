@@ -18,12 +18,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['accion'] ?? '', ['
             $n = reservas_asignar();
             flash('ok', 'Vinculado al catálogo.' . ($n ? ' Había stock: ya quedó reservado y le avisamos.' : ' Cuando entre stock se le reserva solo.'));
         } elseif ($acc === 'reservar') {
-            $it = q("SELECT id, stock, congelado, limite FROM items WHERE id=?", [$si['item_id']])->fetch();
+            $it = q("SELECT id, stock, congelado, limite, brihet_stock FROM items WHERE id=?", [$si['item_id']])->fetch();
             if (!$it) throw new Exception('Primero vinculá el número al catálogo.');
             if (reserva_de((int)$it['id'], (int)$si['cliente_id'])) throw new Exception('Ya tiene una reserva activa de ese número.');
-            if (reservas_libres($it) < 1) throw new Exception('No hay unidades libres: todo el stock está reservado o es 0. Liberá otra reserva o esperá stock.');
-            reserva_crear((int)$it['id'], (int)$si['cliente_id'], (int)$si['id'], 'manual', nombre_cliente($admin));
-            flash('ok', 'Reservado por ' . RESERVA_HORAS . ' horas y avisado por mail.');
+            if (reservas_libres($it) >= 1) {
+                reserva_crear((int)$it['id'], (int)$si['cliente_id'], (int)$si['id'], 'manual', nombre_cliente($admin));
+                flash('ok', 'Reservado del depósito por ' . RESERVA_HORAS . ' horas y avisado por mail.');
+            } elseif (disponible_encargue($it, null) >= 1) {
+                // Sin stock en el depósito pero sí en Brihet: se le guarda una unidad por encargue
+                reserva_crear((int)$it['id'], (int)$si['cliente_id'], (int)$si['id'], 'manual', nombre_cliente($admin), 'encargue');
+                flash('ok', 'Reservado por encargue (stock de Brihet) por ' . RESERVA_HORAS . ' horas y avisado por mail. Cuando lo compre, se lo pedís a Brihet desde el pedido.');
+            } else {
+                throw new Exception('No hay unidades libres ni en el depósito ni en Brihet. Liberá otra reserva o esperá stock.');
+            }
         } else {
             $r = q("SELECT * FROM reservas WHERE id=? AND solicitud_item_id=? AND estado='activa'", [(int)($_POST['reserva_id'] ?? 0), $si['id']])->fetch();
             if (!$r) throw new Exception('La reserva ya no está activa.');
@@ -58,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $s = q("SELECT s.*, c.nombre, c.apellido, c.email, c.telefono FROM solicitudes s JOIN clientes c ON c.id=s.cliente_id WHERE s.id=?", [$id])->fetch();
 if (!$s) redirect('admin/faltantes.php');
-$its = q("SELECT si.*, i.numero, i.stock, i.imagen, c.nombre AS coleccion, c.id AS coleccion_id
+$its = q("SELECT si.*, i.numero, i.stock, i.imagen, i.brihet_stock, i.brihet_stock_at, i.congelado, i.limite, i.id AS item_real_id, c.nombre AS coleccion, c.id AS coleccion_id
           FROM solicitud_items si LEFT JOIN items i ON i.id=si.item_id LEFT JOIN colecciones c ON c.id=i.coleccion_id
           WHERE si.solicitud_id=?", [$id])->fetchAll();
 $hist = historial('solicitud', $id);
@@ -92,6 +99,7 @@ admin_header('Faltante #' . $id, 'faltantes');
                     <div class="linea-der">
                         <?php if ($i['item_id']): ?>
                             <span class="badge <?= $i['stock'] > 0 ? 'badge-verde' : 'badge-gris' ?>">Stock: <?= (int)$i['stock'] ?></span>
+                            <?php if ($i['brihet_stock'] !== null): ?><span class="badge <?= $i['brihet_stock'] > 0 ? 'badge-azul' : 'badge-gris' ?>" title="Dato del <?= e(fecha($i['brihet_stock_at'])) ?> (referencia)">Brihet: <?= (int)$i['brihet_stock'] ?></span><?php endif; ?>
                             <a class="small" href="<?= url('admin/coleccion.php?id=' . (int)$i['coleccion_id']) ?>">Editar stock</a>
                         <?php endif; ?>
                     </div>
@@ -108,15 +116,17 @@ admin_header('Faltante #' . $id, 'faltantes');
                     <?php else: ?>
                         <?php $activa = null; foreach ($reservas[(int)$i['id']] ?? [] as $r) { if ($r['estado'] === 'activa' && strtotime($r['vence_at']) > time()) { $activa = $r; break; } } ?>
                         <?php if ($activa): ?>
-                            <span class="badge badge-verde">Reservado hasta <?= e(fecha($activa['vence_at'])) ?></span>
+                            <span class="badge badge-verde">Reservado<?= $activa['stock'] === 'encargue' ? ' por encargue' : '' ?> hasta <?= e(fecha($activa['vence_at'])) ?></span>
                             <form method="post"><?= csrf_field() ?><input type="hidden" name="si_id" value="<?= (int)$i['id'] ?>"><input type="hidden" name="reserva_id" value="<?= (int)$activa['id'] ?>">
                                 <button class="btn-texto" name="accion" value="extender">+<?= RESERVA_HORAS ?> h</button>
                                 <button class="btn-texto" name="accion" value="liberar" onclick="return confirm('¿Liberar la reserva? El número vuelve a la venta o pasa al siguiente que lo busca.')">Liberar</button>
                             </form>
                         <?php else: ?>
                             <span class="small muted"><?= ($reservas[(int)$i['id']] ?? []) ? 'Sin reserva activa.' : 'Se reserva solo cuando haya stock (' . RESERVA_HORAS . ' h).' ?></span>
+                            <?php $it_r = ['id' => $i['item_real_id'], 'stock' => $i['stock'], 'congelado' => $i['congelado'], 'limite' => $i['limite'], 'brihet_stock' => $i['brihet_stock']];
+                                  $por_encargue = reservas_libres($it_r) < 1 && disponible_encargue($it_r, null) >= 1; ?>
                             <form method="post"><?= csrf_field() ?><input type="hidden" name="accion" value="reservar"><input type="hidden" name="si_id" value="<?= (int)$i['id'] ?>">
-                                <button class="btn btn-linea btn-chico" type="submit">Reservar ahora</button></form>
+                                <button class="btn btn-linea btn-chico" type="submit" title="<?= $por_encargue ? 'No hay en el depósito: se le guarda una unidad del stock de Brihet y la entrega queda sujeta a los plazos del editor' : 'Se le guarda una unidad del depósito' ?>"><?= $por_encargue ? '📦 Reservar por encargue' : 'Reservar ahora' ?></button></form>
                         <?php endif; ?>
                         <?php foreach (array_slice($reservas[(int)$i['id']] ?? [], $activa ? 1 : 0) as $r): [$lbl, $cls] = $ESTADO_RESERVA[$r['estado']] ?? [$r['estado'], 'badge-gris']; ?>
                             <span class="small muted">· <?= e($lbl) ?> (<?= e(fecha($r['created_at'])) ?><?= $r['origen'] === 'manual' ? ', a mano' : '' ?>)</span>

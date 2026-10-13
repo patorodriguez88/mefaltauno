@@ -18,6 +18,11 @@ try {
     $v = reservas_vencer();
     $a = reservas_asignar();
     echo date('Y-m-d H:i:s') . " RESERVAS · vencidas $v · nuevas $a\n";
+    // Campañas de marketing en curso: la próxima tanda si ya pasó el intervalo
+    require_once dirname(__DIR__) . '/inc/vistas.php';
+    require_once dirname(__DIR__) . '/inc/marketing.php';
+    $m = campanas_procesar_todas();
+    if ($m) echo date('Y-m-d H:i:s') . " MARKETING · $m mails enviados\n";
     $p = wepoint_sincronizar_pedidos();
     echo date('Y-m-d H:i:s') . " PEDIDOS OK · revisados {$p['revisados']} · actualizados {$p['actualizados']}" . ($p['errores'] ? ' · errores: ' . implode(' | ', $p['errores']) : '') . "\n";
 } catch (Exception $e) {

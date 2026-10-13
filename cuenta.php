@@ -1,6 +1,6 @@
 <?php
 require __DIR__ . '/inc/bootstrap.php';
-require __DIR__ . '/inc/vistas.php';
+require_once __DIR__ . '/inc/vistas.php';
 
 $cli = requiere_login();
 if (es_admin($cli)) redirect('admin/');
@@ -49,7 +49,7 @@ require __DIR__ . '/inc/header.php';
 <section class="cuenta-head">
     <div class="container">
         <h1 style="margin:0">Hola, <?= e($cli['nombre']) ?></h1>
-        <p class="muted" style="margin:4px 0 0">Tu base de operaciones: tus colecciones, quién falta y tus pedidos.</p>
+        <p class="muted" style="margin:4px 0 0">Tus colecciones, lo que te falta y tus pedidos.</p>
         <nav class="tabs">
             <a href="?tab=colecciones" class="<?= $tab === 'colecciones' ? 'activo' : '' ?>">Mis colecciones</a>
             <a href="?tab=faltantes" class="<?= $tab === 'faltantes' ? 'activo' : '' ?>">En búsqueda<?= $cnt_faltantes ? '<span class="cnt">' . $cnt_faltantes . '</span>' : '' ?></a>
@@ -75,8 +75,8 @@ require __DIR__ . '/inc/header.php';
             </p>
         <?php else: ?>
             <div class="card vacio">
-                <h3>Tu base está vacía</h3>
-                <p>Toda leyenda empieza con un primer número. Entrá a una colección, pasá lista y acá vas a ver cómo crece tu equipo.</p>
+                <h3>Todavía no sumaste colecciones</h3>
+                <p>Toda leyenda empieza con un primer número. Entrá a una colección, pasá lista y acá vas a ver cómo crece tu colección.</p>
                 <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Elegir una colección</a>
             </div>
         <?php endif; ?>
@@ -108,7 +108,7 @@ require __DIR__ . '/inc/header.php';
                         <?php endforeach; ?>
                     </ul>
                     <?php if ($s['respuesta']): ?>
-                        <div class="aviso" style="background:var(--teal-50);color:var(--teal-900)"><b>Base MeFaltaUno:</b> <?= nl2br(e($s['respuesta'])) ?></div>
+                        <div class="aviso" style="background:var(--teal-50);color:var(--teal-900)"><b>MeFaltaUno:</b> <?= nl2br(e($s['respuesta'])) ?></div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>

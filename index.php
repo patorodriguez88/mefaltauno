@@ -1,8 +1,9 @@
 <?php
 require __DIR__ . '/inc/bootstrap.php';
-require __DIR__ . '/inc/vistas.php';
+require_once __DIR__ . '/inc/vistas.php';
+require __DIR__ . '/inc/comics.php';
 
-$destacadas = q("SELECT c.*, MIN(COALESCE(NULLIF(i.precio_promo,0), i.precio)) AS desde, COUNT(i.id) AS total
+$destacadas = q("SELECT c.*, MIN(CASE WHEN i.congelado=0 AND (i.stock>0 OR COALESCE(i.brihet_stock,0)>0) AND c.proximamente=0 THEN COALESCE(NULLIF(i.precio_promo,0), i.precio) END) AS desde, COUNT(i.id) AS total
                  FROM colecciones c LEFT JOIN items i ON i.coleccion_id=c.id AND i.activo=1
                  WHERE c.activa=1 GROUP BY c.id ORDER BY c.destacada DESC, c.orden LIMIT 8")->fetchAll();
 
@@ -18,18 +19,26 @@ $cli = cliente();
 $op = es_admin($cli);
 $mis = $cli && !$op ? mis_colecciones((int)$cli['id'], 3) : [];
 
+// Ventana de novedades: colecciones "Próximamente" y las publicadas en los últimos 15 días (se arma sola)
+$novedades = ajuste('novedades_activo', '1') === '1'
+    ? q("SELECT c.*, (c.created_at >= DATE_SUB(NOW(), INTERVAL 15 DAY) AND c.proximamente=0) AS es_nueva FROM colecciones c
+         WHERE c.activa=1 AND (c.proximamente=1 OR c.created_at >= DATE_SUB(NOW(), INTERVAL 15 DAY))
+         ORDER BY c.proximamente DESC, c.created_at DESC LIMIT 6")->fetchAll()
+    : [];
+
 require __DIR__ . '/inc/header.php';
 ?>
 
 <section class="hero">
     <div class="container hero-grid">
         <div>
-            <div class="kicker">★ Una misión para coleccionistas ★</div>
+            <div class="kicker">★ Para coleccionistas de verdad ★</div>
             <h1>¿Te falta <em>uno</em>?</h1>
-            <p class="lead">Todo gran equipo tiene un integrante que todavía no llegó. Marcá los que ya custodiás en tu estante y nosotros salimos a rescatar al que falta. <strong>Ningún héroe queda atrás.</strong></p>
+            <p class="lead">Todo coleccionista conoce esa sensación: el estante casi completo y un hueco que no se cierra. Porque toda gran colección tiene un número que todavía no llegó.</p>
+            <p class="lead">Este es el lugar para descubrir colecciones, llevar la cuenta de las tuyas y pedirnos el que te falta: nosotros salimos a buscarlo. Para que <em>“me falta uno”</em> sea solo una frase. <strong>Las colecciones se completan.</strong></p>
             <div class="hero-cta">
                 <a class="btn btn-primario" href="<?= url('colecciones.php') ?>">Explorar colecciones</a>
-                <a class="btn btn-claro" href="<?= url($op ? 'admin/' : ($cli ? 'cuenta.php' : 'registro.php')) ?>"><?= $op ? 'Ir al panel' : ($cli ? 'Ir a mi base' : 'Armá tu equipo') ?></a>
+                <a class="btn btn-claro" href="<?= url($op ? 'admin/' : ($cli ? 'cuenta.php' : 'registro.php')) ?>"><?= $op ? 'Ir al panel' : ($cli ? 'Ir a Mis colecciones' : 'Empezá tu colección') ?></a>
             </div>
         </div>
         <div class="hero-album" aria-hidden="true">
@@ -80,12 +89,12 @@ require __DIR__ . '/inc/header.php';
             <div class="paso">
                 <div class="paso-num">1</div>
                 <h3>Elegí tu saga</h3>
-                <p>Comics, figuras, autos de leyenda y más. Sumala a tu base con un clic.</p>
+                <p>Comics, figuras, autos de leyenda y más. Sumala a Mis colecciones con un clic.</p>
             </div>
             <div class="paso">
                 <div class="paso-num">2</div>
                 <h3>Pasá lista</h3>
-                <p>Marcá los números que ya tenés y descubrí quién falta en tu equipo.</p>
+                <p>Marcá los números que ya tenés y descubrí qué números te faltan.</p>
             </div>
             <div class="paso">
                 <div class="paso-num">3</div>
@@ -120,5 +129,47 @@ require __DIR__ . '/inc/header.php';
         <a class="btn btn-teal" href="<?= url('me-falta.php') ?>">Activar la búsqueda</a>
     </div>
 </section>
+
+<?php [$p1, $p2, $p3] = comic_al_azar(3); // en cada visita, otros personajes (no siempre el mismo primero) ?>
+<?= comic_cameo($p1, 'izq', '.hero') ?>
+<?= comic_cameo($p2, 'der', '.cats') ?>
+<?= comic_cameo($p3, 'izq', '.banner-falta') ?>
+
+<?php if ($novedades): ?>
+<dialog class="modal modal-novedades" id="modal-novedades" aria-labelledby="novedades-titulo" data-firma="<?= e(md5(implode(',', array_column($novedades, 'id')) . ajuste('novedades_titulo'))) ?>">
+    <div class="modal-caja">
+        <button class="modal-cerrar" type="button" aria-label="Cerrar" onclick="this.closest('dialog').close()">×</button>
+        <div class="kicker" style="color:var(--teal)">★ Novedades ★</div>
+        <h3 id="novedades-titulo"><?= e(ajuste('novedades_titulo') ?: 'Lo que llega a la base') ?></h3>
+        <p class="muted" style="margin:0"><?= e(ajuste('novedades_texto') ?: 'Lanzamientos y colecciones que están por llegar. Entrá y activá las novedades para enterarte primero.') ?></p>
+        <div class="novedades-lista">
+            <?php foreach ($novedades as $n): ?>
+                <a class="novedad" href="<?= url('coleccion.php?c=' . urlencode($n['slug'])) ?>">
+                    <?= foto($n['imagen'], '📚') ?>
+                    <span class="novedad-info">
+                        <span class="badge <?= $n['proximamente'] ? 'badge-amarillo' : 'badge-verde' ?>"><?= $n['proximamente'] ? 'Próximamente' . ($n['lanzamiento'] ? ' · ' . e($n['lanzamiento']) : '') : 'Nuevo' ?></span>
+                        <b><?= e($n['nombre']) ?></b>
+                        <small><?= $n['proximamente'] ? 'Avisame cuando llegue →' : 'Ver colección →' ?></small>
+                    </span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <button class="btn btn-primario btn-bloque" type="button" onclick="this.closest('dialog').close()">Seguir a la tienda</button>
+    </div>
+</dialog>
+<script>
+// Se muestra una vez; vuelve a aparecer solo si cambian las novedades
+(() => {
+    const d = document.getElementById('modal-novedades');
+    if (!d || !d.showModal) return;
+    let vista = '';
+    try { vista = localStorage.getItem('mfu-novedades') || ''; } catch (e) {}
+    if (vista === d.dataset.firma) return;
+    setTimeout(() => d.showModal(), 900);
+    d.addEventListener('close', () => { try { localStorage.setItem('mfu-novedades', d.dataset.firma); } catch (e) {} });
+    d.addEventListener('click', ev => { if (ev.target === d) d.close(); });   // tocar afuera cierra
+})();
+</script>
+<?php endif; ?>
 
 <?php require __DIR__ . '/inc/footer.php'; ?>

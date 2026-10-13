@@ -13,7 +13,18 @@ function reservas_mapa(bool $refrescar = false): array {
     static $mapa = null;
     if ($mapa !== null && !$refrescar) return $mapa;
     $mapa = [];
-    foreach (q("SELECT item_id, cliente_id, SUM(cantidad) AS cant FROM reservas WHERE estado='activa' AND vence_at > NOW() GROUP BY item_id, cliente_id") as $r) {
+    foreach (q("SELECT item_id, cliente_id, SUM(cantidad) AS cant FROM reservas WHERE estado='activa' AND stock='fisico' AND vence_at > NOW() GROUP BY item_id, cliente_id") as $r) {
+        $mapa[(int)$r['item_id']][(int)$r['cliente_id']] = (int)$r['cant'];
+    }
+    return $mapa;
+}
+
+// Reservas sobre el stock de Brihet (por encargue): [item_id => [cliente_id => cantidad]]
+function reservas_mapa_encargue(bool $refrescar = false): array {
+    static $mapa = null;
+    if ($mapa !== null && !$refrescar) return $mapa;
+    $mapa = [];
+    foreach (q("SELECT item_id, cliente_id, SUM(cantidad) AS cant FROM reservas WHERE estado='activa' AND stock='encargue' AND vence_at > NOW() GROUP BY item_id, cliente_id") as $r) {
         $mapa[(int)$r['item_id']][(int)$r['cliente_id']] = (int)$r['cant'];
     }
     return $mapa;
@@ -25,17 +36,20 @@ function reserva_de(int $item_id, ?int $cliente_id): ?array {
     return q("SELECT * FROM reservas WHERE item_id=? AND cliente_id=? AND estado='activa' AND vence_at > NOW() ORDER BY vence_at LIMIT 1", [$item_id, $cliente_id])->fetch() ?: null;
 }
 
-function reserva_crear(int $item_id, int $cliente_id, ?int $solicitud_item_id, string $origen, string $usuario): int {
-    q("INSERT INTO reservas (item_id, cliente_id, solicitud_item_id, cantidad, estado, origen, vence_at) VALUES (?,?,?,1,'activa',?, DATE_ADD(NOW(), INTERVAL " . RESERVA_HORAS . " HOUR))",
-      [$item_id, $cliente_id, $solicitud_item_id, $origen]);
+// $stock: 'fisico' (depósito, entrega en 24 h) o 'encargue' (unidad de Brihet, plazos del editor)
+function reserva_crear(int $item_id, int $cliente_id, ?int $solicitud_item_id, string $origen, string $usuario, string $stock = 'fisico'): int {
+    q("INSERT INTO reservas (item_id, cliente_id, solicitud_item_id, cantidad, stock, estado, origen, vence_at) VALUES (?,?,?,1,?,'activa',?, DATE_ADD(NOW(), INTERVAL " . RESERVA_HORAS . " HOUR))",
+      [$item_id, $cliente_id, $solicitud_item_id, $stock, $origen]);
     $rid = (int)db()->lastInsertId();
     reservas_mapa(true);
+    reservas_mapa_encargue(true);
     if ($solicitud_item_id) {
         $si = q("SELECT si.solicitud_id, i.numero, c.nombre AS coleccion, c.slug, r.vence_at
                  FROM solicitud_items si JOIN items i ON i.id=? JOIN colecciones c ON c.id=i.coleccion_id JOIN reservas r ON r.id=?
                  WHERE si.id=?", [$item_id, $rid, $solicitud_item_id])->fetch();
         if ($si) {
-            $nota = '¡Lo encontramos! ' . $si['coleccion'] . ' ' . num((int)$si['numero']) . ' te lo guardamos hasta el '
+            $nota = '¡Lo encontramos! ' . $si['coleccion'] . ' ' . num((int)$si['numero'])
+                  . ($stock === 'encargue' ? ' está disponible por encargue (la entrega queda sujeta a los plazos del editor). Te lo guardamos hasta el ' : ' te lo guardamos hasta el ')
                   . fecha($si['vence_at']) . '. Pasado ese plazo vuelve a la venta.';
             require_once __DIR__ . '/notificaciones.php';
             q("UPDATE solicitudes SET estado='conseguido', respuesta=? WHERE id=?", [$nota, $si['solicitud_id']]);
@@ -81,6 +95,7 @@ function reservas_vencer(): int {
     }
     if ($vencidas) {
         reservas_mapa(true);
+        reservas_mapa_encargue(true);
         reservas_asignar();
     }
     return count($vencidas);
@@ -99,7 +114,7 @@ function reservas_usar(int $cliente_id, int $item_id, int $cantidad, int $pedido
 // descontando lo que ya compró en pedidos no cancelados. Sin sesión, el máximo se aplica al carrito.
 function comprable(array $it, ?int $cliente_id = -1): int {
     if ($cliente_id === -1) $cliente_id = (int)(cliente()['id'] ?? 0) ?: null;
-    $n = disponible($it, $cliente_id);
+    $n = disponible_total($it, $cliente_id);
     if (isset($it['max_por_cliente']) && $it['max_por_cliente'] !== null) {
         $ya = $cliente_id ? (int)q("SELECT COALESCE(SUM(pi.cantidad),0) FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id
                                      WHERE p.cliente_id=? AND p.estado<>'cancelado' AND pi.item_id=?", [$cliente_id, $it['id']])->fetchColumn() : 0;
@@ -110,7 +125,7 @@ function comprable(array $it, ?int $cliente_id = -1): int {
 
 // Texto para cuando el límite es el máximo por cliente (y no el stock)
 function motivo_tope(array $it, int $puede): string {
-    if (isset($it['max_por_cliente']) && $it['max_por_cliente'] !== null && $puede < disponible($it)) {
+    if (isset($it['max_por_cliente']) && $it['max_por_cliente'] !== null && $puede < disponible_total($it)) {
         return 'Máximo ' . (int)$it['max_por_cliente'] . ' por cliente' . ($puede ? '' : ': ya llegaste al máximo de ese número') . '.';
     }
     return $puede > 0 ? "Solo quedan $puede unidades." : 'No quedan más unidades de ese número.';
