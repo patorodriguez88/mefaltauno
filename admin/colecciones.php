@@ -36,11 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
     redirect('admin/coleccion.php?id=' . $cid);
 }
 
-$sin_stock = !empty($_GET['sin_stock']);
-$cols = q("SELECT c.*, cat.nombre AS categoria, COUNT(i.id) AS total, SUM(i.stock<=0) AS sin_stock, SUM(i.stock) AS unidades,
+// Qué hay para vender: en el depósito (WePoint, entrega en 24 h) y en Brihet (por encargue)
+$ver = in_array($_GET['ver'] ?? '', ['deposito', 'brihet'], true) ? $_GET['ver'] : '';
+$cols = q("SELECT c.*, cat.nombre AS categoria, COUNT(i.id) AS total,
+                  SUM(i.stock>0) AS en_deposito, SUM(GREATEST(i.stock,0)) AS unidades,
+                  SUM(COALESCE(i.brihet_stock,0)>0) AS en_brihet,
                   (SELECT COUNT(*) FROM cliente_colecciones cc WHERE cc.coleccion_id=c.id) AS seguidores
            FROM colecciones c LEFT JOIN categorias cat ON cat.id=c.categoria_id LEFT JOIN items i ON i.coleccion_id=c.id AND i.activo=1
-           GROUP BY c.id " . ($sin_stock ? 'HAVING sin_stock > 0' : '') . " ORDER BY c.activa DESC, c.orden, c.nombre")->fetchAll();
+           GROUP BY c.id " . ($ver === 'deposito' ? 'HAVING en_deposito > 0' : ($ver === 'brihet' ? 'HAVING en_brihet > 0' : '')) . " ORDER BY c.activa DESC, c.orden, c.nombre")->fetchAll();
 
 $por_publicar = wepoint_nuevos_pendientes();
 admin_header('Stock', 'colecciones');
@@ -56,7 +59,7 @@ admin_header('Stock', 'colecciones');
 <div class="section-head">
     <h1 style="margin:0">Stock</h1>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <?php if ($sin_stock): ?><a href="<?= url('admin/colecciones.php') ?>">Ver todas</a><?php endif; ?>
+        <?php if ($ver): ?><span class="small">Solo con stock <?= $ver === 'deposito' ? 'en depósito' : 'en Brihet' ?> · <a href="<?= url('admin/colecciones.php') ?>">Ver todas</a></span><?php endif; ?>
         <a class="btn btn-linea btn-chico" href="<?= url('admin/categorias.php') ?>">Categorías</a>
         <button class="btn btn-primario btn-chico" type="button" onclick="document.getElementById('modal-crear').showModal()">+ Crear colección</button>
         <a class="btn btn-linea btn-chico" href="<?= url('admin/brihet.php') ?>">Importar desde Brihet</a>
@@ -69,15 +72,15 @@ admin_header('Stock', 'colecciones');
 </div>
 <div class="tabla-wrap" style="margin-bottom:24px">
     <table class="tabla" id="tabla-cols">
-        <tr><th></th><th>Colección</th><th>Categoría</th><th>Números</th><th>Sin stock</th><th>Unidades</th><th>La siguen</th><th>Estado</th></tr>
+        <tr><th></th><th>Colección</th><th>Categoría</th><th>Números</th><th title="Números con unidades en WePoint: entrega en 24 h">En depósito</th><th title="Números que Brihet tiene disponibles: por encargue">En Brihet</th><th>La siguen</th><th>Estado</th></tr>
         <?php foreach ($cols as $c): ?>
             <tr class="clic" data-busca="<?= e($c['nombre'] . ' ' . ($c['categoria'] ?? '')) ?>" onclick="location='<?= url('admin/coleccion.php?id=' . (int)$c['id']) ?>'">
                 <td><?= foto($c['imagen'] ?? '', '📚', 'width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--teal-50);font-size:1.1rem') ?></td>
                 <td><b><?= e($c['nombre']) ?></b><?= $c['destacada'] ? ' <span class="badge badge-amarillo">Destacada</span>' : '' ?></td>
                 <td class="small"><?= e($c['categoria'] ?? '—') ?></td>
                 <td><?= (int)$c['total'] ?></td>
-                <td><?= $c['sin_stock'] ? '<span class="badge badge-rojo">' . (int)$c['sin_stock'] . '</span>' : '0' ?></td>
-                <td><?= (int)$c['unidades'] ?></td>
+                <td><?= $c['en_deposito'] ? '<span class="badge badge-verde">' . (int)$c['en_deposito'] . '</span> <span class="small muted">' . (int)$c['unidades'] . ' u.</span>' : '<span class="muted">—</span>' ?></td>
+                <td><?= $c['en_brihet'] ? '<span class="badge badge-azul">' . (int)$c['en_brihet'] . '</span>' : '<span class="muted">—</span>' ?></td>
                 <td><?= (int)$c['seguidores'] ?></td>
                 <td><?= $c['activa'] ? '<span class="badge badge-verde">Visible</span>' : '<span class="badge badge-gris">Oculta</span>' ?></td>
             </tr>

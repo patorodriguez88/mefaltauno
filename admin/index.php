@@ -16,7 +16,8 @@ $k = [
     'ped_pend'  => (int)q("SELECT COUNT(*) FROM pedidos WHERE estado='pendiente'")->fetchColumn(),
     'ped_curso' => (int)q("SELECT COUNT(*) FROM pedidos WHERE estado IN ('confirmado','preparando','enviado')")->fetchColumn(),
     'clientes'  => (int)q("SELECT COUNT(*) FROM clientes")->fetchColumn(),
-    'sin_stock' => (int)q("SELECT COUNT(*) FROM items i JOIN colecciones c ON c.id=i.coleccion_id WHERE i.activo=1 AND c.activa=1 AND i.stock<=0")->fetchColumn(),
+    'deposito'  => (int)q("SELECT COUNT(*) FROM items i JOIN colecciones c ON c.id=i.coleccion_id WHERE i.activo=1 AND c.activa=1 AND i.stock>0")->fetchColumn(),
+    'brihet'    => (int)q("SELECT COUNT(*) FROM items i JOIN colecciones c ON c.id=i.coleccion_id WHERE i.activo=1 AND c.activa=1 AND COALESCE(i.brihet_stock,0)>0")->fetchColumn(),
     'cols'      => (int)q("SELECT COUNT(*) FROM colecciones")->fetchColumn(),
 ];
 
@@ -50,7 +51,8 @@ admin_header('Resumen', 'inicio');
     <a class="kpi" href="<?= url('admin/faltantes.php?estado=buscando') ?>"><b><?= $k['sol_busc'] ?></b>Faltantes en búsqueda</a>
     <a class="kpi <?= $k['ped_pend'] ? 'alerta' : '' ?>" href="<?= url('admin/pedidos.php?estado=pendiente') ?>"><b><?= $k['ped_pend'] ?></b>Pedidos nuevos</a>
     <a class="kpi" href="<?= url('admin/pedidos.php?estado=curso') ?>"><b><?= $k['ped_curso'] ?></b>Pedidos en curso</a>
-    <a class="kpi" href="<?= url('admin/colecciones.php?sin_stock=1') ?>"><b><?= $k['sin_stock'] ?></b>Números sin stock</a>
+    <a class="kpi" href="<?= url('admin/colecciones.php?ver=deposito') ?>"><b><?= $k['deposito'] ?></b>Números en depósito</a>
+    <a class="kpi" href="<?= url('admin/colecciones.php?ver=brihet') ?>"><b><?= $k['brihet'] ?></b>Números en Brihet</a>
     <a class="kpi" href="<?= url('admin/clientes.php') ?>"><b><?= $k['clientes'] ?></b>Clientes</a>
 </div>
 
