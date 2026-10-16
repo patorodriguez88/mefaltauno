@@ -1,6 +1,6 @@
 <?php
 // Integración con WePoint Warehouse (https://sistema.wepoint.ar/docs/api/).
-// - El stock lo maneja WePoint: wepoint_sincronizar_stock() trae "disponible para venta" por SKU.
+// - El stock lo maneja WePoint: wepoint_sincronizar_stock() trae "disponible para venta" de cada edición (o producto simple).
 // - Cuando un pedido se confirma, wepoint_crear_orden() genera la orden de venta (egreso) para que la preparen.
 // Autenticación: POST /v2/auth/login (email + contraseña, igual que el portal de WePoint) → token Bearer, que se guarda en `ajustes`.
 //
@@ -122,64 +122,94 @@ function wepoint_disponible_de(array $p): ?int {
     return null;
 }
 
-// Trae todos los productos de WePoint y actualiza stock + id. Cada número se vincula por SKU o, si no tiene, por id de WePoint.
-function wepoint_sincronizar_stock(): array {
-    $todos = [];
+// Unidades que se venden: cada edición de un título (variante) y cada producto simple. Los títulos no se venden.
+// GET v2/variantes/operables → {tipo VARIANTE|SIMPLE, id_producto, id_variante, nombre (del título), sku (de la edición),
+// numero_edicion, precio_venta, disponible_para_venta}. Devuelve las filas por clave (v:<id_variante> o p:<id_producto>).
+function wepoint_clave(?int $id_producto, ?int $id_variante): string {
+    return $id_variante ? 'v:' . $id_variante : 'p:' . (int)$id_producto;
+}
+
+// Clave WePoint de un número de la web (fila de items con wepoint_id y wepoint_variante_id)
+function wepoint_clave_item(array $it): string {
+    return wepoint_clave((int)$it['wepoint_id'], !empty($it['wepoint_variante_id']) ? (int)$it['wepoint_variante_id'] : null);
+}
+
+function wepoint_unidades(): array {
+    $todas = [];
     $pagina = 1;
     do {
-        [$filas, $ultima] = wepoint_filas(wepoint_api('GET', 'v2/productos?per_page=100&page=' . $pagina));
-        foreach ($filas as $p) {
-            $id = $p['id_producto'] ?? $p['id'] ?? null;
-            if ($id !== null) $todos[(string)$id] = $p;
+        [$filas, $ultima] = wepoint_filas(wepoint_api('GET', 'v2/variantes/operables?per_page=100&page=' . $pagina));
+        foreach ($filas as $u) {
+            if (($u['tipo'] ?? '') === 'PADRE' || empty($u['id_producto'])) continue;
+            $u['id_variante'] = !empty($u['id_variante']) ? (int)$u['id_variante'] : null;
+            $todas[wepoint_clave((int)$u['id_producto'], $u['id_variante'])] = $u;
         }
         $pagina++;
-    } while ($pagina <= $ultima && $pagina <= 100);
+    } while ($pagina <= $ultima && $pagina <= 200);
+    return $todas;
+}
+
+// Trae las unidades de WePoint y actualiza stock y vínculo de cada número. Busca en este orden:
+// la edición vinculada, el SKU, y el título vinculado + el número (para los que se vincularon cuando eran productos simples).
+function wepoint_sincronizar_stock(): array {
+    $todas = wepoint_unidades();
     $por_sku = [];
-    foreach ($todos as $p) {
-        $sku = strtoupper(trim((string)($p['sku'] ?? '')));
-        if ($sku !== '') $por_sku[$sku] = $p;
+    $por_titulo_numero = [];
+    foreach ($todas as $u) {
+        $sku = strtoupper(trim((string)($u['sku'] ?? '')));
+        if ($sku !== '') $por_sku[$sku] = $u;
+        if ($u['id_variante'] && !empty($u['numero_edicion'])) $por_titulo_numero[$u['id_producto'] . '#' . (int)$u['numero_edicion']] = $u;
     }
 
-    $res = ['wepoint' => count($todos), 'actualizados' => 0, 'sin_sku' => 0, 'no_encontrados' => [], 'sin_dato_stock' => 0];
-    foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.numero, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
+    $res = ['wepoint' => count($todas), 'actualizados' => 0, 'sin_sku' => 0, 'no_encontrados' => [], 'sin_dato_stock' => 0];
+    foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.wepoint_variante_id, i.numero, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
         $sku = strtoupper(trim((string)$it['sku']));
-        $p = ($sku !== '' ? $por_sku[$sku] ?? null : null) ?? ($it['wepoint_id'] ? $todos[(string)$it['wepoint_id']] ?? null : null);
-        if (!$p) {
+        $u = null;
+        if ($it['wepoint_variante_id']) $u = $todas[wepoint_clave(null, (int)$it['wepoint_variante_id'])] ?? null;
+        if (!$u && $sku !== '') $u = $por_sku[$sku] ?? null;
+        if (!$u && $it['wepoint_id']) {
+            $u = $todas[wepoint_clave((int)$it['wepoint_id'], null)] ?? $por_titulo_numero[$it['wepoint_id'] . '#' . (int)$it['numero']] ?? null;
+        }
+        if (!$u) {
             if ($sku === '' && !$it['wepoint_id']) $res['sin_sku']++;
             else $res['no_encontrados'][] = $it['nombre'] . ' ' . num((int)$it['numero']) . ($sku !== '' ? " ($sku)" : '');
             continue;
         }
-        $disp = wepoint_disponible_de($p);
+        $disp = wepoint_disponible_de($u);
         if ($disp === null) { $res['sin_dato_stock']++; continue; }
         // llegada_at primero: compara con el stock anterior (sin stock en ningún lado → ahora hay)
-        q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), stock=?, wepoint_id=?, stock_sync_at=NOW() WHERE id=?",
-          [max(0, $disp), max(0, $disp), $p['id_producto'] ?? $p['id'] ?? null, $it['id']]);
+        q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), stock=?, wepoint_id=?, wepoint_variante_id=?, stock_sync_at=NOW() WHERE id=?",
+          [max(0, $disp), max(0, $disp), (int)$u['id_producto'], $u['id_variante'], $it['id']]);
         $res['actualizados']++;
     }
-    $res['nuevos'] = wepoint_registrar_nuevos($todos);
+    $res['nuevos'] = wepoint_registrar_nuevos($todas);
     wepoint_ajuste_set('wepoint_ultima_sync', date('Y-m-d H:i:s'));
     wepoint_ajuste_set('wepoint_ultimo_resultado', json_encode($res, JSON_UNESCAPED_UNICODE));
     return $res;
 }
 
-// Todo lo que hay en la cuenta de WePoint es para vender en la web: lo que todavía no es un número de la web
-// va a la bandeja "Por publicar". Devuelve cuántos hay pendientes.
-function wepoint_registrar_nuevos(array $todos): int {
-    $en_web_sku = array_flip(array_map('strtoupper', q("SELECT sku FROM items WHERE sku IS NOT NULL AND sku<>''")->fetchAll(PDO::FETCH_COLUMN)));
-    $en_web_id = array_flip(q("SELECT wepoint_id FROM items WHERE wepoint_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN));
-    foreach ($todos as $id => $p) {
-        $sku = strtoupper(trim((string)($p['sku'] ?? '')));
-        if (isset($en_web_id[$id]) || ($sku !== '' && isset($en_web_sku[$sku]))) continue;
-        $precio = $p['precio_venta'] ?? $p['precio'] ?? null;
-        q("INSERT INTO wepoint_nuevos (wepoint_id, sku, nombre, precio, stock, visto_at) VALUES (?,?,?,?,?,NOW())
-           ON DUPLICATE KEY UPDATE sku=VALUES(sku), nombre=VALUES(nombre), precio=VALUES(precio), stock=VALUES(stock), visto_at=NOW()",
-          [(string)$id, $sku ?: null, mb_substr((string)($p['nombre'] ?? ''), 0, 255) ?: null, is_numeric($precio) ? (float)$precio : null, max(0, (int)wepoint_disponible_de($p))]);
+// Todo lo que hay en la cuenta de WePoint es para vender en la web: cada edición (o producto simple) que todavía
+// no es un número de la web va a la bandeja "Por publicar". Devuelve cuántas hay pendientes.
+function wepoint_registrar_nuevos(array $todas): int {
+    $en_web = [];
+    foreach (q("SELECT sku, wepoint_id, wepoint_variante_id FROM items WHERE wepoint_id IS NOT NULL OR (sku IS NOT NULL AND sku<>'')")->fetchAll() as $it) {
+        if ($it['wepoint_id']) $en_web[wepoint_clave((int)$it['wepoint_id'], $it['wepoint_variante_id'] ? (int)$it['wepoint_variante_id'] : null)] = true;
+        if ((string)$it['sku'] !== '') $en_web['sku:' . strtoupper(trim($it['sku']))] = true;
     }
-    // Salen de la bandeja los que ya son números de la web y los que ya no están en WePoint
-    q("DELETE n FROM wepoint_nuevos n JOIN items i ON i.wepoint_id=n.wepoint_id OR (n.sku IS NOT NULL AND UPPER(i.sku)=n.sku)");
-    if ($todos) {
-        $marcas = implode(',', array_fill(0, count($todos), '?'));
-        q("DELETE FROM wepoint_nuevos WHERE wepoint_id NOT IN ($marcas)", array_map('strval', array_keys($todos)));
+    foreach ($todas as $clave => $u) {
+        $sku = strtoupper(trim((string)($u['sku'] ?? '')));
+        if (isset($en_web[$clave]) || ($sku !== '' && isset($en_web['sku:' . $sku]))) continue;
+        $precio = $u['precio_venta'] ?? null;
+        q("INSERT INTO wepoint_nuevos (clave, wepoint_id, wepoint_variante_id, sku, nombre, numero_edicion, precio, stock, visto_at) VALUES (?,?,?,?,?,?,?,?,NOW())
+           ON DUPLICATE KEY UPDATE sku=VALUES(sku), nombre=VALUES(nombre), numero_edicion=VALUES(numero_edicion), precio=VALUES(precio), stock=VALUES(stock), visto_at=NOW()",
+          [$clave, (string)$u['id_producto'], $u['id_variante'], $sku ?: null, mb_substr((string)($u['nombre'] ?? ''), 0, 255) ?: null,
+           !empty($u['numero_edicion']) ? (int)$u['numero_edicion'] : null, is_numeric($precio) && $precio > 0 ? (float)$precio : null, max(0, (int)wepoint_disponible_de($u))]);
+    }
+    // Salen de la bandeja las que ya son números de la web y las que ya no están en WePoint
+    q("DELETE n FROM wepoint_nuevos n JOIN items i ON (i.wepoint_id=n.wepoint_id AND i.wepoint_variante_id <=> n.wepoint_variante_id) OR (n.sku IS NOT NULL AND UPPER(i.sku)=n.sku)");
+    if ($todas) {
+        $marcas = implode(',', array_fill(0, count($todas), '?'));
+        q("DELETE FROM wepoint_nuevos WHERE clave NOT IN ($marcas)", array_keys($todas));
     }
     return wepoint_nuevos_pendientes();
 }
@@ -191,6 +221,64 @@ function wepoint_nuevos_pendientes(): int {
 // SKU MFU-<id colección>-<número> → [coleccion_id, numero] (si tiene ese formato)
 function wepoint_sku_partes(?string $sku): array {
     return preg_match('/^MFU-(\d+)-(\d+)$/i', trim((string)$sku), $m) ? [(int)$m[1], (int)$m[2]] : [null, null];
+}
+
+// ─── Sugerencia de colección y número para "Por publicar" ───────────────────
+// WePoint no tiene número de entrega: el depósito lo pone al final del nombre ("AUTOS DE COLECCION 1/60 2",
+// "… -2", "… N° 2") y el 1 suele ir sin número. La escala (1/60, 1:24) no es parte del nombre de la colección.
+
+// Minúsculas, sin acentos (sin iconv: en macOS deja "colecci'on"), sin la escala y solo letras y números
+function wepoint_normalizar(string $s): string {
+    $s = mb_strtolower($s);
+    $s = strtr($s, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n', 'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u', 'ç' => 'c', 'º' => ' ', '°' => ' ']);
+    $s = preg_replace('#\b\d+\s*[/:]\s*\d+\b#', ' ', $s);   // escala 1/60, 1:24
+    return trim(preg_replace('/[^a-z0-9]+/', ' ', $s));
+}
+
+// Nombre de WePoint → [nombre de la colección normalizado, número de entrega o null]
+function wepoint_nombre_partes(string $nombre): array {
+    $n = wepoint_normalizar($nombre);
+    if (preg_match('/^(.*?)\s+(?:(?:n|nro|no|num|numero|entrega|vol|tomo)\s+)?0*(\d{1,3})$/', $n, $m) && trim($m[1]) !== '') {
+        return [trim($m[1]), (int)$m[2] ?: null];
+    }
+    return [$n, null];
+}
+
+function wepoint_palabras(string $norm): array {
+    // "dgp": Dinter termina los nombres de los títulos con su código ("UNE LOS PUNTOS-DGP")
+    static $vacias = ['de', 'del', 'la', 'el', 'los', 'las', 'y', 'en', 'a', 'e', 'dgp'];
+    return array_values(array_diff(array_unique(explode(' ', $norm)), $vacias, ['']));
+}
+
+// Propone [coleccion_id, numero] para un producto de WePoint. $cols: filas de colecciones (id, nombre, brihet_id, proximamente).
+// Gana el nombre idéntico; si no, el que comparte más palabras (al menos 3 de cada 4). Ante empate, la importada de Brihet.
+function wepoint_sugerir(array $nv, array $cols): array {
+    [$col_id, $num] = wepoint_sku_partes($nv['sku'] ?? null);
+    if ($col_id) return [$col_id, $num];
+    [$base, $num] = wepoint_nombre_partes((string)($nv['nombre'] ?? ''));
+    // Una edición de WePoint trae su número; el nombre es el del título
+    if (!empty($nv['numero_edicion'])) [$base, $num] = [wepoint_normalizar((string)($nv['nombre'] ?? '')), (int)$nv['numero_edicion']];
+    // Sin número en el nombre: los SKU del depósito terminan en el número de entrega (…5200001 → 1, …5200002 → 2)
+    if ($num === null && preg_match('/^\d{8,}$/', (string)($nv['sku'] ?? '')) && (int)substr($nv['sku'], -3) > 0) {
+        $num = (int)substr($nv['sku'], -3);
+    }
+    $pal = wepoint_palabras($base);
+    $mejor = null;
+    $mejor_puntaje = 0.0;
+    foreach ($cols as $c) {
+        $cn = wepoint_normalizar($c['nombre']);
+        if ($cn === $base) $puntaje = 1.0;
+        else {
+            $pc = wepoint_palabras($cn);
+            $union = count(array_unique(array_merge($pal, $pc)));
+            $puntaje = $union ? count(array_intersect($pal, $pc)) / $union * 0.99 : 0;
+        }
+        if ($puntaje < 0.75) continue;
+        // desempate: Brihet antes que cargada a mano, publicada antes que "Próximamente"
+        $puntaje += ($c['brihet_id'] ? 0.002 : 0) + (empty($c['proximamente']) ? 0.001 : 0);
+        if ($puntaje > $mejor_puntaje) [$mejor, $mejor_puntaje] = [(int)$c['id'], $puntaje];
+    }
+    return [$mejor, $num];
 }
 
 // Crea la orden de venta en WePoint para un pedido confirmado. Guarda el id o el error en el pedido.
@@ -206,9 +294,12 @@ function wepoint_crear_orden(int $pedido_id): string {
         if (wepoint_transportista() === '') throw new Exception('Falta elegir el transportista en Admin → WePoint.');
         if (!$p['envio_cp']) throw new Exception('El punto de retiro “' . $p['envio_punto'] . '” no tiene código postal: cargalo en Puntos de retiro y reenviá.');
         $detalle = [];
-        foreach (q("SELECT pi.*, i.wepoint_id, i.sku FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$pedido_id]) as $l) {
+        foreach (q("SELECT pi.*, i.wepoint_id, i.wepoint_variante_id, i.sku FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$pedido_id]) as $l) {
             if (!$l['wepoint_id']) throw new Exception($l['coleccion'] . ' ' . num((int)$l['numero']) . ' no está vinculado a WePoint (falta SKU o sincronizar stock).');
-            $detalle[] = ['id_producto' => (int)$l['wepoint_id'], 'cantidad' => (int)$l['cantidad'], 'precio' => max(0.01, (float)$l['precio'])];
+            // Con ediciones, la línea lleva la edición: WePoint no acepta un título sin edición
+            $linea = ['id_producto' => (int)$l['wepoint_id'], 'cantidad' => (int)$l['cantidad'], 'precio' => max(0.01, (float)$l['precio'])];
+            if ($l['wepoint_variante_id']) $linea['id_variante'] = (int)$l['wepoint_variante_id'];
+            $detalle[] = $linea;
         }
         $orden = [
             'no_referencia'       => 'MFU-' . $pedido_id,

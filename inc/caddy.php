@@ -9,8 +9,12 @@ function caddy_listo(): bool {
     return defined('CADDY_URL') && CADDY_URL !== '' && defined('CADDY_USUARIO') && CADDY_USUARIO !== '';
 }
 
+// Apagado por ahora (16/10/2026): la tienda no crea envíos en Caddy aunque config.php tenga CADDY_CREAR_ENVIOS = true.
+// Para volver a usarlo, poner esta constante en true.
+const CADDY_TIENDA_HABILITADO = false;
+
 function caddy_envios_activos(): bool {
-    return caddy_listo() && defined('CADDY_CREAR_ENVIOS') && CADDY_CREAR_ENVIOS === true;
+    return CADDY_TIENDA_HABILITADO && caddy_listo() && defined('CADDY_CREAR_ENVIOS') && CADDY_CREAR_ENVIOS === true;
 }
 
 // Petición HTTP cruda. Devuelve [código, cuerpo decodificado].

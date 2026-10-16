@@ -412,6 +412,16 @@ function schema_pasos(): array {
         24 => [
             "ALTER TABLE campanas ADD COLUMN coleccion_id INT NULL AFTER item_ids",
         ],
+
+        // WePoint por ediciones: cada número es una edición (variante) de un título. El número queda vinculado
+        // a la edición y la bandeja "Por publicar" tiene una fila por edición (clave v:<id_variante>, o p:<id_producto>
+        // para un producto simple). La bandeja se vacía: la próxima sincronización la vuelve a llenar.
+        25 => [
+            "ALTER TABLE items ADD COLUMN wepoint_variante_id INT NULL AFTER wepoint_id, ADD KEY idx_wp_variante (wepoint_variante_id)",
+            "DELETE FROM wepoint_nuevos",
+            "ALTER TABLE wepoint_nuevos DROP PRIMARY KEY, ADD COLUMN clave VARCHAR(40) NOT NULL FIRST, ADD PRIMARY KEY (clave),
+                ADD COLUMN wepoint_variante_id INT NULL AFTER wepoint_id, ADD COLUMN numero_edicion INT NULL AFTER nombre",
+        ],
     ];
 }
 

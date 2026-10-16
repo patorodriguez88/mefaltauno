@@ -170,7 +170,7 @@ admin_header('Pedido #' . $id, 'pedidos');
             <?php elseif (!caddy_listo()): ?>
                 <p class="muted small" style="margin:0">Caddy todavía no está conectado (CADDY_URL / CADDY_USUARIO en config.php).</p>
             <?php elseif (!caddy_envios_activos()): ?>
-                <p class="muted small" style="margin:0"><span class="badge badge-gris">Creación de envíos apagada</span><br>Se activa con <code>CADDY_CREAR_ENVIOS</code> en config.php<?= stripos(CADDY_URL, 'sandbox') !== false ? ' (apunta a sandbox)' : '' ?>.</p>
+                <p class="muted small" style="margin:0"><span class="badge badge-gris">Creación de envíos apagada</span><br><?= CADDY_TIENDA_HABILITADO ? 'Se activa con <code>CADDY_CREAR_ENVIOS</code> en config.php' : 'Por ahora la tienda no crea envíos en Caddy' ?><?= stripos(CADDY_URL, 'sandbox') !== false ? ' (apunta a sandbox)' : '' ?>.</p>
             <?php else: ?>
                 <?php if ($p['caddy_error']): ?><div class="aviso" style="background:var(--red-100);color:var(--red);margin-bottom:10px"><?= e($p['caddy_error']) ?></div><?php endif; ?>
                 <p class="muted small">El envío se crea solo cuando WePoint deja el pedido “Listo para enviar”<?= stripos(CADDY_URL, 'sandbox') !== false ? ' (sandbox)' : '' ?>. Si falló o querés crearlo ahora:</p>

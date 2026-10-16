@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db = db();
             $db->beginTransaction();
             $n_stock = q("UPDATE items SET stock=0, stock_sync_at=NULL WHERE stock<>0")->rowCount();
-            $n_vinc = q("UPDATE items SET wepoint_id=NULL WHERE wepoint_id IS NOT NULL")->rowCount();
+            $n_vinc = q("UPDATE items SET wepoint_id=NULL, wepoint_variante_id=NULL WHERE wepoint_id IS NOT NULL")->rowCount();
             $n_sku = q("UPDATE items SET sku=NULL WHERE sku LIKE 'MFU-%'")->rowCount();   // SKUs que inventamos para el sandbox
             $n_nuevos = q("DELETE FROM wepoint_nuevos")->rowCount();
             $n_res = q("UPDATE reservas SET estado='liberada' WHERE estado='activa' AND stock='fisico'")->rowCount();
@@ -77,12 +77,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($accion === 'cargar_stock') {
             // Orden de compra con cantidades ficticias (algunos en 0 para ver "sin stock")
-            $items = q("SELECT id, numero, wepoint_id, precio FROM items WHERE wepoint_id IS NOT NULL ORDER BY coleccion_id, numero")->fetchAll();
+            $items = q("SELECT id, numero, wepoint_id, wepoint_variante_id, precio FROM items WHERE wepoint_id IS NOT NULL ORDER BY coleccion_id, numero")->fetchAll();
             if (!$items) throw new Exception('Primero creá los productos en WePoint.');
             $detalle = [];
             foreach ($items as $i => $it) {
                 $cant = ($i % 6 === 5) ? 0 : [3, 8, 15, 25, 40][$i % 5];
-                if ($cant) $detalle[] = ['id_producto' => (int)$it['wepoint_id'], 'cantidad' => $cant, 'precio' => max(0.01, round((float)$it['precio'] * 0.5, 2))];
+                if ($cant) $detalle[] = ['id_producto' => (int)$it['wepoint_id'], 'cantidad' => $cant, 'precio' => max(0.01, round((float)$it['precio'] * 0.5, 2))]
+                    + ($it['wepoint_variante_id'] ? ['id_variante' => (int)$it['wepoint_variante_id']] : []);
             }
             $ref = 'MFU-DEMO-' . date('YmdHis');
             $r = wepoint_api('POST', 'v2/ingresos/productos', ['no_referencia' => $ref, 'fecha' => date('Y-m-d'), 'proveedor' => 'Proveedor de prueba', 'notas' => 'Stock ficticio para la demo', 'detalle_orden_compra' => $detalle]);
@@ -147,7 +148,7 @@ $error = null;
 if (wepoint_listo()) {
     try {
         [$transportistas] = wepoint_filas(wepoint_api('GET', 'v2/transportistas'));
-        [$muestra] = wepoint_filas(wepoint_api('GET', 'v2/productos?per_page=5'));
+        [$muestra] = wepoint_filas(wepoint_api('GET', 'v2/variantes/operables?per_page=5'));
     } catch (Exception $e) {
         $error = $e->getMessage();
     }
@@ -198,7 +199,7 @@ admin_header('WePoint', 'wepoint');
             <?php if (!$muestra): ?><p class="muted small">Sin productos (o no se pudieron leer).</p><?php endif; ?>
             <?php foreach ($muestra as $p): ?>
                 <div class="small" style="padding:6px 0;border-bottom:1px dashed var(--line)">
-                    <b><?= e($p['sku'] ?? '—') ?></b> · <?= e($p['nombre'] ?? '') ?> · disponible: <b><?= e((string)(wepoint_disponible_de($p) ?? '¿?')) ?></b>
+                    <b><?= e($p['sku'] ?? '—') ?></b> · <?= e($p['nombre'] ?? '') ?><?= !empty($p['numero_edicion']) ? ' · Edición ' . (int)$p['numero_edicion'] : '' ?> · disponible: <b><?= e((string)(wepoint_disponible_de($p) ?? '¿?')) ?></b>
                 </div>
             <?php endforeach; ?>
             <?php if ($muestra): ?><details class="small" style="margin-top:8px"><summary>Ver datos crudos del primero</summary><pre style="white-space:pre-wrap;font-size:.75rem"><?= e(json_encode($muestra[0], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) ?></pre></details><?php endif; ?>

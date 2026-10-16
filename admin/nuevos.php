@@ -6,8 +6,8 @@ require dirname(__DIR__) . '/inc/subidas.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
-    $wid = (string)($_POST['wepoint_id'] ?? '');
-    $n = q("SELECT * FROM wepoint_nuevos WHERE wepoint_id=?", [$wid])->fetch();
+    $clave = (string)($_POST['clave'] ?? '');
+    $n = q("SELECT * FROM wepoint_nuevos WHERE clave=?", [$clave])->fetch();
     try {
         if (!$n) throw new Exception('Ese producto ya no está en la bandeja.');
         $col = q("SELECT * FROM colecciones WHERE id=?", [(int)($_POST['coleccion_id'] ?? 0)])->fetch();
@@ -20,26 +20,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $existe = q("SELECT * FROM items WHERE coleccion_id=? AND numero=?", [$col['id'], $numero])->fetch();
         if ($existe) {
             // El número ya estaba cargado (ej: colección "Próximamente"): se vincula a este producto de WePoint
-            if ($existe['wepoint_id'] && (string)$existe['wepoint_id'] !== (string)$n['wepoint_id']) {
-                throw new Exception($col['nombre'] . ' ' . num($numero) . ' ya está vinculado a otro producto de WePoint (id ' . $existe['wepoint_id'] . '). Elegí otro número.');
+            if ($existe['wepoint_id'] && wepoint_clave_item($existe) !== $n['clave']) {
+                throw new Exception($col['nombre'] . ' ' . num($numero) . ' ya está vinculado a otro producto de WePoint (' . wepoint_clave_item($existe) . '). Elegí otro número.');
             }
             $titulo = $existe['titulo'] !== '' ? $existe['titulo'] : $titulo;
             $precio = (float)$existe['precio'] > 0 ? (float)$existe['precio'] : $precio;
             $foto = $foto ?: $existe['imagen'];
             $falta = item_falta_para_publicar($foto, $titulo, $precio);
-            q("UPDATE items SET titulo=?, imagen=?, precio=?, stock=?, sku=COALESCE(NULLIF(sku,''), ?), wepoint_id=?, stock_sync_at=NOW(), activo=? WHERE id=?",
-              [$titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1, $existe['id']]);
+            q("UPDATE items SET titulo=?, imagen=?, precio=?, stock=?, sku=COALESCE(NULLIF(sku,''), ?), wepoint_id=?, wepoint_variante_id=?, stock_sync_at=NOW(), activo=? WHERE id=?",
+              [$titulo, $foto, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $n['wepoint_variante_id'], $falta ? 0 : 1, $existe['id']]);
             if ($foto && $foto !== $existe['imagen']) q("UPDATE items SET foto_origen='manual' WHERE id=?", [$existe['id']]);
             $item_id = (int)$existe['id'];
             flash('ok', 'Vinculado al ' . num($numero) . ' que ya existía en ' . $col['nombre'] . '.');
         } else {
             if ($titulo === '') throw new Exception('Poné el título.');
             $falta = item_falta_para_publicar($foto, $titulo, $precio);
-            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, foto_origen, precio, stock, sku, wepoint_id, stock_sync_at, activo) VALUES (?,?,?,?,?,?,?,?,?,NOW(),?)",
-              [$col['id'], $numero, $titulo, $foto, $foto ? 'manual' : null, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $falta ? 0 : 1]);
+            q("INSERT INTO items (coleccion_id, numero, titulo, imagen, foto_origen, precio, stock, sku, wepoint_id, wepoint_variante_id, stock_sync_at, activo) VALUES (?,?,?,?,?,?,?,?,?,?,NOW(),?)",
+              [$col['id'], $numero, $titulo, $foto, $foto ? 'manual' : null, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $n['wepoint_variante_id'], $falta ? 0 : 1]);
             $item_id = (int)db()->lastInsertId();
         }
-        q("DELETE FROM wepoint_nuevos WHERE wepoint_id=?", [$wid]);
+        q("DELETE FROM wepoint_nuevos WHERE clave=?", [$clave]);
         // ¿Es lo que pidió alguien en "Me falta"? Se vincula y, si hay stock, se le reserva
         $si_id = (int)($_POST['solicitud_item_id'] ?? 0);
         if ($si_id && q("UPDATE solicitud_items SET item_id=? WHERE id=? AND item_id IS NULL", [$item_id, $si_id])->rowCount()) {
@@ -55,7 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $nuevos = q("SELECT * FROM wepoint_nuevos ORDER BY nombre")->fetchAll();
-$cols = q("SELECT id, nombre FROM colecciones ORDER BY nombre")->fetchAll();
+$cols = q("SELECT id, nombre, brihet_id, proximamente FROM colecciones ORDER BY nombre")->fetchAll();
+$col_nombre = array_column($cols, 'nombre', 'id');
 // Búsquedas libres abiertas (números que no estaban en el catálogo): alguno puede ser este producto
 $libres = q("SELECT si.id, si.descripcion, s.id AS solicitud_id, c.nombre, c.apellido FROM solicitud_items si
              JOIN solicitudes s ON s.id=si.solicitud_id JOIN clientes c ON c.id=s.cliente_id
@@ -82,17 +83,18 @@ admin_header('Por publicar', 'colecciones');
 
 <div class="nuevos">
     <?php foreach ($nuevos as $nv):
-        [$col_sug, $num_sug] = wepoint_sku_partes($nv['sku']); ?>
+        [$col_sug, $num_sug] = wepoint_sugerir($nv, $cols);
+        $existe_sug = $col_sug && $num_sug ? q("SELECT titulo, wepoint_id, wepoint_variante_id FROM items WHERE coleccion_id=? AND numero=?", [$col_sug, $num_sug])->fetch() : null; ?>
         <form method="post" enctype="multipart/form-data" class="nuevo-card form">
             <?= csrf_field() ?>
-            <input type="hidden" name="wepoint_id" value="<?= e($nv['wepoint_id']) ?>">
+            <input type="hidden" name="clave" value="<?= e($nv['clave']) ?>">
             <label class="foto-mini foto-nuevo" title="Subir foto">
                 <span>📷<br><small>Foto</small></span>
                 <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" hidden onchange="previewNuevo(this)">
             </label>
             <div class="nuevo-datos">
                 <div class="nuevo-wp">
-                    <b><?= e($nv['nombre'] ?? 'Sin nombre en WePoint') ?></b> <span class="muted small"><?= $nv['sku'] ? 'SKU ' . e($nv['sku']) : 'sin SKU' ?> · id WePoint <?= e($nv['wepoint_id']) ?></span>
+                    <b><?= e($nv['nombre'] ?? 'Sin nombre en WePoint') ?><?= $nv['numero_edicion'] ? ' · Edición ' . (int)$nv['numero_edicion'] : '' ?></b> <span class="muted small"><?= $nv['sku'] ? 'SKU ' . e($nv['sku']) : 'sin SKU' ?> · id WePoint <?= e($nv['clave']) ?></span>
                     <span class="badge <?= $nv['stock'] > 0 ? 'badge-verde' : 'badge-gris' ?>"><?= (int)$nv['stock'] ?> disponibles</span>
                 </div>
                 <div class="nuevo-campos">
@@ -106,6 +108,19 @@ admin_header('Por publicar', 'colecciones');
                     <label class="campo">Título<input type="text" name="titulo" value="<?= e($nv['nombre'] ?? '') ?>" required></label>
                     <label class="campo campo-precio">Precio<input type="text" name="precio" inputmode="decimal" value="<?= $nv['precio'] !== null ? e((float)$nv['precio']) : '' ?>" required></label>
                 </div>
+                <?php if ($col_sug): ?>
+                    <p class="small" style="margin:0">
+                        <span class="badge badge-amarillo">Sugerido</span> <?= e($col_nombre[$col_sug] ?? '') ?><?= $num_sug ? ' ' . num($num_sug) : ' · falta el número' ?>
+                        <?php if ($existe_sug && $existe_sug['wepoint_id'] && wepoint_clave_item($existe_sug) !== $nv['clave']): ?>
+                            · <b style="color:var(--rojo, #b42318)">ya está vinculado a otro producto de WePoint (<?= e(wepoint_clave_item($existe_sug)) ?>): revisá el número</b>
+                        <?php elseif ($existe_sug): ?>
+                            · ya existe “<?= e($existe_sug['titulo']) ?>”: se vincula a ese
+                        <?php elseif ($num_sug): ?>
+                            · ese número no existe: se crea
+                        <?php endif; ?>
+                        <span class="muted">— revisalo antes de crear</span>
+                    </p>
+                <?php endif; ?>
                 <?php if ($libres): ?>
                     <label class="campo">¿Lo estaba buscando alguien? <small>Se le reserva <?= RESERVA_HORAS ?> h y le avisamos</small>
                         <select name="solicitud_item_id">

@@ -62,8 +62,7 @@ admin_header('Stock', 'colecciones');
         <?php if ($ver): ?><span class="small">Solo con stock <?= $ver === 'deposito' ? 'en depósito' : 'en Brihet' ?> · <a href="<?= url('admin/colecciones.php') ?>">Ver todas</a></span><?php endif; ?>
         <a class="btn btn-linea btn-chico" href="<?= url('admin/categorias.php') ?>">Categorías</a>
         <button class="btn btn-primario btn-chico" type="button" onclick="document.getElementById('modal-crear').showModal()">+ Crear colección</button>
-        <a class="btn btn-linea btn-chico" href="<?= url('admin/brihet.php') ?>">Importar desde Brihet</a>
-    </div>
+        <a class="btn btn-linea btn-chico" href="<?= url('admin/brihet.php') ?>">Importar desde Brihet</a>    </div>
 </div>
 
 <div class="buscador-stock">
