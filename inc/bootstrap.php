@@ -442,6 +442,21 @@ function html_datos_bancarios(?float $total = null): string {
     return $h;
 }
 
+// CSS y scripts del mapa de puntos de retiro: Google Maps si config.php tiene GOOGLE_API_KEY_BROWSER
+// (la clave queda visible en la página: tiene que estar restringida a los dominios de la web en Google Cloud),
+// si no Leaflet + OpenStreetMap. Devuelve [page_css, page_scripts].
+function mapa_recursos(): array {
+    // mapa_osm: Google rechazó la clave en este navegador (lo marca mapa.js) → OpenStreetMap por un día
+    if (defined('GOOGLE_API_KEY_BROWSER') && GOOGLE_API_KEY_BROWSER !== '' && empty($_COOKIE['mapa_osm'])) {
+        $google = 'https://maps.googleapis.com/maps/api/js?' . http_build_query([
+            'key' => GOOGLE_API_KEY_BROWSER, 'loading' => 'async', 'callback' => 'mapaGoogleListo', 'language' => 'es', 'region' => 'AR', 'v' => 'weekly',
+        ]);
+        return [[], ['assets/js/mapa.js', $google]];
+    }
+    return [['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'],
+            ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', 'assets/js/mapa.js']];
+}
+
 // Va al navegador en el checkout: sin teléfono ni notas (datos del kiosquero, solo para el operador)
 function puntos_retiro_activos(): array {
     return q("SELECT id, nombre, direccion, localidad, provincia, horario, lat+0 AS lat, lng+0 AS lng

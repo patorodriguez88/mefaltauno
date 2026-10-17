@@ -37,8 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('admin/puntos.php');
 }
 
-$page_css = ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'];
-$page_scripts = ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', 'assets/js/mapa.js'];
+[$page_css, $page_scripts] = mapa_recursos();
 
 if ($editar !== null):
     $p = $editar ? q("SELECT * FROM puntos_retiro WHERE id=?", [$editar])->fetch() : null;
@@ -126,12 +125,12 @@ admin_header('Puntos de retiro', 'puntos');
 
 <?php if ($puntos): ?>
 <script>
-window.addEventListener('load', () => {
+(window.mapasPendientes = window.mapasPendientes || []).push(() => {
     const pts = <?= json_encode(array_values(array_filter(array_map(fn($p) => $p['lat'] !== null ? ['n' => $p['nombre'], 'a' => $p['activo'], 'lat' => (float)$p['lat'], 'lng' => (float)$p['lng']] : null, $puntos))), JSON_UNESCAPED_UNICODE) ?>;
     if (!pts.length) return;
     const m = crearMapa('mapa-puntos-admin');
-    pts.forEach(p => L.marker([p.lat, p.lng], { icon: pinIcono(p.a ? '' : 'pausado'), opacity: p.a ? 1 : .5 }).addTo(m).bindTooltip(p.n));
-    m.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lng])).pad(0.2), { maxZoom: 14 });
+    pts.forEach(p => m.marcador(p.lat, p.lng, { clase: p.a ? '' : 'pausado', titulo: p.n }));
+    m.encuadrar(pts.map(p => [p.lat, p.lng]), 14);
 });
 </script>
 <?php endif; ?>

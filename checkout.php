@@ -93,8 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $titulo = 'Finalizar compra';
-$page_css = ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'];
-$page_scripts = ['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', 'assets/js/mapa.js'];
+[$page_css, $page_scripts] = mapa_recursos();
 require __DIR__ . '/inc/header.php';
 ?>
 

@@ -452,6 +452,7 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .pin { background: none; border: 0; }
 .pin span { display: block; width: 26px; height: 26px; margin: 2px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--teal); border: 3px solid var(--white); box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
 .pin.activo span { background: var(--yellow-600); width: 30px; height: 30px; margin: 0; }
+.pin.pausado span { background: #9aa5a6; }
 .pin.yo span { background: var(--red); border-radius: 50%; transform: none; width: 18px; height: 18px; margin: 6px; }
 .leaflet-popup-content { font-family: var(--font); font-size: .9rem; }
 @media (max-width: 560px) {
