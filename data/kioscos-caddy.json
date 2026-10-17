@@ -51,8 +51,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3637943,
+"lng": -64.218039
 },
 {
 "nombre": "0008",
@@ -62,8 +62,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3804087,
+"lng": -64.2151658
 },
 {
 "nombre": "0011",
@@ -106,8 +106,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4280241,
+"lng": -64.1854195
 },
 {
 "nombre": "0019",
@@ -227,8 +227,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4150767,
+"lng": -64.1907562
 },
 {
 "nombre": "0050",
@@ -293,8 +293,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4204827,
+"lng": -64.1812069
 },
 {
 "nombre": "0065",
@@ -414,8 +414,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.403466,
+"lng": -64.216903
 },
 {
 "nombre": "0096",
@@ -480,8 +480,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3637943,
+"lng": -64.218039
 },
 {
 "nombre": "0115",
@@ -535,8 +535,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4369171,
+"lng": -64.2381831
 },
 {
 "nombre": "0135",
@@ -579,8 +579,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4116882,
+"lng": -64.1627451
 },
 {
 "nombre": "0149",
@@ -689,8 +689,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3854092,
+"lng": -64.2199223
 },
 {
 "nombre": "0181",
@@ -755,8 +755,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3698343,
+"lng": -64.2322532
 },
 {
 "nombre": "0218",
@@ -766,8 +766,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4218994,
+"lng": -64.1877992
 },
 {
 "nombre": "0220",
@@ -777,8 +777,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4166079,
+"lng": -64.1907159
 },
 {
 "nombre": "0226",
@@ -788,8 +788,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3793353,
+"lng": -64.2235407
 },
 {
 "nombre": "0231",
@@ -821,8 +821,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3891213,
+"lng": -64.1517154
 },
 {
 "nombre": "0248",
@@ -832,8 +832,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.431132,
+"lng": -64.2263971
 },
 {
 "nombre": "0251",
@@ -876,8 +876,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4111355,
+"lng": -64.1907453
 },
 {
 "nombre": "0271",
@@ -887,8 +887,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3793936,
+"lng": -64.2444895
 },
 {
 "nombre": "0289",
@@ -942,8 +942,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3636711,
+"lng": -64.2073713
 },
 {
 "nombre": "0309",
@@ -997,8 +997,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3727805,
+"lng": -64.2265129
 },
 {
 "nombre": "0364",
@@ -1052,8 +1052,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3637943,
+"lng": -64.218039
 },
 {
 "nombre": "0425",
@@ -1063,8 +1063,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4228881,
+"lng": -64.1770999
 },
 {
 "nombre": "0427",
@@ -1129,8 +1129,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3798653,
+"lng": -64.1463893
 },
 {
 "nombre": "0460",
@@ -1140,8 +1140,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4243895,
+"lng": -64.1831395
 },
 {
 "nombre": "0471",
@@ -1261,8 +1261,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3852106,
+"lng": -64.1588568
 },
 {
 "nombre": "0553",
@@ -1349,8 +1349,8 @@
 "cp": "5178",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -30.9816772,
+"lng": -64.4912127
 },
 {
 "nombre": "0614",
@@ -1404,8 +1404,8 @@
 "cp": "5176",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.0316975,
+"lng": -64.505427
 },
 {
 "nombre": "0639",
@@ -1426,8 +1426,8 @@
 "cp": "5174",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.0751718,
+"lng": -64.4921423
 },
 {
 "nombre": "0672",
@@ -1503,8 +1503,8 @@
 "cp": "5969",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.6681472,
+"lng": -63.2011447
 },
 {
 "nombre": "0712",
@@ -1514,8 +1514,8 @@
 "cp": "5186",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.658399,
+"lng": -64.4289282
 },
 {
 "nombre": "0716",
@@ -1547,8 +1547,8 @@
 "cp": "5280",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -30.7272307,
+"lng": -64.8002372
 },
 {
 "nombre": "0726",
@@ -1580,8 +1580,8 @@
 "cp": "5014",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.2650283,
+"lng": -64.304794
 },
 {
 "nombre": "0770",
@@ -1591,8 +1591,8 @@
 "cp": "5184",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -30.8662498,
+"lng": -64.5268755
 },
 {
 "nombre": "0774",
@@ -1613,8 +1613,8 @@
 "cp": "5152",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4195906,
+"lng": -64.4972432
 },
 {
 "nombre": "0806",
@@ -1646,8 +1646,8 @@
 "cp": "2434",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4213718,
+"lng": -63.0508317
 },
 {
 "nombre": "0835",
@@ -1712,8 +1712,8 @@
 "cp": "5220",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -30.987035,
+"lng": -64.0824795
 },
 {
 "nombre": "1079",
@@ -1811,8 +1811,8 @@
 "cp": "5137",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -30.894533,
+"lng": -62.9983073
 },
 {
 "nombre": "1622",
@@ -1822,8 +1822,8 @@
 "cp": "2435",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.2376907,
+"lng": -63.0601189
 },
 {
 "nombre": "1624",
@@ -1921,8 +1921,8 @@
 "cp": "2400",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4257725,
+"lng": -62.0843981
 },
 {
 "nombre": "1677",
@@ -1932,8 +1932,8 @@
 "cp": "5141",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.0113937,
+"lng": -62.6686369
 },
 {
 "nombre": "1706",
@@ -1943,8 +1943,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.3474495,
+"lng": -64.2695643
 },
 {
 "nombre": "1708",
@@ -1954,8 +1954,8 @@
 "cp": "5000",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -31.4113433,
+"lng": -64.177644
 },
 {
 "nombre": "4005",
@@ -2064,8 +2064,8 @@
 "cp": "2563",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -32.3682597,
+"lng": -62.3103619
 },
 {
 "nombre": "4063",
@@ -2075,8 +2075,8 @@
 "cp": "5900",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -32.4187848,
+"lng": -63.2389516
 },
 {
 "nombre": "4064",
@@ -2163,8 +2163,8 @@
 "cp": "2550",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -32.6298845,
+"lng": -62.6927503
 },
 {
 "nombre": "4087",
@@ -2196,8 +2196,8 @@
 "cp": "5900",
 "telefono": null,
 "notas": null,
-"lat": null,
-"lng": null
+"lat": -32.408969,
+"lng": -63.2567431
 },
 {
 "nombre": "4105",

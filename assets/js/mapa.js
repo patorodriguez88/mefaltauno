@@ -166,10 +166,21 @@ function pinIcono(clase) {
         if (!f('direccion') || !f('localidad')) { msg.textContent = 'Completá dirección y localidad.'; return; }
         msg.textContent = 'Buscando…';
         try {
-            const r = await geocodificar(q);
-            if (!r) { msg.textContent = 'No encontramos la dirección: tocá el lugar en el mapa para ubicarlo a mano.'; return; }
+            // Primero Google desde el servidor (solo acepta resultados en esa localidad); sin clave, OpenStreetMap
+            const params = new URLSearchParams({ direccion: f('direccion'), localidad: f('localidad'), provincia: f('provincia') });
+            const g = await fetch('geocodificar.php?' + params, { headers: { 'Accept': 'application/json' } });
+            let r;
+            if (g.status === 501) {
+                r = await geocodificar(q);
+            } else {
+                const d = await g.json();
+                if (!d.ok) throw new Error(d.error || 'No pudimos buscar la dirección.');
+                r = d.resultado;
+            }
+            if (!r) { msg.textContent = 'No encontramos la dirección en ' + f('localidad') + ': tocá el lugar en el mapa para ubicarlo a mano.'; return; }
             poner(r.lat, r.lng);
             mapa.setView([r.lat, r.lng], 17);
+            if (r.direccion) msg.textContent = 'Ubicado en ' + r.direccion + '. Si no quedó justo, arrastrá el pin o tocá el lugar exacto.';
         } catch (e) { msg.textContent = e.message; }
     });
 })();
