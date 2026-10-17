@@ -434,6 +434,11 @@ function schema_pasos(): array {
                 }
             },
         ],
+
+        // Los kioscos se muestran como "Kiosco 0005" (el código de vendedor solo no se entiende)
+        27 => [
+            "UPDATE puntos_retiro SET nombre = CONCAT('Kiosco ', nombre) WHERE nombre REGEXP '^[0-9]+$'",
+        ],
     ];
 }
 
