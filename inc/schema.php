@@ -439,6 +439,12 @@ function schema_pasos(): array {
         27 => [
             "UPDATE puntos_retiro SET nombre = CONCAT('Kiosco ', nombre) WHERE nombre REGEXP '^[0-9]+$'",
         ],
+
+        // Dos kioscos quedaron ubicados en Buenos Aires (coordenadas equivocadas en la base de Caddy):
+        // un punto de Córdoba fuera de la provincia se queda sin ubicación hasta que el operador lo ubique.
+        28 => [
+            "UPDATE puntos_retiro SET lat=NULL, lng=NULL WHERE provincia='Córdoba' AND (lat < -35.1 OR lat > -29.4 OR lng > -61.7 OR lng < -65.8)",
+        ],
     ];
 }
 

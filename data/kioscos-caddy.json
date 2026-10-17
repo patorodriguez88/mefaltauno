@@ -1822,8 +1822,8 @@
 "cp": "2435",
 "telefono": null,
 "notas": null,
-"lat": -34.5208858,
-"lng": -58.4738109
+"lat": null,
+"lng": null
 },
 {
 "nombre": "1624",
@@ -1932,8 +1932,8 @@
 "cp": "5141",
 "telefono": null,
 "notas": null,
-"lat": -34.6497846,
-"lng": -58.6031037
+"lat": null,
+"lng": null
 },
 {
 "nombre": "1706",
