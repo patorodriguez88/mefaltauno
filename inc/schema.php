@@ -422,6 +422,18 @@ function schema_pasos(): array {
             "ALTER TABLE wepoint_nuevos DROP PRIMARY KEY, ADD COLUMN clave VARCHAR(40) NOT NULL FIRST, ADD PRIMARY KEY (clave),
                 ADD COLUMN wepoint_variante_id INT NULL AFTER wepoint_id, ADD COLUMN numero_edicion INT NULL AFTER nombre",
         ],
+
+        // Puntos de retiro: los kioscos de la red de Caddy (data/kioscos-caddy.json, del archivo REC_CADY) reemplazan
+        // a los de prueba. Los pedidos viejos conservan el nombre y la dirección del punto en el pedido.
+        26 => [
+            "DELETE FROM puntos_retiro",
+            function (PDO $db) {
+                $ins = $db->prepare("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, cp, telefono, notas, lat, lng, activo) VALUES (?,?,?,?,?,?,?,?,?,1)");
+                foreach (json_decode(file_get_contents(dirname(__DIR__) . '/data/kioscos-caddy.json'), true) as $k) {
+                    $ins->execute([$k['nombre'], $k['direccion'], $k['localidad'], $k['provincia'], $k['cp'], $k['telefono'], $k['notas'], $k['lat'], $k['lng']]);
+                }
+            },
+        ],
     ];
 }
 
@@ -432,7 +444,7 @@ function db_migrar(PDO $db): void {
     if ($actual >= max(array_keys($pasos))) return;
     foreach ($pasos as $v => $sqls) {
         if ($v <= $actual) continue;
-        foreach ($sqls as $sql) $db->exec($sql);
+        foreach ($sqls as $sql) is_callable($sql) ? $sql($db) : $db->exec($sql);
         $db->prepare("REPLACE INTO meta (clave, valor) VALUES ('schema_version', ?)")->execute([$v]);
     }
 }

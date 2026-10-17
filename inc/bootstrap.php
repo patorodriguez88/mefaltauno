@@ -442,8 +442,9 @@ function html_datos_bancarios(?float $total = null): string {
     return $h;
 }
 
+// Va al navegador en el checkout: sin teléfono ni notas (datos del kiosquero, solo para el operador)
 function puntos_retiro_activos(): array {
-    return q("SELECT id, nombre, direccion, localidad, provincia, telefono, horario, notas, lat+0 AS lat, lng+0 AS lng
+    return q("SELECT id, nombre, direccion, localidad, provincia, horario, lat+0 AS lat, lng+0 AS lng
               FROM puntos_retiro WHERE activo=1 AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY localidad, nombre")->fetchAll();
 }
 
