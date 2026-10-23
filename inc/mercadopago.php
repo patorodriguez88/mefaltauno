@@ -1,16 +1,28 @@
 <?php
-// Mercado Pago (Checkout Pro): al confirmar la compra el cliente paga en Mercado Pago y el pedido pasa
-// solo a "confirmado" cuando el pago queda aprobado. Mercado Pago avisa a mp-webhook.php; de respaldo,
-// el cron revisa los pedidos pendientes y la página del pedido mira el pago al volver de pagar.
-// El pago siempre se lee de la API de Mercado Pago: nunca se confía en lo que trae el aviso.
-// Credenciales en config.php: MP_ACCESS_TOKEN (de prueba "TEST-…" o de producción "APP_USR-…") y
-// MP_WEBHOOK_SECRET (la clave secreta de las notificaciones, para validar la firma).
+// Mercado Pago. Con MP_PUBLIC_KEY el cliente paga en un modal dentro de la tienda (Checkout Bricks:
+// mp-pagar.php + assets/js/mp-pago.js); sin ella, sale a pagar a la página de Mercado Pago (Checkout Pro).
+// En los dos casos el pedido pasa solo a "confirmado" cuando el pago queda aprobado. Mercado Pago avisa
+// a mp-webhook.php; de respaldo, el cron revisa los pedidos pendientes y la página del pedido mira el pago.
+// El pago siempre se lee de la API de Mercado Pago: nunca se confía en lo que trae el aviso ni el navegador.
+// Credenciales en config.php: MP_ACCESS_TOKEN (de prueba "TEST-…" o de producción "APP_USR-…"),
+// MP_PUBLIC_KEY (la del mismo par) y MP_WEBHOOK_SECRET (clave secreta de las notificaciones, opcional).
 
 /** Días durante los que el cron sigue buscando el pago de un pedido pendiente. */
 const MP_DIAS_REVISION = 7;
 
 function mp_activo(): bool {
     return defined('MP_ACCESS_TOKEN') && MP_ACCESS_TOKEN !== '';
+}
+
+/** Pago en el modal de la tienda (Checkout Bricks): hace falta además la Public Key. */
+function mp_modal_activo(): bool {
+    return mp_activo() && defined('MP_PUBLIC_KEY') && MP_PUBLIC_KEY !== '';
+}
+
+/** Mercado Pago solo avisa y vuelve solo a direcciones públicas: no a http://localhost (pruebas locales). */
+function mp_sitio_publico(): bool {
+    $base = rtrim(SITE_URL, '/');
+    return str_starts_with($base, 'https://') && !preg_match('#^https://(localhost|127\.)#', $base);
 }
 
 function mp_api(string $metodo, string $ruta, ?array $body = null): array {
@@ -42,9 +54,8 @@ function mp_link_de_pago(int $pedido_id): string {
 
     $base = rtrim(SITE_URL, '/');
     $volver = $base . url('pedido.php?id=' . $pedido_id . '&mp=1');
-    // Mercado Pago rechaza la vuelta automática y el aviso a direcciones que no son públicas (http://localhost):
-    // en una prueba local se vuelve con el botón de Mercado Pago y el pago se mira al volver.
-    $publica = str_starts_with($base, 'https://') && !preg_match('#^https://(localhost|127\.)#', $base);
+    // En una prueba local (http://localhost) se vuelve con el botón de Mercado Pago y el pago se mira al volver.
+    $publica = mp_sitio_publico();
     $pref = mp_api('POST', 'checkout/preferences', array_filter([
         'items' => [[
             'id' => 'pedido-' . $pedido_id,
@@ -100,6 +111,78 @@ function mp_procesar_pago(string $pago_id): ?string {
         pedido_cambiar_estado($pedido_id, 'confirmado', "Pago aprobado en Mercado Pago (operación {$pago['id']}).", true, 'Mercado Pago');
     }
     return $estado;
+}
+
+/**
+ * Cobro desde el modal (Payment Brick): el formulario de Mercado Pago tokeniza la tarjeta en el navegador
+ * y acá se crea el pago por el total del pedido guardado (el monto del navegador no se usa). Con
+ * 3-D Secure el banco puede pedir validar: se devuelve el desafío para mostrarlo en el modal.
+ *
+ * @return array{estado:string, pago_id:?string, mensaje:string, desafio?:array{url:string, creq:string}}
+ */
+function mp_cobrar_en_modal(int $pedido_id, array $form, string $email_cliente): array {
+    $p = q("SELECT id, estado, total FROM pedidos WHERE id=?", [$pedido_id])->fetch();
+    if (!$p) throw new Exception('Pedido no encontrado.');
+    if ($p['estado'] !== 'pendiente') return ['estado' => 'approved', 'pago_id' => null, 'mensaje' => 'Este pedido ya está pago.'];
+    if (empty($form['token']) || empty($form['payment_method_id'])) throw new Exception('Faltan los datos de la tarjeta.');
+
+    $pagador = $form['payer'] ?? [];
+    $pago = mp_api('POST', 'v1/payments', array_filter([
+        'transaction_amount' => round((float)$p['total'], 2),
+        'token' => (string)$form['token'],
+        'description' => "MeFaltaUno · Pedido #$pedido_id",
+        'installments' => max(1, (int)($form['installments'] ?? 1)),
+        'payment_method_id' => (string)$form['payment_method_id'],
+        'issuer_id' => !empty($form['issuer_id']) ? (int)$form['issuer_id'] : null,
+        'payer' => array_filter([
+            'email' => !empty($pagador['email']) ? (string)$pagador['email'] : $email_cliente,
+            'identification' => !empty($pagador['identification']['number'])
+                ? ['type' => (string)($pagador['identification']['type'] ?? 'DNI'), 'number' => (string)$pagador['identification']['number']] : null,
+        ]),
+        'external_reference' => (string)$pedido_id,
+        'notification_url' => mp_sitio_publico() ? rtrim(SITE_URL, '/') . url('mp-webhook.php') : null,
+        'statement_descriptor' => 'MEFALTAUNO',
+        'three_d_secure_mode' => 'optional',
+    ], fn ($v) => $v !== null));
+
+    $pago_id = (string)$pago['id'];
+    $estado = mp_procesar_pago($pago_id) ?? (string)($pago['status'] ?? '');
+    $detalle = (string)($pago['status_detail'] ?? '');
+    if ($estado === 'pending' && $detalle === 'pending_challenge' && !empty($pago['three_ds_info']['external_resource_url'])) {
+        return ['estado' => $estado, 'pago_id' => $pago_id, 'mensaje' => 'Tu banco pide validar el pago.',
+                'desafio' => ['url' => (string)$pago['three_ds_info']['external_resource_url'], 'creq' => (string)($pago['three_ds_info']['creq'] ?? '')]];
+    }
+    return ['estado' => $estado, 'pago_id' => $pago_id, 'mensaje' => mp_mensaje_estado($estado, $detalle)];
+}
+
+/** Estado de un pago del pedido (mientras el cliente valida con su banco). */
+function mp_estado_pago(int $pedido_id, string $pago_id): array {
+    $pago = mp_api('GET', 'v1/payments/' . rawurlencode($pago_id));
+    if ((int)($pago['external_reference'] ?? 0) !== $pedido_id) throw new Exception('El pago no es de este pedido.');
+    $estado = mp_procesar_pago($pago_id) ?? (string)$pago['status'];
+    return ['estado' => $estado, 'pago_id' => $pago_id, 'mensaje' => mp_mensaje_estado($estado, (string)($pago['status_detail'] ?? ''))];
+}
+
+/** Qué decirle al cliente según el estado del pago en Mercado Pago. */
+function mp_mensaje_estado(string $estado, string $detalle): string {
+    if ($estado === 'approved') return '¡Pago aprobado! Ya estamos preparando tu pedido.';
+    if (in_array($estado, ['pending', 'in_process', 'authorized'], true)) {
+        return $detalle === 'pending_challenge' ? 'Falta que valides el pago con tu banco.'
+            : 'Tu pago está en revisión. Apenas Mercado Pago lo apruebe, confirmamos el pedido y te avisamos por mail.';
+    }
+    return [
+        'cc_rejected_bad_filled_card_number'   => 'Revisá el número de la tarjeta.',
+        'cc_rejected_bad_filled_date'          => 'Revisá la fecha de vencimiento.',
+        'cc_rejected_bad_filled_security_code' => 'Revisá el código de seguridad.',
+        'cc_rejected_bad_filled_other'         => 'Revisá los datos de la tarjeta.',
+        'cc_rejected_insufficient_amount'      => 'La tarjeta no tiene saldo o límite suficiente.',
+        'cc_rejected_call_for_authorize'       => 'Tu banco pide que autorices el pago: llamalo y volvé a intentar.',
+        'cc_rejected_card_disabled'            => 'La tarjeta está inactiva: llamá a tu banco para activarla.',
+        'cc_rejected_duplicated_payment'       => 'Ya hiciste un pago igual hace instantes. Si querés pagar de nuevo, usá otra tarjeta.',
+        'cc_rejected_max_attempts'             => 'Llegaste al límite de intentos con esta tarjeta: probá con otra.',
+        'cc_rejected_high_risk'                => 'Mercado Pago rechazó el pago por seguridad: probá con otro medio.',
+        'cc_rejected_3ds_challenge'            => 'No se pudo validar el pago con tu banco: probá de nuevo.',
+    ][$detalle] ?? 'El pago fue rechazado: probá con otra tarjeta u otro medio de pago.';
 }
 
 /** Respaldo por si un aviso no llegó: busca el pago de los pedidos de Mercado Pago que siguen pendientes. */

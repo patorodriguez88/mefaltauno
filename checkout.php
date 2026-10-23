@@ -87,7 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         carrito_vaciar();
         notificar_pedido_nuevo($pid);
-        // Mercado Pago: directo a pagar. Si no se puede armar el link, el pedido queda pendiente con el botón para pagar.
+        // Mercado Pago: directo a pagar, en el modal de la tienda o en la página de Mercado Pago.
+        // Si no se puede, el pedido queda pendiente con el botón para pagar.
+        if ($d['pago_metodo'] === 'mercadopago' && mp_modal_activo()) {
+            redirect('pedido.php?id=' . $pid . '&pagar=1');
+        }
         if ($d['pago_metodo'] === 'mercadopago' && mp_activo()) {
             try {
                 redirect(mp_link_de_pago($pid));
@@ -150,7 +154,7 @@ require __DIR__ . '/inc/header.php';
                     <h3>¿Cómo pagás?</h3>
                     <div class="opciones">
                         <label class="opcion"><input type="radio" name="pago_metodo" value="mercadopago" <?= $d['pago_metodo'] === 'mercadopago' ? 'checked' : '' ?>>
-                            <div><strong>Mercado Pago</strong><span><?= mp_activo() ? 'Tarjeta, débito o dinero en cuenta. Al confirmar, pagás en Mercado Pago.' : 'Tarjeta, débito o dinero en cuenta. Te enviamos el link de pago.' ?></span></div></label>
+                            <div><strong>Mercado Pago</strong><span><?= mp_activo() ? 'Tarjeta, débito o dinero en cuenta. Al confirmar, pagás con Mercado Pago.' : 'Tarjeta, débito o dinero en cuenta. Te enviamos el link de pago.' ?></span></div></label>
                         <label class="opcion"><input type="radio" name="pago_metodo" value="transferencia" <?= $d['pago_metodo'] === 'transferencia' ? 'checked' : '' ?>>
                             <div style="flex:1"><strong>Transferencia bancaria</strong><span>Transferís desde tu banco o billetera virtual. Te dejamos los datos acá y en el mail.</span>
                                 <div class="opcion-extra"><?= html_datos_bancarios($c['total']) ?></div></div></label>

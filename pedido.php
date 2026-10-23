@@ -43,6 +43,20 @@ $lineas = q("SELECT pi.*, i.imagen FROM pedido_items pi LEFT JOIN items i ON i.i
 $hist = historial('pedido', (int)$p['id']);
 $punto = $p['punto_id'] ? q("SELECT horario, lat, lng FROM puntos_retiro WHERE id=?", [$p['punto_id']])->fetch() : null;
 
+// Pago en el modal (Checkout Bricks). La preferencia de Checkout Pro habilita "Cuenta de Mercado Pago"
+// dentro del modal; si no se puede crear, el modal ofrece solo tarjetas.
+$modal_pago = $p['pago_metodo'] === 'mercadopago' && $p['estado'] === 'pendiente' && mp_modal_activo();
+$preferencia = '';
+if ($modal_pago) {
+    try {
+        mp_link_de_pago((int)$p['id']);
+        $preferencia = (string)q("SELECT mp_preferencia_id FROM pedidos WHERE id=?", [$p['id']])->fetchColumn();
+    } catch (Exception $e) {
+        error_log("[mercadopago] preferencia del pedido #{$p['id']}: " . $e->getMessage());
+    }
+    $page_scripts = ['https://sdk.mercadopago.com/js/v2', 'assets/js/mp-pago.js'];
+}
+
 $titulo = 'Pedido #' . $p['id'];
 require __DIR__ . '/inc/header.php';
 ?>
@@ -84,11 +98,15 @@ require __DIR__ . '/inc/header.php';
                         <p class="small" style="margin:0 0 12px"><?= str_starts_with((string)$p['mp_estado'], 'in_process') || str_starts_with((string)$p['mp_estado'], 'pending')
                             ? 'Tu pago está en proceso en Mercado Pago. Apenas se apruebe, confirmamos el pedido.'
                             : 'Pagá con tarjeta, débito o dinero en cuenta. Apenas se aprueba, empezamos a preparar tu pedido.' ?></p>
-                        <form method="post">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="accion" value="pagar_mp">
-                            <button class="btn btn-primario btn-bloque" type="submit">Pagar con Mercado Pago</button>
-                        </form>
+                        <?php if ($modal_pago): ?>
+                            <button class="btn btn-primario btn-bloque" type="button" data-abrir-pago>Pagar con Mercado Pago</button>
+                        <?php else: ?>
+                            <form method="post">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="accion" value="pagar_mp">
+                                <button class="btn btn-primario btn-bloque" type="submit">Pagar con Mercado Pago</button>
+                            </form>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
                 <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente'): ?>
@@ -125,5 +143,35 @@ require __DIR__ . '/inc/header.php';
         </div>
     </div>
 </section>
+
+<?php if ($modal_pago): ?>
+<dialog class="modal modal-pago" id="modal-pago" aria-labelledby="modal-pago-titulo"
+        data-public-key="<?= e(MP_PUBLIC_KEY) ?>" data-pedido="<?= (int)$p['id'] ?>" data-total="<?= e(number_format((float)$p['total'], 2, '.', '')) ?>"
+        data-email="<?= e($cli['email']) ?>" data-preferencia="<?= e($preferencia) ?>" data-abrir="<?= isset($_GET['pagar']) ? '1' : '0' ?>">
+    <div class="modal-pago-caja">
+        <header class="modal-pago-cabecera">
+            <img src="<?= asset('assets/img/logo-sm.png') ?>" alt="MeFaltaUno" width="110" height="37">
+            <span class="modal-pago-mp">Pagás con <b>Mercado Pago</b></span>
+            <button type="button" class="modal-cerrar modal-pago-cerrar" aria-label="Cerrar">&times;</button>
+        </header>
+        <div class="modal-pago-total">
+            <span id="modal-pago-titulo">Pedido #<?= (int)$p['id'] ?></span>
+            <b><?= precio((float)$p['total']) ?></b>
+        </div>
+        <div id="mp-brick"></div>
+        <div class="mp-banco" hidden>
+            <p class="small muted">Tu banco pide validar el pago. Completá los pasos sin cerrar esta ventana.</p>
+            <iframe name="mp-banco-frame" title="Validación de tu banco"></iframe>
+        </div>
+        <div class="mp-resultado" hidden>
+            <div class="mp-resultado-icono"></div>
+            <h3></h3>
+            <p></p>
+            <button type="button" class="btn btn-primario mp-reintentar">Probar de nuevo</button>
+        </div>
+        <p class="modal-pago-pie">🔒 Los datos de tu tarjeta los procesa Mercado Pago: MeFaltaUno no los ve ni los guarda.</p>
+    </div>
+</dialog>
+<?php endif; ?>
 
 <?php require __DIR__ . '/inc/footer.php'; ?>

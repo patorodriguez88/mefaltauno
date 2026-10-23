@@ -19,8 +19,10 @@ define('MAIL_OPERADOR', 'pedidos@mefaltauno.com.ar');
 // Mercado Pago (Checkout Pro). Credenciales en mercadopago.com.ar/developers → Tus integraciones →
 // la aplicación → Credenciales: de prueba ("TEST-…", para pagar con usuarios de prueba) o de producción ("APP_USR-…").
 // Vacío = Mercado Pago sin conectar: el operador manda el link de pago a mano, como antes.
-// MP_WEBHOOK_SECRET: Webhooks → Clave secreta (valida que los avisos vengan de Mercado Pago).
+// MP_PUBLIC_KEY (la del mismo par): con ella se paga en un modal dentro de la tienda; sin ella, en la página de Mercado Pago.
+// MP_WEBHOOK_SECRET: Webhooks → Clave secreta (opcional: valida que los avisos vengan de Mercado Pago).
 define('MP_ACCESS_TOKEN',   '');
+define('MP_PUBLIC_KEY',     '');
 define('MP_WEBHOOK_SECRET', '');
 
 // WePoint (warehouse): el stock y la preparación de pedidos los maneja WePoint.
