@@ -16,6 +16,13 @@ define('MAIL_MODO',     'mail');    // mail = envía con mail() | log = escribe 
 define('MAIL_FROM',     'no-responder@mefaltauno.com.ar');
 define('MAIL_OPERADOR', 'pedidos@mefaltauno.com.ar');
 
+// Mercado Pago (Checkout Pro). Credenciales en mercadopago.com.ar/developers → Tus integraciones →
+// la aplicación → Credenciales: de prueba ("TEST-…", para pagar con usuarios de prueba) o de producción ("APP_USR-…").
+// Vacío = Mercado Pago sin conectar: el operador manda el link de pago a mano, como antes.
+// MP_WEBHOOK_SECRET: Webhooks → Clave secreta (valida que los avisos vengan de Mercado Pago).
+define('MP_ACCESS_TOKEN',   '');
+define('MP_WEBHOOK_SECRET', '');
+
 // WePoint (warehouse): el stock y la preparación de pedidos los maneja WePoint.
 // Sandbox: https://sandbox.wepoint.ar/api · Producción: https://sistema.wepoint.ar/api
 define('WEPOINT_URL',              'https://sandbox.wepoint.ar/api');

@@ -4,6 +4,41 @@ require __DIR__ . '/inc/bootstrap.php';
 $cli = requiere_login();
 $p = q("SELECT * FROM pedidos WHERE id=? AND cliente_id=?", [(int)($_GET['id'] ?? 0), $cli['id']])->fetch();
 if (!$p) redirect('cuenta.php?tab=pedidos');
+
+// Mercado Pago: el botón "Pagar" arma (o reusa) el link; al volver de pagar se mira el pago en el momento,
+// así el cliente ve su pedido confirmado sin esperar el aviso de Mercado Pago.
+if (mp_activo() && $p['pago_metodo'] === 'mercadopago') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'pagar_mp') {
+        csrf_exigir();
+        try {
+            redirect(mp_link_de_pago((int)$p['id']));
+        } catch (Exception $e) {
+            error_log("[mercadopago] link del pedido #{$p['id']}: " . $e->getMessage());
+            flash('error', 'No pudimos abrir Mercado Pago. Probá de nuevo en un momento.');
+            redirect('pedido.php?id=' . $p['id']);
+        }
+    }
+    if (isset($_GET['mp'])) {
+        $pago_id = preg_replace('/\D/', '', (string)($_GET['payment_id'] ?? $_GET['collection_id'] ?? ''));
+        $estado_mp = null;
+        if ($pago_id !== '') {
+            try {
+                $estado_mp = mp_procesar_pago($pago_id);
+            } catch (Exception $e) {
+                error_log("[mercadopago] vuelta del pago $pago_id: " . $e->getMessage());
+            }
+        }
+        $estado_mp = $estado_mp ?? (string)($_GET['status'] ?? $_GET['collection_status'] ?? '');
+        if ($estado_mp === 'approved') {
+            flash('ok', '¡Pago aprobado! Ya estamos preparando tu pedido.');
+        } elseif (in_array($estado_mp, ['pending', 'in_process', 'authorized'], true)) {
+            flash('info', 'Tu pago está en proceso. Apenas Mercado Pago lo apruebe, confirmamos el pedido y te avisamos por mail.');
+        } else {
+            flash('error', 'El pago no se completó. Podés intentarlo de nuevo con el botón "Pagar con Mercado Pago".');
+        }
+        redirect('pedido.php?id=' . $p['id']);
+    }
+}
 $lineas = q("SELECT pi.*, i.imagen FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$p['id']])->fetchAll();
 $hist = historial('pedido', (int)$p['id']);
 $punto = $p['punto_id'] ? q("SELECT horario, lat, lng FROM puntos_retiro WHERE id=?", [$p['punto_id']])->fetch() : null;
@@ -43,6 +78,19 @@ require __DIR__ . '/inc/header.php';
             </div>
 
             <aside>
+                <?php if ($p['pago_metodo'] === 'mercadopago' && $p['estado'] === 'pendiente' && mp_activo()): ?>
+                    <div class="card card-destacada">
+                        <h3>Falta el pago</h3>
+                        <p class="small" style="margin:0 0 12px"><?= str_starts_with((string)$p['mp_estado'], 'in_process') || str_starts_with((string)$p['mp_estado'], 'pending')
+                            ? 'Tu pago está en proceso en Mercado Pago. Apenas se apruebe, confirmamos el pedido.'
+                            : 'Pagá con tarjeta, débito o dinero en cuenta. Apenas se aprueba, empezamos a preparar tu pedido.' ?></p>
+                        <form method="post">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="accion" value="pagar_mp">
+                            <button class="btn btn-primario btn-bloque" type="submit">Pagar con Mercado Pago</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
                 <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente'): ?>
                     <div class="card card-destacada">
                         <h3>Datos para transferir</h3>

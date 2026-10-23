@@ -483,4 +483,6 @@ require __DIR__ . '/caddy.php';
 require __DIR__ . '/reservas.php';
 require __DIR__ . '/suscripciones.php';
 require __DIR__ . '/carrito.php';
+require __DIR__ . '/pedidos.php';
+require __DIR__ . '/mercadopago.php';
 require __DIR__ . '/mail.php';

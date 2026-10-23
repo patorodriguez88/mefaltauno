@@ -125,6 +125,13 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?> <?= e($p['envio_provincia']) ?><br>
                 Retira: <?= e($p['envio_nombre']) ?> (<?= e($p['envio_telefono']) ?>)<br><br>
                 <b>Pago:</b> <?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?>
+                <?php if ($p['mp_estado']):
+                    $mp_estados = ['approved' => 'aprobado', 'pending' => 'pendiente', 'in_process' => 'en revisión', 'authorized' => 'autorizado',
+                                   'rejected' => 'rechazado', 'cancelled' => 'cancelado', 'refunded' => 'devuelto', 'charged_back' => 'contracargo'];
+                    [$mp_st, $mp_det] = explode(':', $p['mp_estado'], 2) + [1 => '']; ?>
+                    · <?= e($mp_estados[$mp_st] ?? $mp_st) ?><?= $mp_det ? ' (' . e($mp_det) . ')' : '' ?>
+                    <?php if ($p['mp_pago_id']): ?> · operación <a href="https://www.mercadopago.com.ar/activities?q=<?= e($p['mp_pago_id']) ?>" target="_blank" rel="noopener"><?= e($p['mp_pago_id']) ?></a><?php endif; ?>
+                <?php endif; ?>
                 <?php if ($p['notas']): ?><br><br><b>Notas del cliente:</b> <?= nl2br(e($p['notas'])) ?><?php endif; ?>
             </p>
         </div>

@@ -501,6 +501,13 @@ function schema_pasos(): array {
                 ] as [$nombre, $lat, $lng]) $upd->execute([$lat, $lng, $nombre]);
             },
         ],
+
+        // Mercado Pago (inc/mercadopago.php): link de pago del pedido y estado del pago
+        30 => [
+            "ALTER TABLE pedidos ADD COLUMN mp_preferencia_id VARCHAR(80) NULL, ADD COLUMN mp_init_point VARCHAR(300) NULL,
+                ADD COLUMN mp_monto DECIMAL(12,2) NULL, ADD COLUMN mp_pago_id VARCHAR(40) NULL, ADD COLUMN mp_estado VARCHAR(60) NULL,
+                ADD COLUMN mp_aprobado_at DATETIME NULL",
+        ],
     ];
 }
 

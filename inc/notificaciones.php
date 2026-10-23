@@ -50,6 +50,9 @@ function notificar_pedido_nuevo(int $ped_id): void {
             . (count($filas) > 1 ? mail_tabla($filas) : '<p>En breve te enviamos los datos para transferir.</p>')
             . (ajuste('banco_instrucciones') !== '' ? '<p>' . nl2br(e(ajuste('banco_instrucciones'))) . '</p>' : '')
             . '<p>Cuando transfieras, <b>respondé este mail con el comprobante</b>. Apenas lo confirmamos, empezamos a prepararlo.</p>';
+    } elseif (mp_activo()) {
+        $pago = '<p>Apenas Mercado Pago apruebe el pago, confirmamos el pedido y te avisamos. Si no llegaste a pagar, '
+            . 'podés hacerlo desde tu pedido con el botón <b>Pagar con Mercado Pago</b>.</p>';
     } else {
         $pago = '<p>Te vamos a enviar el link de pago de Mercado Pago para confirmarlo.</p>';
     }

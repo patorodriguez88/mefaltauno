@@ -23,6 +23,11 @@ try {
     require_once dirname(__DIR__) . '/inc/marketing.php';
     $m = campanas_procesar_todas();
     if ($m) echo date('Y-m-d H:i:s') . " MARKETING · $m mails enviados\n";
+    // Respaldo de los avisos de Mercado Pago: pedidos pendientes cuyo pago ya se aprobó
+    if (mp_activo()) {
+        $mp = mp_revisar_pendientes();
+        echo date('Y-m-d H:i:s') . " MERCADO PAGO · revisados {$mp['revisados']} · confirmados {$mp['confirmados']}" . ($mp['errores'] ? ' · errores: ' . implode(' | ', $mp['errores']) : '') . "\n";
+    }
     $p = wepoint_sincronizar_pedidos();
     echo date('Y-m-d H:i:s') . " PEDIDOS OK · revisados {$p['revisados']} · actualizados {$p['actualizados']}" . ($p['errores'] ? ' · errores: ' . implode(' | ', $p['errores']) : '') . "\n";
 } catch (Exception $e) {
