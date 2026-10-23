@@ -4,13 +4,16 @@ $cli = cliente();
 $titulo_pag = isset($titulo) ? $titulo . ' · MeFaltaUno' : 'MeFaltaUno · Ningún héroe queda atrás';
 $descripcion_pag = $descripcion ?? 'Comics, figuras y colecciones de leyenda. Marcá los números que ya tenés y salimos a buscar los que te faltan. Ningún héroe queda atrás.';
 $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
+// Los buscadores indexan la tienda; el panel y las páginas de la cuenta y la compra, no.
+$pagina_privada = str_contains($_SERVER['SCRIPT_NAME'], '/admin/')
+    || in_array($actual, ['cuenta', 'carrito', 'checkout', 'pedido', 'ingresar', 'registro', 'baja', 'mailing-baja', 'arrepentimiento'], true);
 ?>
 <!doctype html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="noindex, nofollow">
+    <?php if ($pagina_privada): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
     <title><?= e($titulo_pag) ?></title>
     <meta name="description" content="<?= e($descripcion_pag) ?>">
     <meta name="csrf" content="<?= e(csrf_token()) ?>">
