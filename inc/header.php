@@ -8,23 +8,7 @@ $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
 $pagina_privada = str_contains($_SERVER['SCRIPT_NAME'], '/admin/')
     || in_array($actual, ['cuenta', 'carrito', 'checkout', 'pedido', 'ingresar', 'registro', 'baja', 'mailing-baja', 'arrepentimiento'], true);
 ?>
-<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <?php if ($pagina_privada): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-    <title><?= e($titulo_pag) ?></title>
-    <meta name="description" content="<?= e($descripcion_pag) ?>">
-    <meta name="csrf" content="<?= e(csrf_token()) ?>">
-    <meta name="base" content="<?= e(BASE_URL) ?>">
-    <link rel="icon" href="<?= asset('assets/img/favicon.svg') ?>" type="image/svg+xml">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
-    <?php foreach ($page_css ?? [] as $css): ?><link rel="stylesheet" href="<?= e($css) ?>"><?php endforeach; ?>
-    <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
-</head>
+<?php require __DIR__ . '/head.php'; ?>
 <body class="<?= e($body_class ?? '') ?>">
 
 <header class="site-header">
@@ -66,17 +50,6 @@ $pagina_privada = str_contains($_SERVER['SCRIPT_NAME'], '/admin/')
     </div>
 </header>
 
-<?php $fl = flashes(); if ($fl): ?>
-<div class="avisos" role="status" aria-live="polite">
-    <?php foreach ($fl as $f):
-        $icono = ['ok' => '⚡', 'error' => '⚠️', 'info' => '🦸'][$f['tipo']] ?? '🦸'; ?>
-        <div class="aviso-flotante aviso-<?= e($f['tipo']) ?>" data-auto="<?= $f['tipo'] === 'error' ? '0' : '1' ?>">
-            <span class="aviso-icono"><?= $icono ?></span>
-            <span class="aviso-msg"><?= e($f['msg']) ?></span>
-            <button type="button" class="aviso-cerrar" aria-label="Cerrar" onclick="cerrarAviso(this.parentNode)">&times;</button>
-        </div>
-    <?php endforeach; ?>
-</div>
-<?php endif; ?>
+<?php require __DIR__ . '/avisos.php'; ?>
 
 <main>

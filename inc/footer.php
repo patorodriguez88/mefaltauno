@@ -56,31 +56,8 @@
     <div class="container footer-legal">&copy; <?= date('Y') ?> MeFaltaUno · <?= e(legal('razon_social')) ?><?= legal('cuit') ? ' · CUIT ' . e(legal('cuit')) : '' ?><?= legal('domicilio') ? ' · ' . e(legal('domicilio')) : '' ?></div>
 </footer>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
-
 <div class="aviso-cookies" id="aviso-cookies" role="region" aria-label="Aviso de cookies" hidden>
     <span>🍪 Usamos solo cookies necesarias para que funcionen tu sesión y tu carrito. <a href="<?= url('privacidad.php#cookies') ?>">Más info</a></span>
     <button class="btn btn-primario btn-chico" type="button">Entendido</button>
 </div>
-<dialog class="modal" id="modal" aria-labelledby="modal-titulo">
-    <form method="dialog" class="modal-caja">
-        <button class="modal-cerrar" value="cancelar" aria-label="Cerrar">&times;</button>
-        <div class="modal-icono" id="modal-icono" hidden></div>
-        <h3 id="modal-titulo"></h3>
-        <div class="modal-cuerpo" id="modal-cuerpo"></div>
-        <label class="campo modal-texto" id="modal-texto-wrap" hidden>
-            <span id="modal-texto-label"></span>
-            <textarea id="modal-texto" maxlength="2000"></textarea>
-        </label>
-        <div class="modal-acciones">
-            <button class="btn btn-texto" value="cancelar" id="modal-cancelar">Cancelar</button>
-            <button class="btn btn-primario" value="ok" id="modal-ok">Aceptar</button>
-        </div>
-    </form>
-</dialog>
-<script src="<?= asset('assets/js/app.js') ?>"></script>
-<?php if (!empty($page_scripts)) foreach ($page_scripts as $s): ?>
-<script src="<?= preg_match('#^https?://#', $s) ? e($s) : asset($s) ?>"></script>
-<?php endforeach; ?>
-</body>
-</html>
+<?php require __DIR__ . '/final.php'; ?>

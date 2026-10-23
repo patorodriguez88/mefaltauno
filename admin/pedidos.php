@@ -6,6 +6,8 @@ $where = '1';
 $params = [];
 if ($estado === 'curso') {
     $where = "p.estado IN ('confirmado','preparando','enviado')";
+} elseif ($estado === 'preparar') {
+    $where = "p.estado IN ('confirmado','preparando')";
 } elseif (isset(ESTADOS_PEDIDO[$estado])) {
     $where = 'p.estado=?';
     $params[] = $estado;
@@ -28,6 +30,7 @@ admin_header('Pedidos', 'pedidos');
         <select name="estado" onchange="this.form.submit()" style="width:auto">
             <option value="">Todos los estados</option>
             <option value="curso" <?= $estado === 'curso' ? 'selected' : '' ?>>En curso</option>
+            <option value="preparar" <?= $estado === 'preparar' ? 'selected' : '' ?>>Por preparar</option>
             <?php foreach (ESTADOS_PEDIDO as $k => [$l]): ?><option value="<?= $k ?>" <?= $estado === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?>
         </select>
         <input type="search" name="q" value="<?= e($buscar) ?>" placeholder="Cliente, email o #" style="width:220px">
