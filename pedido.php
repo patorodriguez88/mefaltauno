@@ -158,6 +158,7 @@ require __DIR__ . '/inc/header.php';
             <span id="modal-pago-titulo">Pedido #<?= (int)$p['id'] ?></span>
             <b><?= precio((float)$p['total']) ?></b>
         </div>
+        <p class="modal-pago-aviso">Con tarjeta pagás acá mismo. Con tu <b>cuenta de Mercado Pago</b> te llevamos a Mercado Pago y volvés a tu pedido.</p>
         <div id="mp-brick"></div>
         <div class="mp-banco" hidden>
             <p class="small muted">Tu banco pide validar el pago. Completá los pasos sin cerrar esta ventana.</p>

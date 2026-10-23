@@ -8,7 +8,11 @@
     const zona = { brick: dlg.querySelector('#mp-brick'), banco: dlg.querySelector('.mp-banco'), resultado: dlg.querySelector('.mp-resultado') };
     let brick = null;
 
-    const ver = (cual) => Object.entries(zona).forEach(([k, el]) => { el.hidden = k !== cual; });
+    const aviso = dlg.querySelector('.modal-pago-aviso');
+    const ver = (cual) => {
+        Object.entries(zona).forEach(([k, el]) => { el.hidden = k !== cual; });
+        aviso.hidden = cual !== 'brick';
+    };
 
     async function crearFormulario() {
         ver('brick');
@@ -25,7 +29,8 @@
             callbacks: {
                 onReady: () => {},
                 onError: (error) => console.error('[Mercado Pago]', error),
-                onSubmit: ({ formData }) => cobrar(formData),
+                // "Cuenta de Mercado Pago": el Brick lleva a pagar a Mercado Pago y vuelve al pedido (no hay tarjeta que cobrar acá)
+                onSubmit: ({ selectedPaymentMethod, formData }) => selectedPaymentMethod === 'wallet_purchase' ? Promise.resolve() : cobrar(formData),
             },
         });
     }

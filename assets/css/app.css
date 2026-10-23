@@ -781,3 +781,4 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .mp-resultado.ok h3 { color: var(--green); }
 .mp-resultado.rechazo h3 { color: var(--red); }
 .modal-pago-pie { margin: 0; padding: 0 20px; font-size: .78rem; color: var(--muted); text-align: center; }
+.modal-pago-aviso { margin: -6px 20px 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--teal-50); color: var(--teal-900); font-size: .85rem; }
