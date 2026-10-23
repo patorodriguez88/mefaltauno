@@ -42,7 +42,10 @@ function mp_link_de_pago(int $pedido_id): string {
 
     $base = rtrim(SITE_URL, '/');
     $volver = $base . url('pedido.php?id=' . $pedido_id . '&mp=1');
-    $pref = mp_api('POST', 'checkout/preferences', [
+    // Mercado Pago rechaza la vuelta automática y el aviso a direcciones que no son públicas (http://localhost):
+    // en una prueba local se vuelve con el botón de Mercado Pago y el pago se mira al volver.
+    $publica = str_starts_with($base, 'https://') && !preg_match('#^https://(localhost|127\.)#', $base);
+    $pref = mp_api('POST', 'checkout/preferences', array_filter([
         'items' => [[
             'id' => 'pedido-' . $pedido_id,
             'title' => "MeFaltaUno · Pedido #$pedido_id",
@@ -53,13 +56,15 @@ function mp_link_de_pago(int $pedido_id): string {
         'payer' => ['email' => $p['email'], 'name' => $p['cliente_nombre']],
         'external_reference' => (string)$pedido_id,
         'back_urls' => ['success' => $volver, 'pending' => $volver, 'failure' => $volver],
-        'auto_return' => 'approved',
-        'notification_url' => $base . url('mp-webhook.php'),
+        'auto_return' => $publica ? 'approved' : null,
+        'notification_url' => $publica ? $base . url('mp-webhook.php') : null,
         'statement_descriptor' => 'MEFALTAUNO',
-    ]);
-    if (empty($pref['init_point'])) throw new Exception('Mercado Pago no devolvió el link de pago.');
-    q("UPDATE pedidos SET mp_preferencia_id=?, mp_init_point=?, mp_monto=? WHERE id=?", [$pref['id'], $pref['init_point'], $p['total'], $pedido_id]);
-    return $pref['init_point'];
+    ], fn ($v) => $v !== null));
+    // Con credenciales de prueba ("TEST-…") se paga en el entorno de prueba de Mercado Pago.
+    $link = str_starts_with(MP_ACCESS_TOKEN, 'TEST-') && !empty($pref['sandbox_init_point']) ? $pref['sandbox_init_point'] : ($pref['init_point'] ?? '');
+    if ($link === '') throw new Exception('Mercado Pago no devolvió el link de pago.');
+    q("UPDATE pedidos SET mp_preferencia_id=?, mp_init_point=?, mp_monto=? WHERE id=?", [$pref['id'], $link, $p['total'], $pedido_id]);
+    return $link;
 }
 
 /**
