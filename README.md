@@ -5,8 +5,9 @@ que tiene, compra los que hay en stock y pide los que le faltan ("Conseguímelo"
 recibe un mail y gestiona cada pedido desde el panel.
 
 - **Local:** http://localhost:8000/mefaltauno/
-- **Desarrollo:** https://web.mefaltauno.com.ar (deploy automático por FTP al hacer push a `main`)
-- **Producción actual:** https://mefaltauno.com.ar (Tiendanube, hasta el lanzamiento)
+- **Producción:** https://www.mefaltauno.com.ar (deploy automático por FTP al hacer push a `main`).
+  `mefaltauno.com.ar` y `web.mefaltauno.com.ar` redirigen ahí (`.htaccess`), igual que las direcciones
+  de la tienda anterior en Tiendanube (`/productos/<colección>/`, `/libros/`, etc.).
 
 ## Estructura
 - `index.php`, `colecciones.php`, `coleccion.php`: tienda pública
@@ -26,4 +27,4 @@ recibe un mail y gestiona cada pedido desde el panel.
 
 ## Deploy
 `.github/workflows/main.yml` sincroniza el repo por FTP con `user@web.mefaltauno.com.ar`
-(raíz del subdominio). La contraseña va en el secret `FTP_PASSWORD` del repo.
+(la carpeta que sirve www, mefaltauno.com.ar y web.). La contraseña va en el secret `FTP_PASSWORD` del repo.

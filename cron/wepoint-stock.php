@@ -1,6 +1,6 @@
 <?php
 // Sincroniza con WePoint el stock y el estado de los pedidos en curso. Para el cron de cPanel (cada 15 minutos, por ejemplo):
-//   curl -s "https://web.mefaltauno.com.ar/cron/wepoint-stock.php?token=WEPOINT_CRON_TOKEN"
+//   curl -s "https://www.mefaltauno.com.ar/cron/wepoint-stock.php?token=WEPOINT_CRON_TOKEN"
 // o por línea de comandos: php cron/wepoint-stock.php
 require dirname(__DIR__) . '/inc/bootstrap.php';
 

@@ -1,7 +1,7 @@
 on:
   push:
     branches: [main]
-name: 🚀 Deploy web.mefaltauno.com.ar
+name: 🚀 Deploy www.mefaltauno.com.ar
 jobs:
   web-deploy:
     name: 🎉 Deploy

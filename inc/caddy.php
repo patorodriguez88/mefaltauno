@@ -29,7 +29,7 @@ function caddy_http(string $ruta, array $body, ?string $token = null): array {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 30,
         // Sin User-Agent el firewall del hosting (mod_security) responde 406
-        CURLOPT_USERAGENT      => 'MeFaltaUno/1.0 (+https://web.mefaltauno.com.ar)',
+        CURLOPT_USERAGENT      => 'MeFaltaUno/1.0 (+https://www.mefaltauno.com.ar)',
         CURLOPT_FOLLOWLOCATION => true,
     ]);
     $raw = curl_exec($ch);

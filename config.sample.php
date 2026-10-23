@@ -10,7 +10,7 @@ define('DB_PASS',   '');
 define('DB_SOCKET', '');            // vacío = conecta por host/puerto
 
 define('BASE_URL', '/');            // ruta donde vive el sitio (local: '/mefaltauno/')
-define('SITE_URL', 'https://web.mefaltauno.com.ar');
+define('SITE_URL', 'https://www.mefaltauno.com.ar');
 
 define('MAIL_MODO',     'mail');    // mail = envía con mail() | log = escribe en storage/mail.log
 define('MAIL_FROM',     'no-responder@mefaltauno.com.ar');

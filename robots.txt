@@ -1,3 +1,10 @@
-# Entorno de desarrollo: no indexar. Cambiar al lanzar en mefaltauno.com.ar.
 User-agent: *
-Disallow: /
+Disallow: /admin/
+Disallow: /api.php
+Disallow: /carrito.php
+Disallow: /checkout.php
+Disallow: /cuenta.php
+Disallow: /pedido.php
+Disallow: /ingresar.php
+Disallow: /registro.php
+Disallow: /cron/

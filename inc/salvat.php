@@ -10,7 +10,7 @@ function salvat_get(string $url, int $timeout = 20): string {
     if (parse_url($url, PHP_URL_HOST) !== 'www.salvat.com') throw new Exception('Solo se lee salvat.com.');
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_TIMEOUT => $timeout,
-                            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://web.mefaltauno.com.ar)']);
+                            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://www.mefaltauno.com.ar)']);
     $html = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);

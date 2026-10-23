@@ -15,7 +15,7 @@ function brihet_get(string $query): array {
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 60,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://web.mefaltauno.com.ar)',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://www.mefaltauno.com.ar)',
     ]);
     $raw = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -239,7 +239,7 @@ function brihet_refrescar_items(array $item_ids): int {
     foreach ($its as $it) {
         $ch = curl_init(BRIHET_API . '/' . (int)$it['brihet_id']);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 6, CURLOPT_CONNECTTIMEOUT => 3,
-                                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://web.mefaltauno.com.ar)']);
+                                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://www.mefaltauno.com.ar)']);
         curl_multi_add_handle($mh, $ch);
         $hs[] = [$ch, $it];
     }

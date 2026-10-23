@@ -6,7 +6,27 @@ Options -Indexes
     Require all denied
 </FilesMatch>
 
-# Entorno de desarrollo: que los buscadores no lo indexen (quitar al lanzar).
-<IfModule mod_headers.c>
-    Header set X-Robots-Tag "noindex, nofollow"
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Un solo dominio: mefaltauno.com.ar, web.mefaltauno.com.ar y http van a https://www.mefaltauno.com.ar.
+    # Solo en los dominios de MeFaltaUno (no en localhost) y sin tocar las validaciones del certificado.
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteCond %{HTTP_HOST} mefaltauno\.com\.ar$ [NC]
+    RewriteCond %{HTTP_HOST} !^www\.mefaltauno\.com\.ar$ [NC]
+    RewriteRule ^ https://www.mefaltauno.com.ar%{REQUEST_URI} [R=301,L]
+
+    # www por http. Hay un nginx adelante de Apache: si el pedido llegó por https lo dice X-Forwarded-Proto.
+    RewriteCond %{REQUEST_URI} !^/\.well-known/
+    RewriteCond %{HTTP_HOST} ^www\.mefaltauno\.com\.ar$ [NC]
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://www.mefaltauno.com.ar%{REQUEST_URI} [R=301,L]
+
+    # Direcciones de la tienda anterior (Tiendanube): las que tiene Google y los links que circulan.
+    RewriteRule ^productos/?$ https://www.mefaltauno.com.ar/colecciones.php [R=301,L]
+    RewriteRule ^productos/([^/]+)/?$ https://www.mefaltauno.com.ar/coleccion.php?c=$1 [R=301,L]
+    RewriteRule ^(libros|modelismo|juegos)/?$ https://www.mefaltauno.com.ar/colecciones.php?cat=$1 [R=301,L]
+    RewriteRule ^terminos-y-condicion(i)?es/?$ https://www.mefaltauno.com.ar/terminos.php [R=301,L]
+    RewriteRule ^(quienes-somos|preguntas-frecuentes|contacto)/?$ https://www.mefaltauno.com.ar/ [R=301,L]
 </IfModule>
