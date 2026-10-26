@@ -74,7 +74,7 @@ require __DIR__ . '/inc/header.php';
                     <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('disponible') ?></span><small>Disponibles hoy</small><span><b><?= $f_24h + $f_enc ?></b> números<?php if ($f_24h + $f_enc): ?><em><?= $f_24h ? $f_24h . ' en 24 h' : '' ?><?= $f_24h && $f_enc ? ' · ' : '' ?><?= $f_enc ? $f_enc . ' por encargue' : '' ?></em><?php endif; ?></span></div>
                 <?php endif; ?>
                 <?php if ($socio): ?>
-                    <div class="ficha-dato ficha-tuya"><span class="ficha-ico"><?= icono_ficha('tuya') ?></span><small>Tu colección</small><span><b><?= $f_tengo ?></b> de <?= $f_total ?><em><?= $f_total - $f_tengo > 0 ? 'te faltan ' . ($f_total - $f_tengo) : '¡completa! 🏆' ?></em></span></div>
+                    <div class="ficha-dato ficha-tuya"><span class="ficha-ico"><?= icono_ficha('tuya') ?></span><small>Tu colección</small><span><b id="ficha-tengo"><?= $f_tengo ?></b> de <?= $f_total ?><em id="ficha-faltan"><?= $f_total - $f_tengo > 0 ? 'te faltan ' . ($f_total - $f_tengo) : '¡completa! 🏆' ?></em></span></div>
                 <?php endif; ?>
             </div>
             <?php if (!$cli): ?>
@@ -155,7 +155,7 @@ require __DIR__ . '/inc/header.php';
             </div>
         <?php endif; ?>
 
-        <div class="grid-items" id="grid-items" data-logueado="<?= $socio ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>">
+        <div class="grid-items" id="grid-items" data-logueado="<?= $socio ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>" data-total="<?= (int)$f_total ?>">
             <?php foreach ($items as $it):
                 $estado = $estados[$it['id']] ?? 'falta';
                 $p = precio_item($it);

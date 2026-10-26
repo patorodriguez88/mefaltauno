@@ -81,15 +81,20 @@ async function agregarAlCarrito(itemId, btn) {
     function contar() {
         const all = items();
         const tengo = all.filter(i => i.dataset.estado === 'tengo').length;
-        const total = all.length;
+        // La colección completa (puede tener más números que los cargados en la web), igual que la ficha
+        const total = Math.max(+grid.dataset.total || 0, all.length);
         const pct = total ? Math.round(tengo * 100 / total) : 0;
         const bar = document.getElementById('prog-bar');
         if (bar) bar.style.width = pct + '%';
         const txt = document.getElementById('prog-txt');
         if (txt) txt.innerHTML = `Tu colección: <strong>${tengo}</strong> de ${total}` + (total - tengo ? ` · te faltan <strong>${total - tengo}</strong>` : ' · ¡Colección completa, misión cumplida! 🏆');
+        const fichaTengo = document.getElementById('ficha-tengo'), fichaFaltan = document.getElementById('ficha-faltan');
+        if (fichaTengo) fichaTengo.textContent = tengo;
+        if (fichaFaltan) fichaFaltan.textContent = total - tengo > 0 ? `te faltan ${total - tengo}` : '¡completa! 🏆';
+        // Los filtros cuentan las tarjetas que se ven en la página
         document.querySelectorAll('[data-cnt]').forEach(el => {
             const k = el.dataset.cnt;
-            el.textContent = k === 'todos' ? total : k === 'tengo' ? tengo : total - tengo;
+            el.textContent = k === 'todos' ? all.length : k === 'tengo' ? tengo : all.length - tengo;
         });
     }
 
