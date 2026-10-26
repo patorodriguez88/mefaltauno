@@ -408,12 +408,15 @@ async function toggleSuscripcion(btn) {
     if (!comics.length || !('IntersectionObserver' in window)) return;
     const cerrado = id => { try { return sessionStorage.getItem('comic-' + id) === '1'; } catch (e) { return false; } };
     let actual = null;
+    // De a uno: el que entra saca al anterior. Si dos secciones aparecen juntas (bajando rápido), el anterior
+    // puede no haber terminado de entrar, así que solo se muestra si sigue siendo el actual.
     const mostrar = c => {
         if (actual === c || cerrado(c.id)) return;
-        if (actual) { actual.classList.remove('visible'); setTimeout(() => (actual && !actual.classList.contains('visible')) && (actual.hidden = true), 400); }
+        const anterior = actual;
+        if (anterior) { anterior.classList.remove('visible'); setTimeout(() => { if (anterior !== actual) anterior.hidden = true; }, 400); }
         actual = c;
         c.hidden = false;
-        requestAnimationFrame(() => requestAnimationFrame(() => c.classList.add('visible')));
+        requestAnimationFrame(() => requestAnimationFrame(() => { if (actual === c) c.classList.add('visible'); }));
     };
     comics.forEach(c => {
         const destino = document.querySelector(c.dataset.aparece);
