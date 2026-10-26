@@ -21,6 +21,15 @@ function item_activo(int $id): array {
     return $it;
 }
 
+// Número que se puede marcar o pedir aunque no esté a la venta (Próximamente, todavía no salió, ya salió):
+// "Lo tengo" es la libreta del coleccionista y no depende de lo que vendemos.
+function item_visible(int $id): array {
+    $it = q("SELECT i.*, c.nombre AS coleccion FROM items i JOIN colecciones c ON c.id=i.coleccion_id
+             WHERE i.id=? AND i.activo=1 AND c.activa=1", [$id])->fetch();
+    if (!$it) throw new Exception('Ese número no está publicado en la tienda.');
+    return $it;
+}
+
 function chip_estado(string $estado): string {
     $map = [
         'tengo'     => ['badge-verde', 'Lo tengo'],
@@ -65,7 +74,7 @@ try {
 
     case 'tengo':
         $cli = exigir_login($cli);
-        $it = item_activo((int)($_POST['item_id'] ?? 0));
+        $it = item_visible((int)($_POST['item_id'] ?? 0));
         $siguiendo = false;
         if (!empty($_POST['tengo'])) {
             q("INSERT IGNORE INTO cliente_items (cliente_id, item_id, origen) VALUES (?,?,'manual')", [$cli['id'], $it['id']]);
@@ -96,7 +105,7 @@ try {
         $items = [];
         foreach ($ids as $id) {
             if (in_array($id, $activos, true)) continue;  // ya lo tiene o ya lo pidió
-            try { $items[] = item_activo($id); } catch (Exception $e) {}
+            try { $items[] = item_visible($id); } catch (Exception $e) {}   // también los que están por salir
         }
         if (!$items) throw new Exception('Esos números ya están pedidos o los tenés.');
         $db = db();
@@ -114,6 +123,26 @@ try {
         $n = count($items);
         json_out(['ok' => true, 'solicitud' => $sol, 'chip' => chip_estado('buscando'),
                   'mensaje' => $n === 1 ? '¡Misión aceptada! Salimos a buscarlo.' : "¡Misión aceptada! Salimos a buscar a los $n."]);
+
+    // Abono: "La colecciono" (inc/abonos.php)
+    case 'abonar':
+        $cli = exigir_login($cli);
+        $col = q("SELECT * FROM colecciones WHERE id=? AND activa=1", [(int)($_POST['coleccion_id'] ?? 0)])->fetch();
+        if (!$col) throw new Exception('Esa colección no está disponible.');
+        if (empty($_POST['abonar'])) {
+            desabonar($cli, (int)$col['id']);
+            json_out(['ok' => true, 'abonado' => false, 'mensaje' => 'Listo, ya no te guardamos los números nuevos.']);
+        }
+        $a = abonar($cli, $col);
+        json_out(['ok' => true, 'abonado' => true, 'desde' => (int)$a['desde_numero'],
+                  'mensaje' => '¡Abono activo! Te guardamos cada número desde el ' . num((int)$a['desde_numero']) . ' apenas llegue.']);
+
+    case 'abono_numero':
+        $cli = exigir_login($cli);
+        $it = item_visible((int)($_POST['item_id'] ?? 0));
+        if (!abono_de((int)$cli['id'], (int)$it['coleccion_id'])) throw new Exception('No tenés abono a esta colección.');
+        abono_numero($cli, (int)$it['id'], !empty($_POST['quiere']));
+        json_out(['ok' => true, 'mensaje' => !empty($_POST['quiere']) ? 'Te lo guardamos cuando llegue.' : 'Listo, ese número no te lo guardamos.']);
 
     // Suscripción a una colección (coleccion_id) o a novedades generales (sin coleccion_id)
     case 'suscribir':

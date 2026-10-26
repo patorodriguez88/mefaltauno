@@ -532,6 +532,34 @@ function schema_pasos(): array {
                 ADD COLUMN salida_inicio DATE NULL AFTER lanzamiento, ADD COLUMN periodicidad VARCHAR(12) NULL AFTER salida_inicio",
             "ALTER TABLE items ADD COLUMN salida DATE NULL",
         ],
+
+        // Abonos (inc/abonos.php): el coleccionista elige "La colecciono" y cada número nuevo se le guarda al llegar.
+        // Puede sacar números puntuales (abono_excluidos). Las reservas que nacen de un abono llevan abono_id.
+        33 => [
+            "CREATE TABLE IF NOT EXISTS abonos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                cliente_id INT NOT NULL,
+                coleccion_id INT NOT NULL,
+                desde_numero INT NOT NULL DEFAULT 1,
+                estado VARCHAR(10) NOT NULL DEFAULT 'activo',
+                vencidas_seguidas INT NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_abono (cliente_id, coleccion_id),
+                KEY idx_col_estado (coleccion_id, estado),
+                CONSTRAINT fk_abono_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+                CONSTRAINT fk_abono_col FOREIGN KEY (coleccion_id) REFERENCES colecciones(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "CREATE TABLE IF NOT EXISTS abono_excluidos (
+                cliente_id INT NOT NULL,
+                item_id INT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (cliente_id, item_id),
+                CONSTRAINT fk_abex_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
+                CONSTRAINT fk_abex_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "ALTER TABLE reservas ADD COLUMN abono_id INT NULL AFTER solicitud_item_id, ADD KEY idx_abono (abono_id)",
+        ],
     ];
 }
 

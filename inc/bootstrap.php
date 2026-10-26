@@ -498,4 +498,5 @@ require __DIR__ . '/mercadopago.php';
 require __DIR__ . '/ventana.php';
 require __DIR__ . '/claves.php';
 require __DIR__ . '/salidas.php';
+require __DIR__ . '/abonos.php';
 require __DIR__ . '/mail.php';

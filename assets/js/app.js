@@ -99,6 +99,8 @@ async function agregarAlCarrito(itemId, btn) {
         it.classList.toggle('es-falta', est !== 'tengo');
         const sel = it.querySelector('.sel-toggle');
         if (sel) sel.hidden = est !== 'falta';
+        const ab = it.querySelector('.abono-toggle');
+        if (ab) ab.hidden = est !== 'falta';
         if (est !== 'falta') {
             it.classList.remove('seleccionado');
             const cb = it.querySelector('.sel-toggle input');
@@ -124,6 +126,16 @@ async function agregarAlCarrito(itemId, btn) {
                 if (seguir && r.siguiendo) { seguir.dataset.siguiendo = '1'; seguir.textContent = '✓ En Mis colecciones'; }
             } catch (e) {
                 ev.target.checked = !tengo;
+            }
+        }
+        // "Lo quiero" de un número del abono: se guarda (sacarlo o volverlo a poner), no pasa por la selección
+        if (ev.target.matches('.abono-toggle input')) {
+            const quiere = ev.target.checked;
+            try {
+                const r = await api('abono_numero', { item_id: it.dataset.id, quiere: quiere ? 1 : 0 });
+                toast(r.mensaje);
+            } catch (e) {
+                ev.target.checked = !quiere;
             }
         }
         if (ev.target.matches('.sel-toggle input')) {
@@ -157,7 +169,7 @@ async function agregarAlCarrito(itemId, btn) {
     }
 
     window.seleccionarFaltantes = function () {
-        const faltan = items().filter(i => i.dataset.estado === 'falta');
+        const faltan = items().filter(i => i.dataset.estado === 'falta' && i.querySelector('.sel-toggle'));   // los del abono ya están pedidos
         const todos = faltan.every(i => i.classList.contains('seleccionado'));
         faltan.forEach(i => {
             i.classList.toggle('seleccionado', !todos);
@@ -165,7 +177,8 @@ async function agregarAlCarrito(itemId, btn) {
             if (cb) cb.checked = !todos;
         });
         actualizarBarra();
-        if (!faltan.length) toast('Ya tenés todos los números 🏆');
+        if (!faltan.length) toast(items().some(i => i.dataset.estado === 'falta' && i.querySelector('.abono-toggle'))
+            ? 'Los que te faltan ya están en tu abono: te los guardamos cuando lleguen ⚡' : 'Ya tenés todos los números 🏆');
     };
 
     window.limpiarSeleccion = function () {
@@ -241,6 +254,21 @@ async function agregarAlCarrito(itemId, btn) {
             btn.textContent = seguir ? '✓ En Mis colecciones' : '+ Sumar a Mis colecciones';
             toast(seguir ? 'Colección sumada a Mis colecciones ⚡' : 'La quitamos de Mis colecciones');
         } catch (e) { }
+    };
+
+    // "La colecciono": activa, reactiva o da de baja el abono y recarga para mostrar qué números cubre
+    window.toggleAbono = async function (btn) {
+        const activo = btn.dataset.abonado === '1' && btn.dataset.pausado !== '1';
+        if (activo) {
+            const ok = await modal({ titulo: '¿Dejás de coleccionarla?', cuerpo: '<p style="margin:0">No te vamos a guardar más los números nuevos de esta colección. Lo que ya marcaste como “Lo tengo” queda igual.</p>', ok: 'Sí, darme de baja' });
+            if (ok === null) return;
+        }
+        btn.disabled = true;
+        try {
+            const r = await api('abonar', { coleccion_id: coleccionId, abonar: activo ? 0 : 1 });
+            toast(r.mensaje);
+            setTimeout(() => location.reload(), 900);
+        } catch (e) { btn.disabled = false; }
     };
 
     items().forEach(pintar);

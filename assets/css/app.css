@@ -856,3 +856,13 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .salidas-box legend { padding: 0 6px; font-weight: 700; }
 .td-salida input { width: 140px; }
 .item-salida { display: flex; align-items: center; gap: 5px; font-size: .75rem; color: var(--muted); margin-top: -4px; }
+
+/* Abono "La colecciono" (coleccion.php) */
+.abono-aviso { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--teal-50); color: var(--teal-900); font-size: .85rem; max-width: 680px; }
+.abono-aviso .ico-marca { color: var(--teal); margin-top: 1px; }
+.abono-pausado { background: var(--yellow); }
+.abono-toggle { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; user-select: none; }
+.abono-toggle input { width: 18px; height: 18px; accent-color: var(--teal); }
+.abono-toggle small { font-weight: 400; color: var(--muted); }
+.abono-toggle[hidden] { display: none; }
+#btn-abono .ico-marca { vertical-align: -3px; }

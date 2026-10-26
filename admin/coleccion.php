@@ -147,6 +147,9 @@ admin_header($col['nombre'], 'colecciones');
                         <select name="periodicidad"><option value="">—</option>
                             <?php foreach (PERIODICIDADES as $k => [$lbl]): ?><option value="<?= $k ?>" <?= $col['periodicidad'] === $k ? 'selected' : '' ?>><?= $lbl ?></option><?php endforeach; ?>
                         </select></label>
+                <?php [$ab_act, $ab_pau] = abonos_conteo($id); if ($ab_act || $ab_pau): ?>
+                    <p class="small" style="margin:0"><b><?= $ab_act ?> abonado<?= $ab_act == 1 ? '' : 's' ?></b> la coleccionan: a cada número nuevo se le guarda una unidad apenas llega<?= $ab_pau ? " · $ab_pau pausado" . ($ab_pau == 1 ? '' : 's') : '' ?>.</p>
+                <?php endif; ?>
                 <?php if ($salidas): ?>
                     <p class="small" style="margin:0">
                         <?= $sal['va'] ? 'Va por el <b>' . num($sal['va']) . '</b>' : 'Todavía no salió el N° 1' ?><?= $sal['proximo'] ? ' · el <b>' . num($sal['proximo']) . '</b> sale aprox. el <b>' . fecha_dia($sal['prox_fecha']) . '</b>' : '' ?><?= $sal['fin'] && $sal['proximo'] ? ' · el último (' . num($sal['fin']) . ') aprox. el ' . fecha_dia($sal['fin_fecha']) : '' ?>.</p>

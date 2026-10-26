@@ -30,6 +30,10 @@ $chips = [
     'en_camino' => '<span class="badge badge-azul">En camino</span>',
 ];
 
+// Abono ("La colecciono"): qué números le guardamos a este cliente cuando lleguen
+$abono = $socio ? abono_de((int)$cli['id'], (int)$col['id']) : null;
+[$ab_cubiertos, $ab_excluidos] = $abono ? abono_cubiertos($abono) : [[], []];
+
 $salidas = salidas_coleccion($col);
 $sal = salidas_resumen($col, $salidas);
 $hoy = date('Y-m-d');
@@ -107,11 +111,24 @@ require __DIR__ . '/inc/header.php';
                     <div class="progreso"><span id="prog-bar" style="width:0"></span></div>
                     <div class="progreso-txt"><span id="prog-txt"></span></div>
                 </div>
+                <?php if ($abono && $abono['estado'] === 'activo'): ?>
+                    <p class="abono-aviso"><?= icono_ficha('kiosco', 16) ?> <span>Coleccionás esta colección: te guardamos cada número desde el <b><?= num((int)$abono['desde_numero']) ?></b> apenas llega. Destildá “Lo quiero” en los que no quieras.</span></p>
+                <?php elseif ($abono): ?>
+                    <p class="abono-aviso abono-pausado"><span>Tu abono está <b>pausado</b> porque no llegaste a comprar los últimos números que te guardamos. Reactivalo para que te los volvamos a guardar.</span></p>
+                <?php elseif (coleccion_vigente($col)): ?>
+                    <p class="abono-aviso"><?= icono_ficha('kiosco', 16) ?> <span>¿La coleccionás? Tocá <b>La colecciono</b> y te guardamos cada número nuevo apenas llega, sin pedirlo uno por uno.</span></p>
+                <?php endif; ?>
                 <div class="col-acciones">
                     <button class="btn btn-linea btn-chico" id="btn-seguir" type="button" data-siguiendo="<?= $siguiendo ? '1' : '0' ?>" onclick="toggleSeguir(this)">
                         <?= $siguiendo ? '✓ En Mis colecciones' : '+ Sumar a Mis colecciones' ?>
                     </button>
                     <button class="btn btn-primario btn-chico" type="button" onclick="seleccionarFaltantes()">Seleccionar los que me faltan</button>
+                    <?php if ($abono || coleccion_vigente($col)): ?>
+                        <button class="btn btn-chico <?= $abono && $abono['estado'] === 'activo' ? 'btn-linea' : 'btn-teal' ?>" type="button" id="btn-abono"
+                                data-abonado="<?= $abono ? '1' : '0' ?>" data-pausado="<?= $abono && $abono['estado'] === 'pausado' ? '1' : '0' ?>" onclick="toggleAbono(this)">
+                            <?= !$abono ? icono_ficha('kiosco', 16) . ' La colecciono' : ($abono['estado'] === 'pausado' ? 'Reactivar mi abono' : '✓ La colecciono') ?>
+                        </button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-texto btn-chico" data-suscripto="<?= $suscripto ? '1' : '0' ?>" data-coleccion="<?= (int)$col['id'] ?>" onclick="toggleSuscripcion(this)" title="<?= $suscripto ? 'Tocá para dejar de recibir avisos' : 'Te avisamos de números nuevos, reposiciones y lanzamientos' ?>">
                         <?= $suscripto ? '🔔 Suscripto a novedades' : '🔔 Avisarme novedades' ?>
                     </button>
@@ -171,7 +188,11 @@ require __DIR__ . '/inc/header.php';
                         <div class="item-acciones">
                             <?php if ($socio): ?>
                                 <label class="tengo-toggle"><input type="checkbox" <?= $estado === 'tengo' ? 'checked' : '' ?>> Lo tengo</label>
-                                <label class="sel-toggle" <?= $estado !== 'falta' ? 'hidden' : '' ?>><input type="checkbox"> Lo quiero</label>
+                                <?php if ($stock <= 0 && (isset($ab_cubiertos[$it['id']]) || isset($ab_excluidos[$it['id']]))): ?>
+                                    <label class="abono-toggle" <?= $estado !== 'falta' ? 'hidden' : '' ?> title="Está en tu abono: te lo guardamos cuando llegue"><input type="checkbox" <?= isset($ab_cubiertos[$it['id']]) ? 'checked' : '' ?>> Lo quiero <small>(abono)</small></label>
+                                <?php else: ?>
+                                    <label class="sel-toggle" <?= $estado !== 'falta' ? 'hidden' : '' ?>><input type="checkbox"> Lo quiero</label>
+                                <?php endif; ?>
                             <?php endif; ?>
                             <?php if ($col['proximamente']): ?>
                                 <span class="btn btn-linea btn-chico btn-bloque" aria-disabled="true" style="pointer-events:none;opacity:.7">Próximamente</span>

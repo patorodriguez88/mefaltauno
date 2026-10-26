@@ -67,10 +67,11 @@ function reservas_libres(array $it): int {
     return max(0, $st - array_sum(reservas_mapa()[(int)$it['id']] ?? []));
 }
 
-// Reserva automática: para cada número con stock libre, las búsquedas abiertas por orden de llegada.
+// Reserva automática: para cada número con stock libre, primero los abonados y después las búsquedas abiertas
+// por orden de llegada.
 // Cada búsqueda tiene una sola reserva automática: si la dejó vencer, no se le vuelve a reservar sola.
 function reservas_asignar(): int {
-    $n = 0;
+    $n = abonos_asignar();   // primero los abonados de la colección (inc/abonos.php), después los pedidos sueltos
     $pendientes = q("SELECT si.id AS si_id, si.item_id, s.cliente_id
                      FROM solicitud_items si JOIN solicitudes s ON s.id=si.solicitud_id
                      WHERE si.item_id IS NOT NULL AND s.estado IN ('pendiente','buscando')
@@ -91,6 +92,7 @@ function reservas_vencer(): int {
                    WHERE r.estado='activa' AND r.vence_at <= NOW()")->fetchAll();
     foreach ($vencidas as $r) {
         q("UPDATE reservas SET estado='vencida' WHERE id=?", [$r['id']]);
+        if ($r['abono_id']) abono_reserva_vencida((int)$r['abono_id']);
         if ($r['solicitud_id']) registrar_historial('solicitud', (int)$r['solicitud_id'], 'conseguido', 'Venció la reserva de ' . RESERVA_HORAS . ' h sin compra: el número volvió a la venta.', 'Reserva automática');
     }
     if ($vencidas) {
@@ -103,9 +105,10 @@ function reservas_vencer(): int {
 
 // Al comprar: las reservas del cliente para esos números quedan usadas por el pedido
 function reservas_usar(int $cliente_id, int $item_id, int $cantidad, int $pedido_id): void {
-    foreach (q("SELECT id, cantidad FROM reservas WHERE cliente_id=? AND item_id=? AND estado='activa' ORDER BY vence_at", [$cliente_id, $item_id])->fetchAll() as $r) {
+    foreach (q("SELECT id, cantidad, abono_id FROM reservas WHERE cliente_id=? AND item_id=? AND estado='activa' ORDER BY vence_at", [$cliente_id, $item_id])->fetchAll() as $r) {
         if ($cantidad <= 0) break;
         q("UPDATE reservas SET estado='usada', pedido_id=? WHERE id=?", [$pedido_id, $r['id']]);
+        if ($r['abono_id']) q("UPDATE abonos SET vencidas_seguidas=0 WHERE id=?", [$r['abono_id']]);
         $cantidad -= (int)$r['cantidad'];
     }
 }
