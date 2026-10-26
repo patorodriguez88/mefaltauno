@@ -155,9 +155,19 @@ function cliente(): ?array {
 function es_admin(?array $c = null): bool {
     $c = $c ?? cliente();
     if (!$c) return false;
-    if (!empty($c['es_operador'])) return true;
-    $admins = array_filter(array_map('trim', explode(',', strtolower(ADMIN_EMAILS))));
-    return in_array(strtolower($c['email']), $admins, true);
+    return !empty($c['es_operador']) || es_maestro($c);
+}
+
+/** Mails de ADMIN_EMAILS (config.php): los maestros, que además manejan el equipo (admin/equipo.php). */
+function maestros_emails(): array {
+    return array_values(array_filter(array_map('trim', explode(',', strtolower(ADMIN_EMAILS)))));
+}
+
+// Maestro: su mail está en ADMIN_EMAILS. Solo se cambia desde config.php (cPanel), así un operador no puede
+// darse más permisos ni quitarle el acceso a un maestro.
+function es_maestro(?array $c = null): bool {
+    $c = $c ?? cliente();
+    return $c !== null && in_array(strtolower($c['email']), maestros_emails(), true);
 }
 
 function login_cliente(array $c): void {
@@ -486,4 +496,5 @@ require __DIR__ . '/carrito.php';
 require __DIR__ . '/pedidos.php';
 require __DIR__ . '/mercadopago.php';
 require __DIR__ . '/ventana.php';
+require __DIR__ . '/claves.php';
 require __DIR__ . '/mail.php';

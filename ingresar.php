@@ -43,6 +43,7 @@ require __DIR__ . '/inc/header.php';
             <label class="campo">Contraseña<input type="password" name="password" required autocomplete="current-password"></label>
             <button class="btn btn-primario btn-bloque" type="submit">Ingresar</button>
         </form>
+        <p class="small" style="margin:12px 0 0;text-align:center"><a href="<?= url('olvide.php') ?>">¿Olvidaste tu contraseña?</a></p>
         <p class="small muted" style="margin:20px 0 0;text-align:center">¿No tenés cuenta? <a href="<?= url('registro.php' . (volver_actual() ? '?volver=' . urlencode(volver_actual()) : '')) ?>">Creala en un minuto</a></p>
     </div>
 </div>

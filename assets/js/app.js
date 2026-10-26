@@ -297,6 +297,15 @@ document.getElementById('modal').addEventListener('click', ev => {
     if (ev.target.id === 'modal') ev.target.close('cancelar');
 });
 
+// <form data-confirmar="¿Seguro…?">: pregunta con el modal antes de enviar
+document.addEventListener('submit', async ev => {
+    const form = ev.target;
+    if (!form.dataset || !form.dataset.confirmar) return;
+    ev.preventDefault();
+    const ok = await modal({ titulo: '¿Confirmás?', cuerpo: '<p>' + esc(form.dataset.confirmar) + '</p>', ok: 'Sí, seguir' });
+    if (ok !== null) form.submit();
+});
+
 function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

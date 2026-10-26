@@ -6,7 +6,7 @@ $descripcion_pag = $descripcion ?? 'Comics, figuras y colecciones de leyenda. Ma
 $actual = basename($_SERVER['SCRIPT_NAME'], '.php');
 // Los buscadores indexan la tienda; el panel y las páginas de la cuenta y la compra, no.
 $pagina_privada = str_contains($_SERVER['SCRIPT_NAME'], '/admin/')
-    || in_array($actual, ['cuenta', 'carrito', 'checkout', 'pedido', 'ingresar', 'registro', 'baja', 'mailing-baja', 'arrepentimiento'], true);
+    || in_array($actual, ['cuenta', 'carrito', 'checkout', 'pedido', 'ingresar', 'registro', 'olvide', 'clave', 'baja', 'mailing-baja', 'arrepentimiento'], true);
 ?>
 <?php require __DIR__ . '/head.php'; ?>
 <body class="<?= e($body_class ?? '') ?>">

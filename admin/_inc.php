@@ -76,6 +76,9 @@ function admin_header(string $titulo_pag, string $activo): void {
             <?php endforeach; ?>
         </nav>
         <div class="adm-nav adm-nav-pie">
+            <?php if (es_maestro($admin)): ?>
+                <a href="<?= url('admin/equipo.php') ?>" class="adm-link <?= $activo === 'equipo' ? 'activo' : '' ?>"><?= admin_icono('clientes') ?><span>Equipo</span></a>
+            <?php endif; ?>
             <a href="<?= url('admin/ajustes.php') ?>" class="adm-link <?= $activo === 'ajustes' ? 'activo' : '' ?>"><?= admin_icono('ajustes') ?><span>Configuración</span></a>
             <a href="<?= url() ?>" class="adm-link" target="_blank" rel="noopener"><?= admin_icono('tienda') ?><span>Ver la tienda</span></a>
         </div>

@@ -6,7 +6,9 @@ function mail_enviar(string $para, string $asunto, string $cuerpo_html, array $e
     if (MAIL_MODO === 'log') {
         $dir = dirname(__DIR__) . '/storage';
         if (!is_dir($dir)) mkdir($dir, 0775, true);
-        $txt = trim(html_entity_decode(strip_tags(preg_replace('#<br\s*/?>|</p>|</tr>|</h\d>#i', "\n", $cuerpo_html)), ENT_QUOTES, 'UTF-8'));
+        // Los botones quedan como "Texto (link)" para poder seguirlos en una prueba local
+        $con_links = preg_replace('#<a\s[^>]*href="([^"]+)"[^>]*>(.*?)</a>#is', '$2 ($1)', $cuerpo_html);
+        $txt = trim(html_entity_decode(strip_tags(preg_replace('#<br\s*/?>|</p>|</tr>|</h\d>#i', "\n", $con_links)), ENT_QUOTES, 'UTF-8'));
         file_put_contents("$dir/mail.log", sprintf("=== %s\nPara: %s\nAsunto: %s\n\n%s\n\n", date('Y-m-d H:i:s'), $para, $asunto, preg_replace("/\n\s*\n+/", "\n", $txt)), FILE_APPEND);
         return true;
     }

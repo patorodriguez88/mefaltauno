@@ -508,6 +508,22 @@ function schema_pasos(): array {
                 ADD COLUMN mp_monto DECIMAL(12,2) NULL, ADD COLUMN mp_pago_id VARCHAR(40) NULL, ADD COLUMN mp_estado VARCHAR(60) NULL,
                 ADD COLUMN mp_aprobado_at DATETIME NULL",
         ],
+
+        // Links para elegir contraseña (inc/claves.php): invitación de operadores y "olvidé mi contraseña".
+        // Se guarda el hash del token, nunca el token.
+        31 => [
+            "CREATE TABLE IF NOT EXISTS claves_links (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                cliente_id INT NOT NULL,
+                token_hash CHAR(64) NOT NULL UNIQUE,
+                tipo VARCHAR(12) NOT NULL,
+                vence_at DATETIME NOT NULL,
+                usado_at DATETIME NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_cliente (cliente_id),
+                CONSTRAINT fk_clave_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
     ];
 }
 
