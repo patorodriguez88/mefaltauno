@@ -240,9 +240,15 @@ admin_header($col['nombre'], 'colecciones');
 function previewFoto(input) {
     const f = input.files && input.files[0];
     if (!f) return;
-    const cont = input.closest('label').parentNode.querySelector('img') ? input.closest('label').parentNode : input.closest('label');
-    let img = cont.querySelector('img');
-    if (!img) { img = document.createElement('img'); cont.prepend(img); const s = cont.querySelector('span, .sin-foto'); if (s) s.remove(); }
+    // Portada: va en el recuadro de la portada (reemplaza "Sin portada"), no dentro del botón. Números: en su miniatura.
+    const portada = input.closest('.foto-portada');
+    const cont = portada || input.closest('label');
+    let img = portada ? portada.querySelector(':scope > img') : cont.querySelector('img');
+    if (!img) {
+        img = document.createElement('img');
+        const vacio = portada ? portada.querySelector('.sin-foto') : cont.querySelector('span');
+        vacio ? vacio.replaceWith(img) : cont.prepend(img);
+    }
     img.src = URL.createObjectURL(f);
     // Con foto ya se puede publicar
     const pub = input.closest('tr')?.querySelector('input[data-sin-foto]');
