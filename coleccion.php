@@ -59,18 +59,18 @@ require __DIR__ . '/inc/header.php';
             <?php endif; ?>
             <div class="ficha-col">
                 <div class="ficha-titulo">Ficha de la colección</div>
-                <div class="ficha-dato"><span class="ficha-ico">📚</span><small>Total</small><span><b><?= $f_total ?></b> números</span></div>
-                <div class="ficha-dato"><span class="ficha-ico">🗓️</span><small><?= $col['proximamente'] ? 'Lanzamiento' : 'Va por el' ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : '—') ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
+                <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('total') ?></span><small>Total</small><span><b><?= $f_total ?></b> números</span></div>
+                <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('calendario') ?></span><small><?= $col['proximamente'] ? 'Lanzamiento' : 'Va por el' ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : '—') ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
                 <?php if (($col['en_calle'] && !$col['proximamente']) || isset(PERIODICIDADES[$col['periodicidad'] ?? ''])): ?>
-                    <div class="ficha-dato"><span class="ficha-ico">🗞️</span><small><?= $col['en_calle'] && !$col['proximamente'] ? 'En kioscos' : 'Sale' ?></small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
+                    <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('kiosco') ?></span><small><?= $col['en_calle'] && !$col['proximamente'] ? 'En kioscos' : 'Sale' ?></small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
                 <?php endif; ?>
                 <?php if ($col['proximamente']): ?>
-                    <div class="ficha-dato"><span class="ficha-ico">🚀</span><small>Anunciados</small><span><b><?= count($items) ?></b> números<em>todavía no se venden</em></span></div>
+                    <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('cohete') ?></span><small>Anunciados</small><span><b><?= count($items) ?></b> números<em>todavía no se venden</em></span></div>
                 <?php else: ?>
-                    <div class="ficha-dato"><span class="ficha-ico">✅</span><small>Disponibles hoy</small><span><b><?= $f_24h + $f_enc ?></b> números<?php if ($f_24h + $f_enc): ?><em><?= $f_24h ? $f_24h . ' en 24 h' : '' ?><?= $f_24h && $f_enc ? ' · ' : '' ?><?= $f_enc ? $f_enc . ' por encargue' : '' ?></em><?php endif; ?></span></div>
+                    <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('disponible') ?></span><small>Disponibles hoy</small><span><b><?= $f_24h + $f_enc ?></b> números<?php if ($f_24h + $f_enc): ?><em><?= $f_24h ? $f_24h . ' en 24 h' : '' ?><?= $f_24h && $f_enc ? ' · ' : '' ?><?= $f_enc ? $f_enc . ' por encargue' : '' ?></em><?php endif; ?></span></div>
                 <?php endif; ?>
                 <?php if ($socio): ?>
-                    <div class="ficha-dato ficha-tuya"><span class="ficha-ico">🧩</span><small>Tu colección</small><span><b><?= $f_tengo ?></b> de <?= $f_total ?><em><?= $f_total - $f_tengo > 0 ? 'te faltan ' . ($f_total - $f_tengo) : '¡completa! 🏆' ?></em></span></div>
+                    <div class="ficha-dato ficha-tuya"><span class="ficha-ico"><?= icono_ficha('tuya') ?></span><small>Tu colección</small><span><b><?= $f_tengo ?></b> de <?= $f_total ?><em><?= $f_total - $f_tengo > 0 ? 'te faltan ' . ($f_total - $f_tengo) : '¡completa! 🏆' ?></em></span></div>
                 <?php endif; ?>
             </div>
             <?php if (!$cli): ?>
@@ -167,7 +167,7 @@ require __DIR__ . '/inc/header.php';
                             <?php elseif ($mi_res): ?>🎯 Te lo guardamos hasta el <?= e(fecha($mi_res['vence_at'])) ?>
                             <?php else: ?><?= e($txt_disp) ?><?php endif; ?>
                         </div>
-                        <?php if (($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?><div class="item-salida">🗞️ Sale aprox. el <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
+                        <?php if (($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?><div class="item-salida"><?= icono_ficha('calendario', 14) ?> Sale aprox. el <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
                         <div class="item-acciones">
                             <?php if ($socio): ?>
                                 <label class="tengo-toggle"><input type="checkbox" <?= $estado === 'tengo' ? 'checked' : '' ?>> Lo tengo</label>

@@ -692,7 +692,12 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .ficha-titulo { font-family: var(--font-display); font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--teal-900); padding: 10px 0 6px; border-bottom: 2px solid var(--teal-50); }
 .ficha-dato { display: grid; grid-template-columns: 26px auto 1fr; align-items: center; gap: 8px; padding: 10px 0; }
 .ficha-dato + .ficha-dato { border-top: 1px dashed var(--line); }
-.ficha-ico { font-size: 1.15rem; line-height: 1; }
+.ficha-ico { width: 30px; height: 30px; border-radius: 9px; background: var(--teal-50); color: var(--teal); display: grid; place-items: center; }
+.ficha-dato { grid-template-columns: 30px auto 1fr; }
+.ficha-tuya .ficha-ico { background: var(--teal); color: var(--white); }
+.ico-marca { flex: none; }
+.ico-marca .acento { fill: var(--yellow); }
+.chip .ico-marca, .item-salida .ico-marca { color: var(--teal); vertical-align: -2px; }
 .ficha-dato small { font-size: .85rem; color: var(--muted); white-space: nowrap; }
 .ficha-dato > span:last-child { text-align: right; line-height: 1.2; font-size: .8rem; color: var(--ink); }
 .ficha-dato b { font-family: var(--font-display); font-size: 1rem; color: var(--teal-900); }
@@ -849,4 +854,4 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .salidas-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px 12px; margin: 0; display: grid; gap: 8px; }
 .salidas-box legend { padding: 0 6px; font-weight: 700; }
 .td-salida input { width: 140px; }
-.item-salida { font-size: .75rem; color: var(--muted); margin-top: -4px; }
+.item-salida { display: flex; align-items: center; gap: 5px; font-size: .75rem; color: var(--muted); margin-top: -4px; }
