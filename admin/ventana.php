@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $v = [
             'activa'     => !empty($_POST['activa']) ? '1' : '0',
             'frecuencia' => ($_POST['frecuencia'] ?? '') === 'siempre' ? 'siempre' : 'una_vez',
-            'hasta'      => preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['hasta'] ?? '') ? $_POST['hasta'] : '',
+            'hasta'      => '',   // la fecha ahora va en cada presentación
         ];
         // Las presentaciones llegan en el orden en que están en la pantalla (se pueden mover y quitar)
         $slides = [];
@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'boton_texto'     => trim(mb_substr($p['boton_texto'] ?? '', 0, 40)),
                 'boton_coleccion' => trim($p['boton_coleccion'] ?? ''),
                 'boton_url'       => trim(mb_substr($p['boton_url'] ?? '', 0, 300)),
+                'hasta'           => preg_match('/^\d{4}-\d{2}-\d{2}$/', $p['hasta'] ?? '') ? $p['hasta'] : '',
             ];
             if ($s['imagen'] !== '' && !str_starts_with($s['imagen'], 'uploads/')) $s['imagen'] = '';
             $archivo = isset($_FILES['imagen']['name'][$k]) ? ['name' => $_FILES['imagen']['name'][$k], 'tmp_name' => $_FILES['imagen']['tmp_name'][$k],
@@ -49,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $v = ventana_ajustes();
 $slides = $v['slides'] ?: [array_fill_keys(VENTANA_SLIDE_CAMPOS, '')];
 $colecciones = q("SELECT slug, nombre, proximamente FROM colecciones WHERE activa=1 ORDER BY nombre")->fetchAll();
-$vencida = $v['hasta'] !== '' && $v['hasta'] < date('Y-m-d');
 
 // Formulario de una presentación. $k: clave estable del bloque (los campos y la imagen van juntos aunque se muevan)
 function ventana_form_slide(string $k, array $s, array $colecciones): string {
@@ -57,12 +57,12 @@ function ventana_form_slide(string $k, array $s, array $colecciones): string {
     $fondo = $s['imagen'] !== '' ? url($s['imagen']) : ($yt ? "https://img.youtube.com/vi/$yt/hqdefault.jpg" : '');
     $n = "slides[$k]";
     ob_start(); ?>
-    <fieldset class="card form slide-form" data-k="<?= e($k) ?>">
+    <fieldset class="card form slide-form" data-k="<?= e($k) ?>" data-fondo="<?= e($fondo) ?>" hidden>
         <div class="slide-cabeza">
             <h3 style="margin:0">Presentación <span class="slide-num"></span></h3>
             <div class="slide-botones">
-                <button type="button" class="btn btn-linea btn-chico" data-mover="-1" title="Subir">↑</button>
-                <button type="button" class="btn btn-linea btn-chico" data-mover="1" title="Bajar">↓</button>
+                <button type="button" class="btn btn-linea btn-chico" data-mover="-1" title="Mostrarla antes">← Antes</button>
+                <button type="button" class="btn btn-linea btn-chico" data-mover="1" title="Mostrarla después">Después →</button>
                 <button type="button" class="btn btn-peligro btn-chico" data-quitar>Quitar</button>
             </div>
         </div>
@@ -93,14 +93,8 @@ function ventana_form_slide(string $k, array $s, array $colecciones): string {
                 </div>
                 <label class="campo">…o a este link <small>(si no elegís colección)</small>
                     <input type="text" name="<?= $n ?>[boton_url]" maxlength="300" value="<?= e($s['boton_url']) ?>" placeholder="https://… o /colecciones.php?cat=modelismo"></label>
-            </div>
-            <div class="ventana-mini" style="<?= $fondo ? 'background-image:url(\'' . e($fondo) . '\')' : '' ?>">
-                <div class="ventana-mini-texto">
-                    <?php if ($s['kicker'] !== ''): ?><span><?= e($s['kicker']) ?></span><?php endif; ?>
-                    <b><?= e($s['titulo'] ?: 'Título de la presentación') ?></b>
-                    <?php if ($s['texto'] !== ''): ?><small><?= e(mb_strimwidth($s['texto'], 0, 110, '…')) ?></small><?php endif; ?>
-                    <?php if ($s['boton_texto'] !== ''): ?><i><?= e($s['boton_texto']) ?></i><?php endif; ?>
-                </div>
+                <label class="campo">Mostrar hasta <small>(opcional: después de esa fecha deja de aparecer sola)</small>
+                    <input type="date" name="<?= $n ?>[hasta]" value="<?= e($s['hasta']) ?>"></label>
             </div>
         </div>
     </fieldset>
@@ -115,24 +109,23 @@ admin_header('Ventana de inicio', 'ventana');
 </div>
 <p class="muted" style="max-width:760px;margin-top:-8px">La presentación grande que se abre al entrar a la tienda, con un video de YouTube de fondo (sin sonido y en loop) o una imagen. Podés cargar <b>varias</b>: se pasan con flechas y cada visita arranca por la siguiente. Mientras está activa reemplaza a la ventana de novedades.</p>
 
-<?php if ($v['activa'] === '1' && $vencida): ?>
-    <div class="aviso" style="margin-bottom:16px">La ventana está activa pero venció el <?= e(date('d/m/Y', strtotime($v['hasta']))) ?>: no se muestra. Cambiá la fecha o dejala vacía.</div>
+<?php if ($v['activa'] === '1' && !ventana_preparar($v)['slides']): ?>
+    <div class="aviso" style="margin-bottom:16px">La ventana está activa pero todas las presentaciones vencieron: no se muestra nada. Cambiá alguna fecha o dejala vacía.</div>
 <?php endif; ?>
 
 <form method="post" enctype="multipart/form-data" id="form-ventana">
     <?= csrf_field() ?>
     <div class="card form" style="margin-bottom:16px">
         <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="activa" value="1" <?= $v['activa'] === '1' ? 'checked' : '' ?>> <b>Mostrar la ventana al entrar a la tienda</b></label>
-        <div class="form-row">
-            <label class="campo">Frecuencia
-                <select name="frecuencia">
-                    <option value="una_vez" <?= $v['frecuencia'] !== 'siempre' ? 'selected' : '' ?>>Una vez por visitante (vuelve a aparecer si cambiás algo)</option>
-                    <option value="siempre" <?= $v['frecuencia'] === 'siempre' ? 'selected' : '' ?>>En cada visita a la tienda</option>
-                </select></label>
-            <label class="campo">Mostrar hasta <small>(opcional: después se apaga sola)</small>
-                <input type="date" name="hasta" value="<?= e($v['hasta']) ?>"></label>
-        </div>
+        <label class="campo">Frecuencia
+            <select name="frecuencia">
+                <option value="una_vez" <?= $v['frecuencia'] !== 'siempre' ? 'selected' : '' ?>>Una vez por visitante (vuelve a aparecer si cambiás algo)</option>
+                <option value="siempre" <?= $v['frecuencia'] === 'siempre' ? 'selected' : '' ?>>En cada visita a la tienda</option>
+            </select></label>
     </div>
+
+    <p class="small muted" style="margin:0 0 8px">En la tienda se muestran en este orden. Tocá una para editarla.</p>
+    <div class="slides-tira" id="slides-tira"></div>
 
     <div id="slides">
         <?php foreach ($slides as $i => $s) echo ventana_form_slide('s' . $i, $s, $colecciones); ?>
@@ -140,47 +133,80 @@ admin_header('Ventana de inicio', 'ventana');
     <template id="slide-nueva"><?= ventana_form_slide('__K__', array_fill_keys(VENTANA_SLIDE_CAMPOS, ''), $colecciones) ?></template>
 
     <div class="slide-pie">
-        <button type="button" class="btn btn-linea" id="slide-agregar">+ Agregar presentación</button>
         <button class="btn btn-primario" type="submit">Guardar</button>
     </div>
 </form>
 
 <script>
-// Presentaciones: agregar, mover y quitar sin perder lo cargado (cada bloque conserva su clave)
+// Presentaciones: arriba una miniatura de cada una (en el orden en que se muestran); tocar una abre su ficha abajo.
+// Agregar, mover y quitar sin perder lo cargado (cada ficha conserva su clave). Las miniaturas siguen lo que se escribe.
 (() => {
-    const cont = document.getElementById('slides'), max = <?= VENTANA_MAX_SLIDES ?>;
-    const numerar = () => {
-        const bloques = [...cont.querySelectorAll('.slide-form')];
-        bloques.forEach((b, i) => {
-            b.querySelector('.slide-num').textContent = bloques.length > 1 ? i + 1 : '';
-            b.querySelector('[data-mover="-1"]').disabled = i === 0;
-            b.querySelector('[data-mover="1"]').disabled = i === bloques.length - 1;
+    const cont = document.getElementById('slides'), tira = document.getElementById('slides-tira'), max = <?= VENTANA_MAX_SLIDES ?>;
+    const hoy = '<?= date('Y-m-d') ?>';
+    const fichas = () => [...cont.querySelectorAll('.slide-form')];
+    let elegida = null;
+    const val = (f, campo) => (f.querySelector(`[name$="[${campo}]"]`) || {}).value || '';
+    const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // app.js carga después
+    const fecha = d => d ? d.split('-').reverse().join('/') : '';
+    const pintar = () => {
+        tira.innerHTML = '';
+        fichas().forEach((f, i) => {
+            f.querySelector('.slide-num').textContent = i + 1;
+            f.querySelector('[data-mover="-1"]').disabled = i === 0;
+            f.querySelector('[data-mover="1"]').disabled = i === fichas().length - 1;
+            const hasta = val(f, 'hasta'), vencida = hasta && hasta < hoy;
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'slide-mini' + (f === elegida ? ' activa' : '') + (vencida ? ' vencida' : '');
+            b.innerHTML = `<div class="ventana-mini"${f.dataset.fondo ? ` style="background-image:url('${f.dataset.fondo.replace(/'/g, '%27')}')"` : ''}>
+                <div class="ventana-mini-texto">${val(f, 'kicker') ? `<span>${esc(val(f, 'kicker'))}</span>` : ''}<b>${esc(val(f, 'titulo') || 'Sin título')}</b>${val(f, 'boton_texto') ? `<i>${esc(val(f, 'boton_texto'))}</i>` : ''}</div></div>
+                <div class="slide-mini-pie"><b>${i + 1}</b> · ${hasta ? (vencida ? 'Venció el ' : 'Hasta el ') + fecha(hasta) : 'Sin vencimiento'}</div>`;
+            b.addEventListener('click', () => elegir(f));
+            tira.appendChild(b);
         });
-        document.getElementById('slide-agregar').hidden = bloques.length >= max;
+        if (fichas().length < max) {
+            const mas = document.createElement('button');
+            mas.type = 'button';
+            mas.className = 'slide-mini slide-mini-mas';
+            mas.innerHTML = '<span>+</span>Agregar presentación';
+            mas.addEventListener('click', agregar);
+            tira.appendChild(mas);
+        }
     };
-    document.getElementById('slide-agregar').addEventListener('click', () => {
+    const elegir = (f) => {
+        elegida = f;
+        fichas().forEach(x => x.hidden = x !== f);
+        pintar();
+    };
+    const agregar = () => {
         const k = 'n' + Date.now();
         cont.insertAdjacentHTML('beforeend', document.getElementById('slide-nueva').innerHTML.replaceAll('__K__', k));
-        numerar();
-        cont.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        elegir(cont.lastElementChild);
+        cont.lastElementChild.querySelector('[name$="[titulo]"]').focus();
+    };
+    cont.addEventListener('input', pintar);
+    cont.addEventListener('change', ev => {
+        // Imagen elegida: se ve en la miniatura antes de guardar
+        if (ev.target.type === 'file' && ev.target.files[0]) { ev.target.closest('.slide-form').dataset.fondo = URL.createObjectURL(ev.target.files[0]); }
+        pintar();
     });
     cont.addEventListener('click', async ev => {
-        const b = ev.target.closest('.slide-form');
-        if (!b) return;
+        const f = ev.target.closest('.slide-form');
+        if (!f) return;
         if (ev.target.matches('[data-mover]')) {
-            const otro = +ev.target.dataset.mover < 0 ? b.previousElementSibling : b.nextElementSibling;
-            if (otro) +ev.target.dataset.mover < 0 ? cont.insertBefore(b, otro) : cont.insertBefore(otro, b);
-            numerar();
+            const otro = +ev.target.dataset.mover < 0 ? f.previousElementSibling : f.nextElementSibling;
+            if (otro) +ev.target.dataset.mover < 0 ? cont.insertBefore(f, otro) : cont.insertBefore(otro, f);
+            pintar();
         }
         if (ev.target.matches('[data-quitar]')) {
             const ok = await modal({ titulo: '¿Quitar esta presentación?', cuerpo: '<p style="margin:0">Se borra al tocar “Guardar”.</p>', ok: 'Quitar' });
             if (ok === null) return;
-            b.remove();
-            if (!cont.querySelector('.slide-form')) document.getElementById('slide-agregar').click();
-            numerar();
+            const sig = f.nextElementSibling || f.previousElementSibling;
+            f.remove();
+            sig ? elegir(sig) : agregar();
         }
     });
-    numerar();
+    elegir(fichas()[0]);
 })();
 </script>
 

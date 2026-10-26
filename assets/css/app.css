@@ -882,3 +882,19 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .abono-toggle small { font-weight: 400; color: var(--muted); }
 .abono-toggle[hidden] { display: none; }
 #btn-abono .ico-marca { vertical-align: -3px; }
+
+/* Ventana de inicio en el panel: tira de miniaturas para elegir qué presentación editar */
+.slides-tira { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 12px; margin-bottom: 8px; }
+.slide-mini { flex: none; width: 220px; padding: 0; border: 2px solid transparent; border-radius: 14px; background: var(--white); cursor: pointer; text-align: left; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.slide-mini .ventana-mini { border-radius: 12px 12px 0 0; }
+.slide-mini .ventana-mini-texto b { font-size: .95rem; }
+.slide-mini.activa { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-50); }
+.slide-mini.vencida .ventana-mini { filter: grayscale(1) opacity(.6); }
+.slide-mini.vencida .slide-mini-pie { color: var(--red); }
+.slide-mini-pie { padding: 6px 10px 8px; font-size: .78rem; color: var(--muted); }
+.slide-mini-mas { display: grid; place-items: center; align-content: center; gap: 4px; min-height: 170px; border: 2px dashed var(--line); background: transparent; color: var(--teal); font-weight: 700; font-size: .85rem; box-shadow: none; }
+.slide-mini-mas span { font-size: 2rem; line-height: 1; }
+.slide-form[hidden] { display: none; }
+.slide-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.slide-botones { display: flex; gap: 6px; flex-wrap: wrap; }
+.slide-pie { display: flex; justify-content: flex-end; margin-top: 12px; }
