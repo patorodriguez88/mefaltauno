@@ -1,5 +1,5 @@
 <?php
-// Términos y condiciones de compra. BORRADOR: revisar con un abogado antes del lanzamiento.
+// Términos y condiciones de compra.
 require __DIR__ . '/inc/bootstrap.php';
 $titulo = 'Términos y condiciones';
 require __DIR__ . '/inc/header.php';

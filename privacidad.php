@@ -1,5 +1,5 @@
 <?php
-// Política de privacidad y cookies (Ley 25.326). BORRADOR: revisar con un abogado antes del lanzamiento.
+// Política de privacidad y cookies (Ley 25.326).
 require __DIR__ . '/inc/bootstrap.php';
 $titulo = 'Política de privacidad y cookies';
 require __DIR__ . '/inc/header.php';
