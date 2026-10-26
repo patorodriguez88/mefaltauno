@@ -24,7 +24,11 @@
             initialization: { amount: Number(cfg.total), preferenceId: cfg.preferencia || undefined, payer: { email: cfg.email } },
             customization: {
                 paymentMethods: metodos,
-                visual: { style: { customVariables: { baseColor: '#006368', buttonTextColor: '#ffffff', borderRadiusLarge: '14px' } } },
+                // Botón "Pagar" con el amarillo de la tienda (también mientras procesa); bordes y foco en verde
+                visual: { style: { customVariables: {
+                    baseColor: '#f1e52f', baseColorFirstVariant: '#d9cc12', baseColorSecondVariant: '#c4b80f',
+                    buttonTextColor: '#00393c', outlinePrimaryColor: '#006368', borderRadiusLarge: '14px',
+                } } },
             },
             callbacks: {
                 onReady: () => {},
