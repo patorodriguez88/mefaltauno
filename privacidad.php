@@ -16,7 +16,7 @@ $empresa = legal('razon_social');
         <ul>
             <li><b>Cuenta:</b> nombre, apellido, mail, teléfono y contraseña (guardada cifrada). Para identificarte y avisarte del estado de tus pedidos y búsquedas.</li>
             <li><b>Compras:</b> quién retira, teléfono, punto de retiro elegido y medio de pago. Para preparar, entregar y facturar tus pedidos. No guardamos datos de tarjetas: los pagos con tarjeta los procesa Mercado Pago.</li>
-            <li><b>Tus colecciones:</b> qué números tenés y cuáles te faltan, para mostrarte tu progreso y salir a buscar lo que te falta.</li>
+            <li><b>Tus colecciones:</b> qué números tenés y cuáles te faltan, los que querés que te guardemos (abono “La colecciono”) y tus reservas, para mostrarte tu progreso, salir a buscar lo que te falta y avisarte cuando llega. También usamos esa información, sin identificarte, para saber cuántas unidades pedir de cada número.</li>
             <li><b>Suscripciones:</b> tu mail (y opcionalmente nombre y teléfono) si pediste recibir novedades.</li>
         </ul>
         <p>Compartimos solo los datos necesarios con quienes nos ayudan a cumplir tu pedido: el depósito que lo prepara, la empresa de logística que lo lleva al punto de retiro y el procesador de pagos. <b>No vendemos ni cedemos tus datos</b> para publicidad de terceros.</p>
@@ -31,7 +31,8 @@ $empresa = legal('razon_social');
             <li><b>Sesión</b> (<code>mfu_sess</code>): mantiene tu cuenta iniciada y tu carrito mientras navegás.</li>
             <li><b>Preferencias del navegador</b> (almacenamiento local): recuerda, por ejemplo, que ya viste el aviso de cookies o que cerraste una historieta.</li>
         </ul>
-        <p>No usamos cookies de publicidad ni de seguimiento de terceros. Si en el futuro sumamos herramientas de medición, lo vamos a informar acá y a pedir tu consentimiento. Podés borrar las cookies desde la configuración de tu navegador; si lo hacés, se cierra tu sesión.</p>
+        <p>Algunos servicios externos que usamos pueden guardar sus propias cookies cuando los usás: <b>Mercado Pago</b>, al pagar, para procesar el pago y prevenir fraudes; y <b>YouTube</b>, cuando la presentación de inicio muestra un video (lo cargamos en su modo de privacidad reforzada). Cada uno se rige por su propia política de privacidad.</p>
+        <p>No usamos cookies de publicidad ni de seguimiento propias. Si en el futuro sumamos herramientas de medición, lo vamos a informar acá y a pedir tu consentimiento. Podés borrar las cookies desde la configuración de tu navegador; si lo hacés, se cierra tu sesión.</p>
 
         <h2>Seguridad y conservación</h2>
         <p>Aplicamos medidas técnicas razonables para proteger tus datos (conexión cifrada, contraseñas cifradas, acceso restringido). Conservamos los datos mientras tengas tu cuenta o lo exijan las normas fiscales y comerciales.</p>
