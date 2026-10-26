@@ -53,7 +53,7 @@
             <a class="btn-arrepentimiento" href="<?= url('arrepentimiento.php') ?>">Botón de arrepentimiento</a>
         </div>
     </div>
-    <div class="container footer-legal">&copy; <?= date('Y') ?> MeFaltaUno · <?= e(legal('razon_social')) ?><?= legal('cuit') ? ' · CUIT ' . e(legal('cuit')) : '' ?><?= legal('domicilio') ? ' · ' . e(legal('domicilio')) : '' ?></div>
+    <div class="container footer-legal">&copy; <?= date('Y') ?> MeFaltaUno<?= legal('cuit') ? ' · CUIT ' . e(legal('cuit')) : '' ?><?= legal('domicilio') ? ' · ' . e(legal('domicilio')) : '' ?></div>
 </footer>
 
 <div class="aviso-cookies" id="aviso-cookies" role="region" aria-label="Aviso de cookies" hidden>
