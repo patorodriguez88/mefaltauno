@@ -61,8 +61,8 @@ require __DIR__ . '/inc/header.php';
                 <div class="ficha-titulo">Ficha de la colección</div>
                 <div class="ficha-dato"><span class="ficha-ico">📚</span><small>Total</small><span><b><?= $f_total ?></b> números</span></div>
                 <div class="ficha-dato"><span class="ficha-ico">🗓️</span><small><?= $col['proximamente'] ? 'Lanzamiento' : 'Va por el' ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : '—') ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
-                <?php if ($col['en_calle'] && !$col['proximamente']): ?>
-                    <div class="ficha-dato"><span class="ficha-ico">🗞️</span><small>En kioscos</small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
+                <?php if (($col['en_calle'] && !$col['proximamente']) || isset(PERIODICIDADES[$col['periodicidad'] ?? ''])): ?>
+                    <div class="ficha-dato"><span class="ficha-ico">🗞️</span><small><?= $col['en_calle'] && !$col['proximamente'] ? 'En kioscos' : 'Sale' ?></small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
                 <?php endif; ?>
                 <?php if ($col['proximamente']): ?>
                     <div class="ficha-dato"><span class="ficha-ico">🚀</span><small>Anunciados</small><span><b><?= count($items) ?></b> números<em>todavía no se venden</em></span></div>
@@ -165,9 +165,9 @@ require __DIR__ . '/inc/header.php';
                         <div class="item-stock <?= $stock > 0 && !$col['proximamente'] ? 'si' : 'no' ?>">
                             <?php if ($col['proximamente']): ?>Próximamente
                             <?php elseif ($mi_res): ?>🎯 Te lo guardamos hasta el <?= e(fecha($mi_res['vence_at'])) ?>
-                            <?php elseif (!$hay && ($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?>🗞️ Sale aprox. el <?= fecha_dia($sf['fecha']) ?>
                             <?php else: ?><?= e($txt_disp) ?><?php endif; ?>
                         </div>
+                        <?php if (($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?><div class="item-salida">🗞️ Sale aprox. el <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
                         <div class="item-acciones">
                             <?php if ($socio): ?>
                                 <label class="tengo-toggle"><input type="checkbox" <?= $estado === 'tengo' ? 'checked' : '' ?>> Lo tengo</label>
