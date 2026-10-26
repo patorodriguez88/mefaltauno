@@ -52,6 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['accion'] ?? '', ['
     redirect('admin/solicitud.php?id=' . $id);
 }
 
+// Borrar una solicitud de prueba: solo maestros
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'borrar' && es_maestro($admin)) {
+    csrf_exigir();
+    solicitud_borrar($id);
+    flash('ok', "Solicitud #$id borrada.");
+    redirect('admin/faltantes.php');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
     try {
@@ -168,6 +176,14 @@ admin_header('Faltante #' . $id, 'faltantes');
                 <?php endforeach; ?>
             </ul>
         </div>
+        <?php if (es_maestro($admin)): ?>
+            <form method="post" class="card" data-confirmar="Se borra la solicitud #<?= (int)$s['id'] ?> con su historial y se liberan sus reservas. No se puede deshacer.">
+                <?= csrf_field() ?><input type="hidden" name="accion" value="borrar">
+                <h3>Borrar solicitud</h3>
+                <p class="muted small">Solo para pruebas, así no ensucian las pantallas. Lo ven solo los maestros.</p>
+                <button class="btn btn-peligro btn-chico" type="submit">Borrar solicitud</button>
+            </form>
+        <?php endif; ?>
     </aside>
 </div>
 

@@ -39,6 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'caddy
     redirect('admin/pedido.php?id=' . $id);
 }
 
+// Borrar un pedido de prueba: solo maestros
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'borrar' && es_maestro($admin)) {
+    csrf_exigir();
+    try {
+        pedido_borrar($id, nombre_cliente($admin));
+        flash('ok', "Pedido #$id borrado.");
+        redirect('admin/pedidos.php');
+    } catch (Exception $e) {
+        if (db()->inTransaction()) db()->rollBack();
+        flash('error', $e->getMessage());
+    }
+    redirect('admin/pedido.php?id=' . $id);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
     try {
@@ -194,6 +208,14 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <?php endforeach; ?>
             </ul>
         </div>
+        <?php if (es_maestro($admin)): ?>
+            <form method="post" class="card" data-confirmar="Se borra el pedido #<?= (int)$p['id'] ?> con su historial<?= $p['estado'] !== 'cancelado' ? ' (antes se cancela sin avisar al cliente y el stock vuelve)' : '' ?>.<?= $p['wepoint_orden_id'] ? ' Ojo: la orden ' . e($p['wepoint_orden_id']) . ' sigue en WePoint, anulala allá.' : '' ?> No se puede deshacer.">
+                <?= csrf_field() ?><input type="hidden" name="accion" value="borrar">
+                <h3>Borrar pedido</h3>
+                <p class="muted small">Solo para pedidos de prueba, así no ensucian las pantallas. Lo ven solo los maestros.</p>
+                <button class="btn btn-peligro btn-chico" type="submit">Borrar pedido</button>
+            </form>
+        <?php endif; ?>
     </aside>
 </div>
 

@@ -43,3 +43,18 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
         notificar_cambio_estado('pedido', $id, $nuevo, $nota);
     }
 }
+
+// Borra un pedido de prueba (solo maestros, admin/pedido.php). Si no estaba cancelado, antes lo cancela sin avisar
+// para devolver el stock y el uso del cupón. Las reservas y arrepentimientos que lo nombraban quedan sin pedido.
+function pedido_borrar(int $id, string $usuario): void {
+    $estado = q("SELECT estado FROM pedidos WHERE id=?", [$id])->fetchColumn();
+    if ($estado === false) throw new Exception('Pedido no encontrado.');
+    if ($estado !== 'cancelado') pedido_cambiar_estado($id, 'cancelado', 'Cancelado para borrarlo (prueba).', false, $usuario);
+    $db = db();
+    $db->beginTransaction();
+    q("UPDATE reservas SET pedido_id=NULL WHERE pedido_id=?", [$id]);
+    q("UPDATE arrepentimientos SET pedido_id=NULL WHERE pedido_id=?", [$id]);
+    q("DELETE FROM historial WHERE entidad='pedido' AND entidad_id=?", [$id]);
+    q("DELETE FROM pedidos WHERE id=?", [$id]);
+    $db->commit();
+}

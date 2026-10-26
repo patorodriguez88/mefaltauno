@@ -103,6 +103,22 @@ function admin_footer(): void {
     require dirname(__DIR__) . '/inc/final.php';
 }
 
+// Borra una solicitud de prueba (solo maestros, admin/solicitud.php). Sus reservas activas se liberan y el número
+// vuelve a la venta o pasa a la siguiente búsqueda en espera.
+function solicitud_borrar(int $id): void {
+    $db = db();
+    $db->beginTransaction();
+    $si = "SELECT id FROM solicitud_items WHERE solicitud_id=?";
+    q("UPDATE reservas SET estado='liberada' WHERE estado='activa' AND solicitud_item_id IN ($si)", [$id]);
+    q("UPDATE reservas SET solicitud_item_id=NULL WHERE solicitud_item_id IN ($si)", [$id]);
+    q("DELETE FROM historial WHERE entidad='solicitud' AND entidad_id=?", [$id]);
+    q("DELETE FROM solicitudes WHERE id=?", [$id]);
+    $db->commit();
+    reservas_mapa(true);
+    reservas_mapa_encargue(true);
+    reservas_asignar();
+}
+
 function solicitud_cambiar_estado(int $id, string $nuevo, ?string $respuesta, bool $avisar, string $usuario): void {
     if (!isset(ESTADOS_SOLICITUD[$nuevo])) throw new Exception('Estado inválido.');
     $s = q("SELECT * FROM solicitudes WHERE id=?", [$id])->fetch();

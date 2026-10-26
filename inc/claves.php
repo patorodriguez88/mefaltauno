@@ -46,3 +46,13 @@ function clave_mail_recuperar(array $c): void {
         . mail_link($link, 'Elegir contraseña nueva')
         . '<p style="color:#5f6f70;font-size:13px">Si no lo pediste vos, ignorá este mail: tu contraseña no cambia.</p>');
 }
+
+/** Cuenta nueva con mail de maestro (registro.php): confirma que el mail es suyo antes de dar acceso al panel. */
+function clave_mail_maestro(array $c): void {
+    $link = clave_link_nuevo((int)$c['id'], 'invitacion');
+    mail_enviar($c['email'], 'Confirmá tu cuenta de MeFaltaUno',
+        '<p>Hola ' . e($c['nombre']) . ', creaste tu cuenta con un mail que tiene acceso de maestro al panel.</p>'
+        . '<p>Para confirmarla, elegí tu contraseña con este botón. El link vence en ' . CLAVES_HORAS['invitacion'] . ' horas y sirve una sola vez.</p>'
+        . mail_link($link, 'Elegir mi contraseña')
+        . '<p style="color:#5f6f70;font-size:13px">Si no fuiste vos, ignorá este mail: nadie puede entrar sin ese link.</p>');
+}

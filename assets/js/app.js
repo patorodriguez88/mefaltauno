@@ -411,3 +411,23 @@ async function toggleSuscripcion(btn) {
         try { localStorage.setItem('mfu-cookies', '1'); } catch (e) {}
     });
 })();
+// Ojito en cada contraseña: muestra lo que se está escribiendo para revisarlo
+document.querySelectorAll('input[type="password"]').forEach(inp => {
+    const caja = document.createElement('span');
+    caja.className = 'clave-caja';
+    inp.replaceWith(caja);
+    caja.append(inp);
+    const ojo = document.createElement('button');
+    ojo.type = 'button';
+    ojo.className = 'clave-ojo';
+    const pintar = () => {
+        const visible = inp.type === 'text';
+        ojo.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        ojo.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+            + '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+            + (visible ? '<line x1="3" y1="3" x2="21" y2="21"/>' : '') + '</svg>';
+    };
+    ojo.addEventListener('click', () => { inp.type = inp.type === 'password' ? 'text' : 'password'; pintar(); inp.focus(); });
+    pintar();
+    caja.append(ojo);
+});

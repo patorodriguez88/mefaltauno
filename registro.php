@@ -16,6 +16,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errores && q("SELECT 1 FROM clientes WHERE email=?", [$d['email']])->fetchColumn()) {
         $errores[] = 'Ya hay una cuenta con ese email. ¿Querés ingresar?';
     }
+    if (!$errores && in_array(strtolower($d['email']), maestros_emails(), true)) {
+        // Mail de maestro (ADMIN_EMAILS): da acceso al panel, así que primero tiene que probar que el mail es suyo.
+        // La cuenta se crea sin contraseña usable y la elige desde el link que le llega.
+        q("INSERT INTO clientes (nombre, apellido, email, telefono, password_hash) VALUES (?,?,?,?,?)",
+          [$d['nombre'], $d['apellido'], $d['email'], $d['telefono'] ?: null, password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT)]);
+        clave_mail_maestro(q("SELECT id, nombre, email FROM clientes WHERE id=?", [db()->lastInsertId()])->fetch());
+        flash('ok', 'Te mandamos un mail a ' . $d['email'] . ' para confirmar la cuenta y elegir tu contraseña.');
+        redirect('ingresar.php');
+    }
     if (!$errores) {
         q("INSERT INTO clientes (nombre, apellido, email, telefono, password_hash) VALUES (?,?,?,?,?)",
           [$d['nombre'], $d['apellido'], $d['email'], $d['telefono'] ?: null, password_hash($pass, PASSWORD_DEFAULT)]);
