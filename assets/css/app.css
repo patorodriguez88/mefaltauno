@@ -782,3 +782,39 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .mp-resultado.rechazo h3 { color: var(--red); }
 .modal-pago-pie { margin: 0; padding: 0 20px; font-size: .78rem; color: var(--muted); text-align: center; }
 .modal-pago-aviso { margin: -6px 20px 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--teal-50); color: var(--teal-900); font-size: .85rem; }
+
+/* Ventana de inicio (index.php, se edita en admin/ventana.php): video de YouTube de fondo a pantalla completa */
+.modal-ventana { padding: 0; border: 0; width: min(1040px, 94vw); height: min(640px, 86vh); max-width: none; max-height: none; border-radius: 22px; overflow: hidden; background: #001c1e; color: var(--white); box-shadow: 0 30px 90px rgba(0, 0, 0, .55); }
+.modal-ventana::backdrop { background: rgba(0, 22, 24, .72); backdrop-filter: blur(3px); }
+.modal-ventana[open] { animation: ventana-entra .4s ease-out; }
+@keyframes ventana-entra { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.ventana-fondo { position: absolute; inset: 0; overflow: hidden; container-type: size; }
+.ventana-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ventana-video { position: absolute; inset: 0; opacity: 0; transition: opacity 1s ease; }
+.con-video .ventana-video { opacity: 1; }
+.ventana-video iframe { position: absolute; top: 50%; left: 50%; width: max(100cqw, 177.78cqh); height: max(100cqh, 56.25cqw); transform: translate(-50%, -50%) scale(1.2); border: 0; pointer-events: none; }
+.ventana-capa { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 28, 30, .9) 0%, rgba(0, 28, 30, .6) 42%, rgba(0, 0, 0, .05) 78%), linear-gradient(0deg, rgba(0, 0, 0, .5), transparent 40%); }
+.ventana-contenido { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 14px; padding: 32px 48px 44px; max-width: 660px; }
+.ventana-logo { margin-bottom: auto; width: 137px; height: auto; }
+.ventana-kicker { background: var(--yellow); color: var(--teal-900); font-weight: 800; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border-radius: 6px; }
+.ventana-titulo { font-family: var(--font-display); font-weight: 900; font-size: clamp(2.1rem, 5.2vw, 3.8rem); line-height: 1.02; color: var(--white); margin: 0; text-shadow: 0 2px 24px rgba(0, 0, 0, .45); }
+.ventana-texto { font-size: 1.12rem; line-height: 1.45; color: rgba(255, 255, 255, .92); margin: 0; max-width: 520px; }
+.ventana-acciones { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.ventana-acciones .btn-texto { color: var(--white); }
+.ventana-cerrar { position: absolute; top: 16px; right: 16px; z-index: 2; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .45); color: var(--white); font-size: 1.7rem; line-height: 1; cursor: pointer; }
+.ventana-cerrar:hover { background: rgba(0, 0, 0, .7); }
+@media (max-width: 640px) {
+    .modal-ventana { height: 84vh; border-radius: 18px; }
+    .ventana-contenido { padding: 22px 22px 28px; }
+    .ventana-capa { background: linear-gradient(0deg, rgba(0, 28, 30, .94) 0%, rgba(0, 28, 30, .65) 52%, rgba(0, 0, 0, .1) 100%); }
+    .ventana-texto { font-size: 1rem; }
+}
+
+/* Vista previa chica en admin/ventana.php */
+.ventana-mini { position: relative; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #001c1e center / cover no-repeat; }
+.ventana-mini::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0, 28, 30, .9), rgba(0, 28, 30, .3)); }
+.ventana-mini-texto { position: absolute; left: 14px; right: 30%; bottom: 14px; display: grid; gap: 5px; color: var(--white); }
+.ventana-mini-texto span { width: fit-content; background: var(--yellow); color: var(--teal-900); font-size: .6rem; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+.ventana-mini-texto b { font-family: var(--font-display); font-weight: 900; font-size: 1.15rem; line-height: 1.05; }
+.ventana-mini-texto small { font-size: .7rem; opacity: .9; }
+.ventana-mini-texto i { width: fit-content; font-style: normal; font-size: .7rem; font-weight: 700; background: var(--yellow); color: var(--teal-900); padding: 4px 10px; border-radius: 999px; }

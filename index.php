@@ -26,6 +26,16 @@ $novedades = ajuste('novedades_activo', '1') === '1'
          ORDER BY c.proximamente DESC, c.created_at DESC LIMIT 6")->fetchAll()
     : [];
 
+// Ventana de inicio (admin/ventana.php): mientras está activa reemplaza a la de novedades.
+// ?ventana=ver la muestra siempre (el operador la ve aunque esté apagada, para revisarla).
+$forzar_ventana = isset($_GET['ventana']);
+$ventana = ventana_activa();
+if (!$ventana && $forzar_ventana && $op && trim(ajuste('ventana_titulo')) !== '') {
+    $ventana = ventana_ajustes();
+    $ventana += ['youtube' => youtube_id($ventana['video']), 'destino' => ventana_destino($ventana)];
+}
+if ($ventana) $novedades = [];
+
 require __DIR__ . '/inc/header.php';
 ?>
 
@@ -168,6 +178,73 @@ require __DIR__ . '/inc/header.php';
     setTimeout(() => d.showModal(), 900);
     d.addEventListener('close', () => { try { localStorage.setItem('mfu-novedades', d.dataset.firma); } catch (e) {} });
     d.addEventListener('click', ev => { if (ev.target === d) d.close(); });   // tocar afuera cierra
+})();
+</script>
+<?php endif; ?>
+
+<?php if ($ventana):
+    $yt = $ventana['youtube'];
+    $poster = $ventana['imagen'] !== '' ? url($ventana['imagen']) : ($yt ? "https://img.youtube.com/vi/$yt/maxresdefault.jpg" : ''); ?>
+<dialog class="modal-ventana" id="modal-ventana" aria-labelledby="ventana-titulo"
+        data-firma="<?= e(ventana_firma($ventana)) ?>" data-frecuencia="<?= e($ventana['frecuencia']) ?>"
+        data-youtube="<?= e($yt) ?>" data-forzar="<?= $forzar_ventana ? '1' : '0' ?>">
+    <div class="ventana-fondo">
+        <?php if ($poster): ?>
+            <img class="ventana-poster" src="<?= e($poster) ?>" alt=""
+                 <?= $yt && $ventana['imagen'] === '' ? 'onerror="this.onerror=null;this.src=\'https://img.youtube.com/vi/' . e($yt) . '/hqdefault.jpg\'"' : '' ?>>
+        <?php endif; ?>
+        <div class="ventana-video"></div>
+    </div>
+    <div class="ventana-capa"></div>
+    <div class="ventana-contenido">
+        <img class="ventana-logo" src="<?= asset('assets/img/logo-sm.png') ?>" alt="MeFaltaUno" width="137" height="46">
+        <?php if ($ventana['kicker'] !== ''): ?><span class="ventana-kicker"><?= e($ventana['kicker']) ?></span><?php endif; ?>
+        <h2 class="ventana-titulo" id="ventana-titulo"><?= e($ventana['titulo']) ?></h2>
+        <?php if ($ventana['texto'] !== ''): ?><p class="ventana-texto"><?= nl2br(e($ventana['texto'])) ?></p><?php endif; ?>
+        <div class="ventana-acciones">
+            <?php if ($ventana['boton_texto'] !== '' && $ventana['destino'] !== ''): ?>
+                <a class="btn btn-primario" href="<?= e($ventana['destino']) ?>"><?= e($ventana['boton_texto']) ?> →</a>
+            <?php endif; ?>
+            <button class="btn btn-texto" type="button" data-cerrar>Seguir a la tienda</button>
+        </div>
+    </div>
+    <button class="ventana-cerrar" type="button" aria-label="Cerrar" data-cerrar>×</button>
+</dialog>
+<script>
+// Una vez por visitante (o por visita, según la frecuencia); vuelve a aparecer si cambia la ventana.
+// El video de YouTube se carga recién al abrir y aparece con un fundido sobre la imagen.
+(() => {
+    const d = document.getElementById('modal-ventana');
+    if (!d || !d.showModal) return;
+    const forzar = d.dataset.forzar === '1';
+    let almacen = null;
+    try { almacen = d.dataset.frecuencia === 'siempre' ? sessionStorage : localStorage; } catch (e) {}
+    let vista = '';
+    try { vista = almacen ? almacen.getItem('mfu-ventana') || '' : ''; } catch (e) {}
+    if (!forzar && vista === d.dataset.firma) return;
+    const video = d.querySelector('.ventana-video');
+    const id = d.dataset.youtube;
+    const quieto = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => {
+        if (id && !quieto) {
+            const f = document.createElement('iframe');
+            f.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&controls=0&loop=1&playlist=' + id
+                + '&playsinline=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0';
+            f.allow = 'autoplay; encrypted-media';
+            f.tabIndex = -1;
+            f.setAttribute('aria-hidden', 'true');
+            f.addEventListener('load', () => setTimeout(() => d.classList.add('con-video'), 1500));
+            video.appendChild(f);
+        }
+        d.showModal();
+    }, forzar ? 200 : 700);
+    d.addEventListener('close', () => {
+        try { if (almacen) almacen.setItem('mfu-ventana', d.dataset.firma); } catch (e) {}
+        video.innerHTML = '';
+        d.classList.remove('con-video');
+    });
+    d.addEventListener('click', (ev) => { if (ev.target === d) d.close(); });   // tocar afuera cierra
+    d.querySelectorAll('[data-cerrar]').forEach((b) => b.addEventListener('click', () => d.close()));
 })();
 </script>
 <?php endif; ?>
