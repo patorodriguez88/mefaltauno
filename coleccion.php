@@ -47,8 +47,9 @@ require __DIR__ . '/inc/header.php';
     <div class="container col-hero-grid">
         <?php
         // Ficha de la colección: lo que un coleccionista quiere ver de un vistazo
-        $f_va = $items ? max(array_map(fn($i) => (int)$i['numero'], $items)) : 0;
-        if ($col['en_calle'] && $sal['va']) $f_va = $sal['va'];   // en la calle: el último que salió en kioscos
+        // Por cuál va: con fechas de salida cargadas, el último número cuya fecha ya pasó (publicar uno con foto
+        // no lo adelanta); sin fechas, el último publicado
+        $f_va = $salidas ? (int)$sal['va'] : ($items ? max(array_map(fn($i) => (int)$i['numero'], $items)) : 0);
         $f_total = max(coleccion_total($col) ?? count($items), $f_va);
         $f_24h = $f_enc = 0;
         foreach ($items as $i) {
@@ -64,7 +65,7 @@ require __DIR__ . '/inc/header.php';
             <div class="ficha-col">
                 <div class="ficha-titulo">Ficha de la colección</div>
                 <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('total') ?></span><small>Total</small><span><b><?= $f_total ?></b> números</span></div>
-                <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('calendario') ?></span><small><?= $col['proximamente'] ? 'Lanzamiento' : 'Va por el' ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : '—') ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
+                <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('calendario') ?></span><small><?= $col['proximamente'] ? 'Lanzamiento' : ($f_va || !$salidas ? 'Va por el' : 'Sale el N° 01') ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : ($salidas ? fecha_dia($salidas[array_key_first($salidas)]['fecha']) : '—')) ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
                 <?php if (($col['en_calle'] && !$col['proximamente']) || isset(PERIODICIDADES[$col['periodicidad'] ?? ''])): ?>
                     <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('kiosco') ?></span><small><?= $col['en_calle'] && !$col['proximamente'] ? 'En kioscos' : 'Sale' ?></small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
                 <?php endif; ?>
