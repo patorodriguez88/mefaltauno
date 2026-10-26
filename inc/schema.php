@@ -560,6 +560,13 @@ function schema_pasos(): array {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
             "ALTER TABLE reservas ADD COLUMN abono_id INT NULL AFTER solicitud_item_id, ADD KEY idx_abono (abono_id)",
         ],
+
+        // Abonos: desde cuándo está activo (al abonarse o reactivarlo). Solo se guardan los números que llegan
+        // después: lo que ya estaba en stock se compra directamente, no tiene sentido retenerlo.
+        34 => [
+            "ALTER TABLE abonos ADD COLUMN activo_desde DATETIME NULL AFTER estado",
+            "UPDATE abonos SET activo_desde = created_at",
+        ],
     ];
 }
 

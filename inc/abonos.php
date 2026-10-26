@@ -2,6 +2,7 @@
 // Abonos: el coleccionista toca "La colecciono" en una colección vigente (en la calle o Próximamente) y cada
 // número nuevo se le guarda (reserva de RESERVA_HORAS) apenas llega al depósito, sin pedirlo uno por uno.
 // - Cubre del número siguiente al que va saliendo en adelante (desde_numero). Los anteriores se piden con "Conseguímelo".
+// - Solo guarda lo que llega después de abonarse o reactivarlo (activo_desde): lo que ya está en stock se compra directo.
 // - Puede sacar números puntuales (abono_excluidos); los que marca "Lo tengo" o ya compró no se le guardan.
 // - Tiene prioridad sobre los pedidos sueltos de "Me falta" (reservas_asignar), por orden de abono.
 // - Si deja vencer ABONO_VENCIDAS_PAUSA reservas seguidas, se pausa y se le avisa; comprar una lo pone en cero.
@@ -32,12 +33,11 @@ function abonar(array $cli, array $col): array {
     if (!coleccion_vigente($col)) throw new Exception('Esta colección ya salió completa: pedí los números que te falten con “Conseguímelo”.');
     $ya = abono_de((int)$cli['id'], (int)$col['id']);
     if ($ya) {
-        q("UPDATE abonos SET estado='activo', vencidas_seguidas=0 WHERE id=?", [$ya['id']]);
+        if ($ya['estado'] !== 'activo') q("UPDATE abonos SET estado='activo', vencidas_seguidas=0, activo_desde=NOW() WHERE id=?", [$ya['id']]);
     } else {
-        q("INSERT INTO abonos (cliente_id, coleccion_id, desde_numero) VALUES (?,?,?)", [$cli['id'], $col['id'], abono_desde($col)]);
+        q("INSERT INTO abonos (cliente_id, coleccion_id, desde_numero, activo_desde) VALUES (?,?,?, NOW())", [$cli['id'], $col['id'], abono_desde($col)]);
     }
     q("INSERT IGNORE INTO cliente_colecciones (cliente_id, coleccion_id) VALUES (?,?)", [$cli['id'], $col['id']]);
-    reservas_asignar();   // si ya hay stock de un número cubierto, se le guarda ahora
     return abono_de((int)$cli['id'], (int)$col['id']);
 }
 
@@ -69,6 +69,7 @@ function abonos_asignar(): int {
                      FROM abonos a
                      JOIN colecciones c ON c.id=a.coleccion_id AND c.activa=1 AND c.proximamente=0
                      JOIN items i ON i.coleccion_id=a.coleccion_id AND i.numero>=a.desde_numero AND i.activo=1 AND i.congelado=0 AND i.stock>0
+                                  AND i.llegada_at >= a.activo_desde
                      WHERE a.estado='activo'
                        AND NOT EXISTS (SELECT 1 FROM abono_excluidos ae WHERE ae.cliente_id=a.cliente_id AND ae.item_id=i.id)
                        AND NOT EXISTS (SELECT 1 FROM cliente_items ci WHERE ci.cliente_id=a.cliente_id AND ci.item_id=i.id)

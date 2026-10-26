@@ -3,6 +3,7 @@
 // Una campaña tiene un mailing (los números elegidos) y una audiencia:
 //  - 'interesados': suscriptos a esas colecciones, clientes que las tienen en Mis colecciones y quienes buscaban esos números
 //  - 'todos': todos los suscriptos y clientes, menos los que ya la recibieron como interesados
+// A los abonados a los que el abono ya les guardó esos números no se les manda (ya les llegó el mail de la reserva).
 // Se envía por tandas (lote cada intervalo_min) desde la pantalla o con el cron. Nunca a quien pidió la baja.
 
 require_once __DIR__ . '/vistas.php';
@@ -56,6 +57,17 @@ function campana_audiencia(array $camp): array {
         // los que ya la recibieron como interesados (en otra campaña de los mismos números) no se repiten
         foreach (q("SELECT DISTINCT d.email FROM campana_destinos d JOIN campanas c ON c.id=d.campana_id
                     WHERE c.item_ids=? AND c.coleccion_id <=> ? AND c.audiencia='interesados' AND d.estado='enviado'", [$camp['item_ids'], $camp['coleccion_id']])->fetchAll(PDO::FETCH_COLUMN) as $ya) unset($dest[$ya]);
+    }
+    // Llegadas: a quien el abono ya le guardó todos esos números (y le llegó el mail de la reserva, inc/abonos.php)
+    // la campaña no se le repite
+    if (!$camp['coleccion_id'] && $item_ids) {
+        $in = implode(',', array_fill(0, count($item_ids), '?'));
+        $cubiertos = [];
+        foreach (q("SELECT DISTINCT cl.email, r.item_id FROM reservas r JOIN clientes cl ON cl.id=r.cliente_id
+                    WHERE r.abono_id IS NOT NULL AND r.item_id IN ($in)", $item_ids) as $r) {
+            $cubiertos[strtolower($r['email'])][$r['item_id']] = true;
+        }
+        foreach ($cubiertos as $em => $ids) if (count($ids) === count($item_ids)) unset($dest[$em]);
     }
     foreach (q("SELECT email FROM mailing_bajas")->fetchAll(PDO::FETCH_COLUMN) as $baja) unset($dest[strtolower($baja)]);
     foreach (q("SELECT email FROM clientes WHERE es_operador=1")->fetchAll(PDO::FETCH_COLUMN) as $op) unset($dest[strtolower($op)]);
