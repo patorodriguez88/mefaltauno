@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rec_col = trim((string)($_POST['recargo'] ?? '')) === '' ? null : max(0, monto($_POST['recargo']));
         $tot = (int)($_POST['total_entregas'] ?? 0) ?: null;
         q("UPDATE colecciones SET total_entregas=? WHERE id=?", [$tot, $id]);
+        $inicio = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['salida_inicio'] ?? '') ? $_POST['salida_inicio'] : null;
+        $per = isset(PERIODICIDADES[$_POST['periodicidad'] ?? '']) ? $_POST['periodicidad'] : null;
+        q("UPDATE colecciones SET en_calle=?, salida_inicio=?, periodicidad=? WHERE id=?", [!empty($_POST['en_calle']) ? 1 : 0, $inicio, $per, $id]);
         q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, proximamente=?, lanzamiento=?, recargo=?, orden=? WHERE id=?", [
             $nombre, (int)($_POST['categoria_id'] ?? 0) ?: null, trim($_POST['bajada'] ?? '') ?: null, trim($_POST['descripcion'] ?? '') ?: null,
             $portada, !empty($_POST['activa']) ? 1 : 0, !empty($_POST['destacada']) ? 1 : 0,
@@ -69,10 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $activo = 0;
                 $sin_publicar[] = num((int)$it['numero']) . ' (falta ' . implode(', ', $falta) . ')';
             }
-            q("UPDATE items SET numero=?, titulo=?, imagen=?, precio=?, precio_promo=?, stock=?, congelado=?, limite=?, max_por_cliente=?, sku=?, activo=? WHERE id=? AND coleccion_id=?", [
+            $salida = preg_match('/^\d{4}-\d{2}-\d{2}$/', $it['salida'] ?? '') ? $it['salida'] : null;
+            q("UPDATE items SET numero=?, titulo=?, imagen=?, precio=?, precio_promo=?, stock=?, congelado=?, limite=?, max_por_cliente=?, sku=?, activo=?, salida=? WHERE id=? AND coleccion_id=?", [
                 (int)$it['numero'], $titulo, $foto, $precio, monto($it['precio_promo']),
                 $stock, !empty($it['congelado']) ? 1 : 0, $limite, $max_cli, strtoupper(trim($it['sku'] ?? '')) ?: null,
-                $activo, (int)$iid, $id,
+                $activo, $salida, (int)$iid, $id,
             ]);
         }
 
@@ -103,6 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $items = q("SELECT i.*, (SELECT COUNT(*) FROM item_fotos f WHERE f.item_id=i.id) AS fotos_extra, (SELECT COUNT(*) FROM solicitud_items si JOIN solicitudes s ON s.id=si.solicitud_id WHERE si.item_id=i.id AND s.estado IN ('pendiente','buscando')) AS pedidos
             FROM items i WHERE coleccion_id=? ORDER BY numero", [$id])->fetchAll();
 
+$salidas = salidas_coleccion($col);
+$sal = salidas_resumen($col, $salidas);
+
 admin_header($col['nombre'], 'colecciones');
 ?>
 
@@ -132,6 +139,22 @@ admin_header($col['nombre'], 'colecciones');
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="destacada" value="1" <?= $col['destacada'] ? 'checked' : '' ?>> Destacada en el inicio</label>
             <label class="tengo-toggle" style="color:var(--ink)" title="Se ve en la tienda y la pueden seguir y suscribirse, pero todavía no se vende"><input type="checkbox" name="proximamente" value="1" <?= $col['proximamente'] ? 'checked' : '' ?>> Próximamente <small class="muted">(se ve, no se vende)</small></label>
             <label class="campo">Lanzamiento <small>(opcional, ej: “Noviembre 2026”)</small><input type="text" name="lanzamiento" maxlength="60" value="<?= e($col['lanzamiento']) ?>"></label>
+            <fieldset class="salidas-box">
+                <legend>🗞️ Salida en kioscos</legend>
+                <label class="tengo-toggle" style="color:var(--ink)" title="Sale en kioscos ahora, con periodicidad. Destildada: ya salió toda, se consigue pero no sale nada nuevo."><input type="checkbox" name="en_calle" value="1" <?= $col['en_calle'] ? 'checked' : '' ?>> En la calle <small class="muted">(sale en kioscos ahora)</small></label>
+                <label class="campo">Sale el N° 1<input type="date" name="salida_inicio" value="<?= e($col['salida_inicio']) ?>"></label>
+                <label class="campo">Periodicidad
+                        <select name="periodicidad"><option value="">—</option>
+                            <?php foreach (PERIODICIDADES as $k => [$lbl]): ?><option value="<?= $k ?>" <?= $col['periodicidad'] === $k ? 'selected' : '' ?>><?= $lbl ?></option><?php endforeach; ?>
+                        </select></label>
+                <?php if ($salidas): ?>
+                    <p class="small" style="margin:0">
+                        <?= $sal['va'] ? 'Va por el <b>' . num($sal['va']) . '</b>' : 'Todavía no salió el N° 1' ?><?= $sal['proximo'] ? ' · el <b>' . num($sal['proximo']) . '</b> sale aprox. el <b>' . fecha_dia($sal['prox_fecha']) . '</b>' : '' ?><?= $sal['fin'] && $sal['proximo'] ? ' · el último (' . num($sal['fin']) . ') aprox. el ' . fecha_dia($sal['fin_fecha']) : '' ?>.</p>
+                    <?php if ($sal['terminada'] && $col['en_calle']): ?><p class="small" style="margin:0;color:var(--amber)">Según las fechas ya salió el último número: ¿la destildás de “En la calle”?</p><?php endif; ?>
+                <?php else: ?>
+                    <p class="muted small" style="margin:0">Con la fecha del N° 1 y la periodicidad se calcula cuándo sale cada número. Si uno sale distinto, corregile la fecha en la tabla y los siguientes se corren solos.</p>
+                <?php endif; ?>
+            </fieldset>
             <label class="campo">Recargo interior por unidad <small>(vacío = el general, <?= precio(recargo_general()) ?>)</small><input type="text" name="recargo" inputmode="decimal" value="<?= $col['recargo'] !== null ? e((float)$col['recargo']) : '' ?>" placeholder="<?= e((string)recargo_general()) ?>"></label>
             <label class="campo">Máximo por cliente <small>(para todos los números; vacío = no cambiar)</small><input type="number" name="max_todos" min="0" placeholder="Ej: 2 · 0 = sin máximo"></label>
             <button class="btn btn-primario" type="submit">Guardar todo</button>
@@ -148,7 +171,7 @@ admin_header($col['nombre'], 'colecciones');
     </div>
     <div class="tabla-wrap">
         <table class="tabla tabla-items">
-            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope / x cliente</th><th>Estado</th><th>SKU</th></tr>
+            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope / x cliente</th><th>Estado</th><th title="Fecha de salida en kioscos. Vacía = calculada con la periodicidad">Salida</th><th>SKU</th></tr>
             <?php foreach ($items as $it): $n = 'items[' . (int)$it['id'] . ']'; $disp = disponible($it); ?>
                 <tr class="<?= $it['congelado'] ? 'fila-congelada' : '' ?><?= !$it['activo'] ? ' fila-oculta' : '' ?>">
                     <td>
@@ -189,6 +212,10 @@ admin_header($col['nombre'], 'colecciones');
                         <?php if (!$it['imagen']): ?><div class="small" style="color:var(--amber)">Falta foto</div><?php endif; ?>
                         <label title="Congelado: no se vende aunque haya stock"><input type="checkbox" name="<?= $n ?>[congelado]" value="1" <?= $it['congelado'] ? 'checked' : '' ?>> Congelado</label>
                     </td>
+                    <td class="td-salida"><?php $sf = $salidas[(int)$it['numero']] ?? null; ?>
+                        <input type="date" name="<?= $n ?>[salida]" value="<?= e($it['salida']) ?>" title="Vacía = calculada con la periodicidad">
+                        <?php if ($sf && !$sf['manual']): ?><div class="small muted">aprox. <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
+                    </td>
                     <td><input type="text" name="<?= $n ?>[sku]" value="<?= e($it['sku']) ?>" class="in-sku"><?= $it['wepoint_id'] ? '<div class="small" style="color:var(--green)">✓ WePoint</div>' : '' ?></td>
                 </tr>
             <?php endforeach; ?>
@@ -197,7 +224,7 @@ admin_header($col['nombre'], 'colecciones');
                 <td><input type="number" name="nuevo[numero]" placeholder="auto" class="in-num"></td>
                 <td class="td-titulo"><input type="text" name="nuevo[titulo]" placeholder="+ Agregar número…"></td>
                 <td><div class="precio-par"><input type="text" name="nuevo[precio]" inputmode="decimal" placeholder="Precio"></div></td>
-                <td colspan="3" class="muted small">El stock lo va a traer WePoint por el SKU.</td>
+                <td colspan="4" class="muted small">El stock lo va a traer WePoint por el SKU.</td>
                 <td><input type="text" name="nuevo[sku]" class="in-sku" placeholder="SKU"></td>
             </tr>
         </table>

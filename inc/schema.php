@@ -524,6 +524,14 @@ function schema_pasos(): array {
                 CONSTRAINT fk_clave_cli FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // Salidas en kioscos (inc/salidas.php): si la colección está "en la calle", cuándo salió el Nº 1 y cada
+        // cuánto sale. Cada número puede tener su fecha a mano, y los siguientes se calculan desde esa.
+        32 => [
+            "ALTER TABLE colecciones ADD COLUMN en_calle TINYINT(1) NOT NULL DEFAULT 0 AFTER proximamente,
+                ADD COLUMN salida_inicio DATE NULL AFTER lanzamiento, ADD COLUMN periodicidad VARCHAR(12) NULL AFTER salida_inicio",
+            "ALTER TABLE items ADD COLUMN salida DATE NULL",
+        ],
     ];
 }
 

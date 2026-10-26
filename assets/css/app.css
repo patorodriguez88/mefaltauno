@@ -844,3 +844,8 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
         margin-top: 12px; padding: 10px 16px; background: var(--white); border-top: 1px solid var(--line); box-shadow: 0 -4px 12px rgba(0,0,0,.06); }
 }
 .llegada-col[hidden], .llegada-item[hidden] { display: none; }
+
+/* Salida en kioscos (admin/coleccion.php) */
+.salidas-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px 12px; margin: 0; display: grid; gap: 8px; }
+.salidas-box legend { padding: 0 6px; font-weight: 700; }
+.td-salida input { width: 140px; }

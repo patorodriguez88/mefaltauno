@@ -13,7 +13,7 @@ function tarjeta_coleccion(array $c): string {
     $tot = coleccion_total($c) ?? (int)($c['total'] ?? 0);   // la colección completa; si no se sabe, los cargados
     $cant = $tot ? $tot . ' números' : '';
     return '<a class="col-card" href="' . url('coleccion.php?c=' . urlencode($c['slug'])) . '">'
-        . '<div class="col-card-img"' . $img . '>' . (!empty($c['proximamente']) ? '<span class="chip chip-amarillo">Próximamente' . (!empty($c['lanzamiento']) ? ' · ' . e($c['lanzamiento']) : '') . '</span>' : '') . '</div>'
+        . '<div class="col-card-img"' . $img . '>' . (!empty($c['proximamente']) ? '<span class="chip chip-amarillo">Próximamente' . (!empty($c['lanzamiento']) ? ' · ' . e($c['lanzamiento']) : '') . '</span>' : (!empty($c['en_calle']) ? '<span class="chip">🗞️ En kioscos</span>' : '')) . '</div>'
         . '<div class="col-card-body"><h3>' . e($c['nombre']) . '</h3>'
         . '<div class="col-card-meta"><span class="muted">' . $cant . '</span>'
         . ($c['desde'] !== null && $c['desde'] !== '' ? '<strong>' . precio((float)$c['desde']) . '</strong>' : '<span class="precio-confirmar">Precio a confirmar</span>') . '</div>'

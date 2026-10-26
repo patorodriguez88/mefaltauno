@@ -37,13 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
 }
 
 // Qué hay para vender: en el depósito (WePoint, entrega en 24 h) y en Brihet (por encargue)
-$ver = in_array($_GET['ver'] ?? '', ['deposito', 'brihet'], true) ? $_GET['ver'] : '';
+$ver = in_array($_GET['ver'] ?? '', ['deposito', 'brihet', 'calle', 'salieron'], true) ? $_GET['ver'] : '';
+$filtro_ver = ['deposito' => 'HAVING en_deposito > 0', 'brihet' => 'HAVING en_brihet > 0', 'calle' => 'HAVING c.en_calle = 1', 'salieron' => 'HAVING c.en_calle = 0 AND c.proximamente = 0'][$ver] ?? '';
 $cols = q("SELECT c.*, cat.nombre AS categoria, COUNT(i.id) AS total,
                   SUM(i.stock>0) AS en_deposito, SUM(GREATEST(i.stock,0)) AS unidades,
                   SUM(COALESCE(i.brihet_stock,0)>0) AS en_brihet,
                   (SELECT COUNT(*) FROM cliente_colecciones cc WHERE cc.coleccion_id=c.id) AS seguidores
            FROM colecciones c LEFT JOIN categorias cat ON cat.id=c.categoria_id LEFT JOIN items i ON i.coleccion_id=c.id AND i.activo=1
-           GROUP BY c.id " . ($ver === 'deposito' ? 'HAVING en_deposito > 0' : ($ver === 'brihet' ? 'HAVING en_brihet > 0' : '')) . " ORDER BY c.activa DESC, c.orden, c.nombre")->fetchAll();
+           GROUP BY c.id $filtro_ver ORDER BY c.activa DESC, c.orden, c.nombre")->fetchAll();
 
 $por_publicar = wepoint_nuevos_pendientes();
 admin_header('Stock', 'colecciones');
@@ -59,11 +60,17 @@ admin_header('Stock', 'colecciones');
 <div class="section-head">
     <h1 style="margin:0">Stock</h1>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <?php if ($ver): ?><span class="small">Solo con stock <?= $ver === 'deposito' ? 'en depósito' : 'en Brihet' ?> · <a href="<?= url('admin/colecciones.php') ?>">Ver todas</a></span><?php endif; ?>
+        <?php if ($ver): ?><span class="small">Solo <?= ['deposito' => 'con stock en depósito', 'brihet' => 'con stock en Brihet', 'calle' => 'las que están en la calle', 'salieron' => 'las que ya salieron'][$ver] ?> · <a href="<?= url('admin/colecciones.php') ?>">Ver todas</a></span><?php endif; ?>
         <a class="btn btn-linea btn-chico" href="<?= url('admin/categorias.php') ?>">Categorías</a>
         <button class="btn btn-primario btn-chico" type="button" onclick="document.getElementById('modal-crear').showModal()">+ Crear colección</button>
         <a class="btn btn-linea btn-chico" href="<?= url('admin/brihet.php') ?>">Importar desde Brihet</a>    </div>
 </div>
+
+<nav class="adm-tabs">
+    <a href="<?= url('admin/colecciones.php') ?>" class="<?= !in_array($ver, ['calle', 'salieron'], true) ? 'activo' : '' ?>">Todas</a>
+    <a href="<?= url('admin/colecciones.php?ver=calle') ?>" class="<?= $ver === 'calle' ? 'activo' : '' ?>">🗞️ En la calle</a>
+    <a href="<?= url('admin/colecciones.php?ver=salieron') ?>" class="<?= $ver === 'salieron' ? 'activo' : '' ?>">Ya salieron</a>
+</nav>
 
 <div class="buscador-stock">
     <input type="search" id="buscar-col" placeholder="🔍 Buscar colección o categoría…" autocomplete="off" autofocus>
@@ -81,7 +88,8 @@ admin_header('Stock', 'colecciones');
                 <td><?= $c['en_deposito'] ? '<span class="badge badge-verde">' . (int)$c['en_deposito'] . '</span> <span class="small muted">' . (int)$c['unidades'] . ' u.</span>' : '<span class="muted">—</span>' ?></td>
                 <td><?= $c['en_brihet'] ? '<span class="badge badge-azul">' . (int)$c['en_brihet'] . '</span>' : '<span class="muted">—</span>' ?></td>
                 <td><?= (int)$c['seguidores'] ?></td>
-                <td><?= $c['activa'] ? '<span class="badge badge-verde">Visible</span>' : '<span class="badge badge-gris">Oculta</span>' ?></td>
+                <td><?= $c['activa'] ? '<span class="badge badge-verde">Visible</span>' : '<span class="badge badge-gris">Oculta</span>' ?>
+                    <?= $c['en_calle'] ? '<span class="badge badge-amarillo" title="' . e(PERIODICIDADES[$c['periodicidad']][0] ?? 'Sale en kioscos') . '">En la calle</span>' : ($c['proximamente'] ? '<span class="badge badge-azul">Próximamente</span>' : '') ?></td>
             </tr>
         <?php endforeach; ?>
         <tr id="buscar-vacio" hidden><td colspan="8" class="muted">Ninguna colección coincide con la búsqueda.</td></tr>

@@ -30,6 +30,10 @@ $chips = [
     'en_camino' => '<span class="badge badge-azul">En camino</span>',
 ];
 
+$salidas = salidas_coleccion($col);
+$sal = salidas_resumen($col, $salidas);
+$hoy = date('Y-m-d');
+
 $titulo = $col['nombre'];
 $descripcion = $col['bajada'];
 require __DIR__ . '/inc/header.php';
@@ -40,6 +44,7 @@ require __DIR__ . '/inc/header.php';
         <?php
         // Ficha de la colección: lo que un coleccionista quiere ver de un vistazo
         $f_va = $items ? max(array_map(fn($i) => (int)$i['numero'], $items)) : 0;
+        if ($col['en_calle'] && $sal['va']) $f_va = $sal['va'];   // en la calle: el último que salió en kioscos
         $f_total = max(coleccion_total($col) ?? count($items), $f_va);
         $f_24h = $f_enc = 0;
         foreach ($items as $i) {
@@ -55,7 +60,10 @@ require __DIR__ . '/inc/header.php';
             <div class="ficha-col">
                 <div class="ficha-titulo">Ficha de la colección</div>
                 <div class="ficha-dato"><span class="ficha-ico">📚</span><small>Total</small><span><b><?= $f_total ?></b> números</span></div>
-                <div class="ficha-dato"><span class="ficha-ico">🗓️</span><small><?= $col['proximamente'] ? 'Lanzamiento' : 'Va por el' ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: 'A confirmar') : ($f_va ? num($f_va) : '—') ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
+                <div class="ficha-dato"><span class="ficha-ico">🗓️</span><small><?= $col['proximamente'] ? 'Lanzamiento' : 'Va por el' ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : '—') ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
+                <?php if ($col['en_calle'] && !$col['proximamente']): ?>
+                    <div class="ficha-dato"><span class="ficha-ico">🗞️</span><small>En kioscos</small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
+                <?php endif; ?>
                 <?php if ($col['proximamente']): ?>
                     <div class="ficha-dato"><span class="ficha-ico">🚀</span><small>Anunciados</small><span><b><?= count($items) ?></b> números<em>todavía no se venden</em></span></div>
                 <?php else: ?>
@@ -157,6 +165,7 @@ require __DIR__ . '/inc/header.php';
                         <div class="item-stock <?= $stock > 0 && !$col['proximamente'] ? 'si' : 'no' ?>">
                             <?php if ($col['proximamente']): ?>Próximamente
                             <?php elseif ($mi_res): ?>🎯 Te lo guardamos hasta el <?= e(fecha($mi_res['vence_at'])) ?>
+                            <?php elseif (!$hay && ($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?>🗞️ Sale aprox. el <?= fecha_dia($sf['fecha']) ?>
                             <?php else: ?><?= e($txt_disp) ?><?php endif; ?>
                         </div>
                         <div class="item-acciones">
