@@ -150,7 +150,8 @@ function wepoint_unidades(): array {
 }
 
 // Trae las unidades de WePoint y actualiza stock y vínculo de cada número. Busca en este orden:
-// la edición vinculada, el SKU, y el título vinculado + el número (para los que se vincularon cuando eran productos simples).
+// la edición vinculada, el SKU, el SKU + el número ("15200" N° 1 → edición "15200-1": se vinculó cuando en
+// WePoint era un producto simple y después lo pasaron a título con ediciones) y el título vinculado + el número.
 function wepoint_sincronizar_stock(): array {
     $todas = wepoint_unidades();
     $por_sku = [];
@@ -166,7 +167,7 @@ function wepoint_sincronizar_stock(): array {
         $sku = strtoupper(trim((string)$it['sku']));
         $u = null;
         if ($it['wepoint_variante_id']) $u = $todas[wepoint_clave(null, (int)$it['wepoint_variante_id'])] ?? null;
-        if (!$u && $sku !== '') $u = $por_sku[$sku] ?? null;
+        if (!$u && $sku !== '') $u = $por_sku[$sku] ?? $por_sku[$sku . '-' . (int)$it['numero']] ?? null;
         if (!$u && $it['wepoint_id']) {
             $u = $todas[wepoint_clave((int)$it['wepoint_id'], null)] ?? $por_titulo_numero[$it['wepoint_id'] . '#' . (int)$it['numero']] ?? null;
         }
