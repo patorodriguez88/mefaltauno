@@ -26,16 +26,20 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
     $db->commit();
     // Pago confirmado → WePoint recibe la orden de venta para preparar el pedido.
     // Si tiene unidades por encargue que todavía no llegaron al depósito, la manda el operador cuando lleguen.
+    // Los avisos de logística (Brihet, WePoint) son para el operador: cuando confirma Mercado Pago con el cliente
+    // en la página, no se le muestran a él (el encargue ya se le avisó en el carrito y el checkout).
+    $al_operador = es_admin();
     $encargue_pend = (int)q("SELECT COALESCE(SUM(encargue),0) FROM pedido_items WHERE pedido_id=? AND encargue>0 AND encargue_estado<>'recibido'", [$id])->fetchColumn();
-    if ($encargue_pend && in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id']) {
+    if ($encargue_pend && in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && $al_operador) {
         flash('info', "Este pedido tiene $encargue_pend unidades por encargue a Brihet: la orden a WePoint se manda cuando lleguen al depósito.");
     }
     if (!$encargue_pend && in_array($nuevo, ['confirmado', 'preparando'], true) && !$p['wepoint_orden_id'] && wepoint_ordenes_activas()) {
         try {
             wepoint_crear_orden($id);
-            flash('ok', 'Orden enviada a WePoint para preparar.');
+            if ($al_operador) flash('ok', 'Orden enviada a WePoint para preparar.');
         } catch (Exception $e) {
-            flash('error', 'No se pudo enviar a WePoint: ' . $e->getMessage());
+            if ($al_operador) flash('error', 'No se pudo enviar a WePoint: ' . $e->getMessage());
+            else error_log("[wepoint] pedido #$id confirmado por Mercado Pago sin orden: " . $e->getMessage());
         }
     }
     if ($avisar) {
