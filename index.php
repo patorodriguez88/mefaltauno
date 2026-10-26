@@ -229,11 +229,21 @@ require __DIR__ . '/inc/header.php';
         if (id && !quieto) {
             const f = document.createElement('iframe');
             f.src = 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&controls=0&loop=1&playlist=' + id
-                + '&playsinline=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0';
+                + '&playsinline=1&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1&fs=0&enablejsapi=1&origin=' + encodeURIComponent(location.origin);
             f.allow = 'autoplay; encrypted-media';
             f.tabIndex = -1;
             f.setAttribute('aria-hidden', 'true');
-            f.addEventListener('load', () => setTimeout(() => d.classList.add('con-video'), 1500));
+            // El video aparece recién cuando YouTube avisa que se está reproduciendo. Si el teléfono no lo
+            // deja arrancar solo (ahorro de batería, datos), queda la imagen y no un reproductor quieto.
+            const escuchar = (ev) => {
+                if (ev.source !== f.contentWindow) return;
+                let m; try { m = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data; } catch (e) { return; }
+                const estado = m && (m.event === 'onStateChange' ? m.info : m.info && m.info.playerState);
+                if (estado === 1) setTimeout(() => d.classList.add('con-video'), 400);
+            };
+            window.addEventListener('message', escuchar);
+            f.addEventListener('load', () => f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'));
+            d.addEventListener('close', () => window.removeEventListener('message', escuchar), { once: true });
             video.appendChild(f);
         }
         d.showModal();
