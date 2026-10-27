@@ -39,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         q("UPDATE colecciones SET total_entregas=? WHERE id=?", [$tot, $id]);
         $inicio = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['salida_inicio'] ?? '') ? $_POST['salida_inicio'] : null;
         $per = isset(PERIODICIDADES[$_POST['periodicidad'] ?? '']) ? $_POST['periodicidad'] : null;
+        // Si cambia la periodicidad o la fecha del N° 1, los números que ya salieron se fijan con la fecha que
+        // tenían: lo nuevo vale de ahí en adelante (hay colecciones que arrancan quincenales y pasan a semanales)
+        $fijar_salidas = ($per !== $col['periodicidad'] || $inicio !== $col['salida_inicio']) ? salidas_coleccion($col) : [];
         q("UPDATE colecciones SET en_calle=?, salida_inicio=?, periodicidad=? WHERE id=?", [!empty($_POST['en_calle']) ? 1 : 0, $inicio, $per, $id]);
         q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, proximamente=?, lanzamiento=?, recargo=?, orden=? WHERE id=?", [
             $nombre, (int)($_POST['categoria_id'] ?? 0) ?: null, trim($_POST['bajada'] ?? '') ?: null, trim($_POST['descripcion'] ?? '') ?: null,
@@ -78,6 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stock, !empty($it['congelado']) ? 1 : 0, $limite, $max_cli, strtoupper(trim($it['sku'] ?? '')) ?: null,
                 $activo, $salida, (int)$iid, $id,
             ]);
+        }
+
+        foreach ($fijar_salidas as $num => $sf) {
+            if (!$sf['manual'] && $sf['fecha'] <= date('Y-m-d')) {
+                q("UPDATE items SET salida=? WHERE coleccion_id=? AND numero=? AND salida IS NULL", [$sf['fecha'], $id, $num]);
+            }
         }
 
         $nuevo = $_POST['nuevo'] ?? [];
