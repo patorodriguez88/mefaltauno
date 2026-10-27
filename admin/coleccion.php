@@ -193,7 +193,7 @@ admin_header($col['nombre'], 'colecciones');
     <h3 style="margin-top:12px">Números</h3>
     <div class="aviso" style="margin:-4px 0 4px;background:var(--teal-50);color:var(--teal-900)">
         <?php if ($con_wepoint): ?>
-            <b>El stock lo informa WePoint</b> y no se puede sumar desde acá. Podés <b>congelar</b> un número (deja de venderse) o ponerle un <b>tope</b> (vender como máximo esa cantidad). Cada número se vincula a WePoint por su <b>SKU</b>.
+            <b>El stock lo informa WePoint</b> y no se puede sumar desde acá. Podés <b>congelar</b> un número (deja de venderse) o ponerle un <b>tope</b> (vender como máximo esa cantidad). Cada número se vincula a WePoint por su <b>SKU</b>. En <b>Stock</b>: <span class="badge badge-verde">verde</span> se vende ya (depósito, entrega en 24 h) y <span class="badge badge-azul">azul</span> por encargue al editor (Brihet); tocalos para ver de dónde sale.
         <?php else: ?>
             <b>WePoint todavía no está conectado:</b> mientras tanto el stock se carga a mano. Cuando se conecte, el stock pasa a venir de WePoint y acá solo vas a poder <b>congelar</b> o poner un <b>tope</b>. Cargá el <b>SKU</b> de cada número para vincularlo.
         <?php endif; ?>
@@ -222,9 +222,6 @@ admin_header($col['nombre'], 'colecciones');
                         </div>
                     </td>
                     <td class="td-stock">
-                        <div class="stock-linea" title="Unidades en el depósito según WePoint">En depósito:
-                            <?php if ($con_wepoint): ?><b><?= (int)$it['stock'] ?></b>
-                            <?php else: ?><input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num"><?php endif; ?></div>
                         <?php
                         $res = array_sum(reservas_mapa()[(int)$it['id']] ?? []);
                         $detalle = [
@@ -238,10 +235,11 @@ admin_header($col['nombre'], 'colecciones');
                             'encargue_pend' => $encargue_pend[(int)$it['id']] ?? 0, 'encargue' => disponible_encargue($it), 'total' => disponible_total($it),
                         ];
                         ?>
-                        <button type="button" class="stock-linea stock-ver" data-detalle="<?= e(json_encode($detalle, JSON_UNESCAPED_UNICODE)) ?>" title="Ver de dónde sale este número">Se vende: <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>"><?= $disp ?></span> <span class="stock-info" aria-hidden="true">i</span></button>
-                        <?php if ($res): ?><div class="stock-linea" title="Guardado <?= RESERVA_HORAS ?> h para quien lo buscaba o lo tiene en su abono">Reservado: <span class="badge badge-amarillo"><?= $res ?></span></div><?php endif; ?>
-                        <?php if ($it['brihet_stock'] !== null): ?><div class="stock-linea brihet-ref" title="Lo que Brihet informó el <?= e(fecha($it['brihet_stock_at'])) ?> (se vende por encargue)">En Brihet: <b><?= (int)$it['brihet_stock'] ?></b></div><?php endif; ?>
-                        <?php if ($con_wepoint): ?><div class="muted small"><?= $it['stock_sync_at'] ? 'Actualizado ' . fecha($it['stock_sync_at']) : 'WePoint todavía no lo informó' ?></div><?php endif; ?>
+                        <?php if (!$con_wepoint): ?><label class="tope-campo">En depósito<input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num"></label><?php endif; ?>
+                        <button type="button" class="stock-ver stock-par" data-detalle="<?= e(json_encode($detalle, JSON_UNESCAPED_UNICODE)) ?>" title="Verde: se vende ya (depósito, 24 h) · Azul: por encargue al editor (Brihet). Tocá para ver de dónde sale.">
+                            <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>"><?= $disp ?></span>
+                            <?php if ($it['brihet_stock'] !== null): ?><span class="badge badge-azul"><?= $detalle['encargue'] ?></span><?php endif; ?>
+                        </button>
                     </td>
                     <td class="td-topes">
                         <label class="tope-campo" title="Cuántas unidades más se pueden vender de este número: baja con cada venta. Vacío = sin tope (manda el stock)">Tope<input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="sin tope" class="in-num"></label>
@@ -274,7 +272,7 @@ admin_header($col['nombre'], 'colecciones');
 
 <dialog class="cajon" id="cajon-stock" aria-labelledby="cajon-titulo">
     <div class="cajon-cabeza">
-        <div><small>Composición del stock</small><h3 id="cajon-titulo"></h3></div>
+        <div><small class="cajon-col"><?= e($col['nombre']) ?></small><h3 id="cajon-titulo"></h3><small>Composición del stock</small></div>
         <button type="button" class="modal-cerrar" aria-label="Cerrar" onclick="this.closest('dialog').close()">×</button>
     </div>
     <div class="cajon-cuerpo" id="cajon-cuerpo"></div>
@@ -294,6 +292,10 @@ admin_header($col['nombre'], 'colecciones');
         const resFis = d.reservas.filter(r => r.stock !== 'encargue'), resEnc = d.reservas.filter(r => r.stock === 'encargue');
         const lista = rs => rs.length ? '<ul class="cajon-lista">' + rs.map(r => `<li><b>${esc(r.quien)}</b> · por ${esc(r.por)}<br><small>hasta el ${esc(r.vence)}</small></li>`).join('') + '</ul>' : '';
         cuerpo.innerHTML = `
+            <div class="cajon-resumen">
+                <div class="verde"><small>Disponible WePoint · ya</small><b>${d.vende}</b></div>
+                ${d.brihet !== null ? `<div class="azul"><small>Brihet · por encargue</small><b>${d.encargue}</b></div>` : ''}
+            </div>
             <section><h4>Depósito · entrega en 24 h</h4>
                 ${fila('En depósito (WePoint)', d.deposito)}
                 <p class="cajon-nota">${d.sync ? 'Actualizado ' + esc(d.sync) : 'WePoint todavía no lo informó'}</p>
