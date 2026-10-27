@@ -35,6 +35,9 @@ $abono = $socio ? abono_de((int)$cli['id'], (int)$col['id']) : null;
 [$ab_cubiertos, $ab_excluidos] = $abono ? abono_cubiertos($abono) : [[], []];
 
 $salidas = salidas_coleccion($col);
+// Las fechas de salida se muestran solo mientras la colección está saliendo (o por salir): en una que ya
+// salió completa quedan guardadas para el panel, pero el cliente no las ve
+$ver_salidas = coleccion_vigente($col);
 $sal = salidas_resumen($col, $salidas);
 $hoy = date('Y-m-d');
 
@@ -66,7 +69,7 @@ require __DIR__ . '/inc/header.php';
                 <div class="ficha-titulo">Ficha de la colección</div>
                 <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('total') ?></span><small>Total</small><span><b><?= $f_total ?></b> números</span></div>
                 <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('calendario') ?></span><small><?= $col['proximamente'] ? 'Lanzamiento' : ($f_va || !$salidas ? 'Va por el' : 'Sale el N° 01') ?></small><span><b><?= $col['proximamente'] ? e($col['lanzamiento'] ?: ($col['salida_inicio'] ? fecha_dia($col['salida_inicio']) : 'A confirmar')) : ($f_va ? num($f_va) : ($salidas ? fecha_dia($salidas[array_key_first($salidas)]['fecha']) : '—')) ?></b><?= !$col['proximamente'] && $f_va && $f_total > $f_va ? ' de ' . $f_total : '' ?></span></div>
-                <?php if (($col['en_calle'] && !$col['proximamente']) || isset(PERIODICIDADES[$col['periodicidad'] ?? ''])): ?>
+                <?php if ($ver_salidas && (($col['en_calle'] && !$col['proximamente']) || isset(PERIODICIDADES[$col['periodicidad'] ?? '']))): ?>
                     <div class="ficha-dato"><span class="ficha-ico"><?= icono_ficha('kiosco') ?></span><small><?= $col['en_calle'] && !$col['proximamente'] ? 'En kioscos' : 'Sale' ?></small><span><b><?= e(PERIODICIDADES[$col['periodicidad']][0] ?? 'Saliendo') ?></b><?php if ($sal['proximo']): ?><em>el <?= num($sal['proximo']) ?> sale aprox. el <?= fecha_dia($sal['prox_fecha']) ?></em><?php endif; ?></span></div>
                 <?php endif; ?>
                 <?php if ($col['proximamente']): ?>
@@ -185,7 +188,7 @@ require __DIR__ . '/inc/header.php';
                             <?php elseif ($mi_res): ?>🎯 Te lo guardamos hasta el <?= e(fecha($mi_res['vence_at'])) ?>
                             <?php else: ?><?= e($txt_disp) ?><?php endif; ?>
                         </div>
-                        <?php if (($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?><div class="item-salida"><?= icono_ficha('calendario', 14) ?> Sale aprox. el <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
+                        <?php if ($ver_salidas && ($sf = $salidas[(int)$it['numero']] ?? null) && $sf['fecha'] > $hoy): ?><div class="item-salida"><?= icono_ficha('calendario', 14) ?> Sale aprox. el <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
                         <div class="item-acciones">
                             <?php if ($socio): ?>
                                 <label class="tengo-toggle"><input type="checkbox" <?= $estado === 'tengo' ? 'checked' : '' ?>> Lo tengo</label>
