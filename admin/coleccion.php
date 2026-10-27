@@ -187,7 +187,7 @@ admin_header($col['nombre'], 'colecciones');
     </div>
     <div class="tabla-wrap">
         <table class="tabla tabla-items">
-            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th title="Tope: cuántas más se pueden vender (baja con cada venta). Por cliente: cuántas puede comprar cada uno">Límites de venta</th><th>Estado</th><th title="Fecha de salida en kioscos. Vacía = calculada con la periodicidad">Salida</th><th>SKU</th></tr>
+            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock</th><th title="Tope: cuántas más se pueden vender (baja con cada venta). Por cliente: cuántas puede comprar cada uno">Límites de venta</th><th>Estado</th><th title="Fecha de salida en kioscos. Vacía = calculada con la periodicidad">Salida</th><th>SKU</th></tr>
             <?php foreach ($items as $it): $n = 'items[' . (int)$it['id'] . ']'; $disp = disponible($it); ?>
                 <tr class="<?= $it['congelado'] ? 'fila-congelada' : '' ?><?= !$it['activo'] ? ' fila-oculta' : '' ?>">
                     <td>
@@ -209,15 +209,26 @@ admin_header($col['nombre'], 'colecciones');
                         </div>
                     </td>
                     <td class="td-stock">
-                        <?php if ($con_wepoint): ?>
-                            <b><?= (int)$it['stock'] ?></b>
-                        <?php else: ?>
-                            <input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num">
-                        <?php endif; ?>
-                        <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>" title="Se vende al público">se vende <?= $disp ?></span>
-                        <?php if ($res = array_sum(reservas_mapa()[(int)$it['id']] ?? [])): ?><span class="badge badge-amarillo" title="Guardado para quien lo buscaba (<?= RESERVA_HORAS ?> h)">reservado <?= $res ?></span><?php endif; ?>
-                        <?php if ($con_wepoint): ?><div class="muted small"><?= $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : 'sin sincronizar' ?></div><?php endif; ?>
-                        <?php if ($it['brihet_stock'] !== null): ?><div class="small brihet-ref" title="Lo que Brihet informó el <?= e(fecha($it['brihet_stock_at'])) ?>. Solo referencia: no se usa para vender.">Brihet: <b><?= (int)$it['brihet_stock'] ?></b></div><?php endif; ?>
+                        <?php
+                        $res_fis = array_sum(reservas_mapa()[(int)$it['id']] ?? []);
+                        $res_enc = array_sum(reservas_mapa_encargue()[(int)$it['id']] ?? []);
+                        $disp_enc = disponible_encargue($it);
+                        $disp_tot = disponible_total($it);
+                        ?>
+                        <div class="stock-ficha">
+                            <span title="Unidades en el depósito según WePoint (entrega en 24 h)">WePoint</span>
+                            <?php if ($con_wepoint): ?><b><?= (int)$it['stock'] ?></b>
+                            <?php else: ?><input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num"><?php endif; ?>
+                            <span title="Lo que Brihet informó<?= $it['brihet_stock_at'] ? ' el ' . e(fecha($it['brihet_stock_at'])) : '' ?> (se vende por encargue)">Brihet</span>
+                            <b><?= $it['brihet_stock'] !== null ? (int)$it['brihet_stock'] : '—' ?></b>
+                            <span title="Guardado <?= RESERVA_HORAS ?> h para quien lo buscaba o lo tiene en su abono: no lo puede comprar otro">Reservado</span>
+                            <b class="<?= $res_fis + $res_enc ? 'stock-res' : '' ?>"><?= $res_fis + $res_enc ?></b>
+                            <span class="stock-disp" title="Lo que puede comprar cualquier cliente ahora: descuenta reservas, tope y congelado">Disponible</span>
+                            <b class="stock-disp <?= $disp_tot ? 'si' : '' ?>"><?= $disp_tot ?></b>
+                        </div>
+                        <?php if ($it['congelado']): ?><div class="small" style="color:var(--red)">Congelado: no se vende</div>
+                        <?php elseif ($disp_tot && $disp_enc): ?><div class="small muted"><?= $disp ?> en 24 h · <?= $disp_enc ?> por encargue</div><?php endif; ?>
+                        <?php if ($con_wepoint): ?><div class="small muted"><?= $it['stock_sync_at'] ? 'WePoint: ' . fecha($it['stock_sync_at']) : 'sin sincronizar' ?></div><?php endif; ?>
                     </td>
                     <td class="td-topes">
                         <label class="tope-campo" title="Cuántas unidades más se pueden vender de este número: baja con cada venta. Vacío = sin tope (manda el stock)">Tope<input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="sin tope" class="in-num"></label>
