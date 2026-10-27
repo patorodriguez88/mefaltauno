@@ -948,3 +948,8 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .abonados summary { cursor: pointer; }
 .abonados ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
 
+.stock-linea { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.stock-linea b { color: var(--ink); }
+.stock-linea + .stock-linea { margin-top: 2px; }
+.con-cuenta { cursor: help; }
+.stock-info { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: var(--teal-50); color: var(--teal); font-size: .65rem; font-weight: 800; vertical-align: 1px; }
