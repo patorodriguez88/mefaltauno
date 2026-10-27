@@ -260,8 +260,12 @@ admin_header($col['nombre'], 'colecciones');
                         <label title="Congelado: no se vende aunque haya stock"><input type="checkbox" name="<?= $n ?>[congelado]" value="1" <?= $it['congelado'] ? 'checked' : '' ?>> Congelado</label>
                     </td>
                     <td class="td-salida"><?php $sf = $salidas[(int)$it['numero']] ?? null; ?>
-                        <input type="date" name="<?= $n ?>[salida]" value="<?= e($it['salida']) ?>" title="Vacía = calculada con la periodicidad">
-                        <?php if ($sf && !$sf['manual']): ?><div class="small muted">aprox. <?= fecha_dia($sf['fecha']) ?></div><?php endif; ?>
+                        <?php if ($sf && !$sf['manual']): ?>
+                            <?php // Estimada: se ve en gris adentro pero no se manda (sin name) hasta que la cambien; así sigue el cálculo ?>
+                            <input type="date" class="salida-aprox" data-name="<?= $n ?>[salida]" value="<?= e($sf['fecha']) ?>" title="Fecha estimada con la periodicidad. Cambiala si este número sale distinto.">
+                        <?php else: ?>
+                            <input type="date" name="<?= $n ?>[salida]" value="<?= e($it['salida']) ?>" title="<?= $it['salida'] ? 'Fecha fija. Borrala para volver a la estimada.' : 'Sin fecha: cargá la del N° 1 y la periodicidad para estimarla' ?>">
+                        <?php endif; ?>
                     </td>
                     <td><input type="text" name="<?= $n ?>[sku]" value="<?= e($it['sku']) ?>" class="in-sku"><?= $it['wepoint_id'] ? '<div class="small" style="color:var(--green)">✓ WePoint</div>' : '' ?></td>
                 </tr>
@@ -329,6 +333,13 @@ admin_header($col['nombre'], 'colecciones');
     });
     cajon.addEventListener('click', ev => { if (ev.target === cajon) cajon.close(); });   // tocar afuera cierra
 })();
+
+// Fecha de salida estimada (gris): al cambiarla pasa a ser fija y se guarda
+document.querySelectorAll('.salida-aprox').forEach(inp => inp.addEventListener('change', () => {
+    inp.name = inp.dataset.name;
+    inp.classList.remove('salida-aprox');
+    inp.title = 'Fecha fija. Borrala para volver a la estimada.';
+}));
 
 // Vista previa de la foto elegida antes de guardar
 function previewFoto(input) {
