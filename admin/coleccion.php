@@ -137,7 +137,7 @@ admin_header($col['nombre'], 'colecciones');
 
 <p><a href="<?= url('admin/colecciones.php') ?>">← Colecciones</a> · <a href="<?= url('coleccion.php?c=' . urlencode($col['slug'])) ?>" target="_blank">Ver en la tienda ↗</a> · <a href="<?= url('admin/salvat.php?coleccion=' . (int)$col['id']) ?>">📷 Mejorar fotos desde Salvat</a></p>
 
-<form method="post" class="form" enctype="multipart/form-data">
+<form method="post" class="form" enctype="multipart/form-data" id="form-coleccion">
     <?= csrf_field() ?>
     <div class="layout-2 layout-col">
         <div class="card form">
@@ -281,6 +281,10 @@ admin_header($col['nombre'], 'colecciones');
         </table>
     </div>
     <div><button class="btn btn-primario" type="submit">Guardar todo</button></div>
+    <div class="barra-guardar" id="barra-guardar" hidden>
+        <span>Tenés cambios sin guardar</span>
+        <button class="btn btn-primario" type="submit">Guardar todo</button>
+    </div>
 </form>
 
 <dialog class="cajon" id="cajon-stock" aria-labelledby="cajon-titulo">
@@ -334,12 +338,69 @@ admin_header($col['nombre'], 'colecciones');
     cajon.addEventListener('click', ev => { if (ev.target === cajon) cajon.close(); });   // tocar afuera cierra
 })();
 
-// Fecha de salida estimada (gris): al cambiarla pasa a ser fija y se guarda
-document.querySelectorAll('.salida-aprox').forEach(inp => inp.addEventListener('change', () => {
-    inp.name = inp.dataset.name;
-    inp.classList.remove('salida-aprox');
-    inp.title = 'Fecha fija. Borrala para volver a la estimada.';
-}));
+// Fechas de salida: las estimadas (gris) se recalculan en pantalla apenas cambia una fecha fija, la del N° 1
+// o la periodicidad, con la misma cuenta que el servidor (inc/salidas.php). Una estimada que se edita pasa a fija.
+(() => {
+    const form = document.getElementById('form-coleccion');
+    const inicio = form.querySelector('[name="salida_inicio"]'), per = form.querySelector('[name="periodicidad"]');
+    const PASO = { semanal: 7, quincenal: 14, mensual: 0 };
+    const hoy = new Date().toISOString().slice(0, 10);
+    const ini0 = inicio.value, per0 = per.value;
+    // Lo que ya salió con la cuenta de antes queda fijo al cambiar la periodicidad (igual que al guardar)
+    const original = new Map();
+    const filas = () => [...form.querySelectorAll('.tabla-items tr')].map(tr => ({
+        num: +(tr.querySelector('input[name$="[numero]"]') || {}).value, input: tr.querySelector('.td-salida input'),
+    })).filter(f => f.num && f.input).sort((a, b) => a.num - b.num);
+    filas().forEach(f => { original.set(f.input, f.input.value); if (f.input.classList.contains('salida-aprox')) f.input.dataset.calc = f.input.value; });
+    const sumar = (fecha, pasos, p) => {
+        const [y, m, d] = fecha.split('-').map(Number), t = new Date(Date.UTC(y, m - 1, d));
+        if (PASO[p]) t.setUTCDate(t.getUTCDate() + pasos * PASO[p]); else t.setUTCMonth(t.getUTCMonth() + pasos);
+        return t.toISOString().slice(0, 10);
+    };
+    const recalcular = () => {
+        const cambioRitmo = inicio.value !== ini0 || per.value !== per0;
+        let base = inicio.value ? [1, inicio.value] : null;
+        filas().forEach(({ num, input }) => {
+            const fija = !input.classList.contains('salida-aprox') && input.value;
+            const yaSalio = input.classList.contains('salida-aprox') && cambioRitmo && original.get(input) && original.get(input) <= hoy;
+            if (fija) { base = [num, input.value]; return; }
+            if (yaSalio) { input.value = original.get(input); base = [num, input.value]; return; }
+            if (!input.classList.contains('salida-aprox')) return;   // vacía sin estimar: la deja como está
+            input.value = input.dataset.calc = base && (num === base[0] || per.value) ? sumar(base[1], num - base[0], per.value) : '';
+        });
+    };
+    form.addEventListener('change', ev => {
+        const inp = ev.target;
+        if (inp.matches('.td-salida input')) {
+            if (!inp.value) {
+                // Borró una fecha fija: vuelve a la estimada. Si estaba guardada, al guardar se borra (data-vaciar)
+                if (inp.dataset.name) inp.removeAttribute('name'); else inp.dataset.vaciar = '1';
+                inp.classList.add('salida-aprox');
+            } else if (inp.classList.contains('salida-aprox') && inp.value !== inp.dataset.calc) {   // la escribió el operador
+                if (inp.dataset.name) inp.name = inp.dataset.name;
+                delete inp.dataset.vaciar;
+                inp.classList.remove('salida-aprox');
+                inp.title = 'Fecha fija. Borrala para volver a la estimada.';
+            }
+        }
+        if (inp.matches('.td-salida input, [name="salida_inicio"], [name="periodicidad"]')) recalcular();
+    });
+
+    // Barra para guardar, siempre a mano cuando hay cambios; Cmd/Ctrl+S guarda; aviso al salir sin guardar
+    const barra = document.getElementById('barra-guardar');
+    let cambios = false, enviando = false;
+    const marcar = () => { cambios = true; barra.hidden = false; };
+    form.addEventListener('input', marcar);
+    form.addEventListener('change', marcar);
+    form.addEventListener('submit', () => {
+        enviando = true;
+        form.querySelectorAll('[data-vaciar]').forEach(i => { i.value = ''; });   // la fija borrada se guarda vacía
+    });
+    document.addEventListener('keydown', ev => {
+        if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); form.requestSubmit(); }
+    });
+    window.addEventListener('beforeunload', ev => { if (cambios && !enviando) { ev.preventDefault(); ev.returnValue = ''; } });
+})();
 
 // Vista previa de la foto elegida antes de guardar
 function previewFoto(input) {
