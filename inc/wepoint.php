@@ -293,7 +293,9 @@ function wepoint_crear_orden(int $pedido_id): string {
     if ($p['wepoint_orden_id']) return $p['wepoint_orden_id'];
     if (!wepoint_ordenes_activas()) throw new Exception('El envío de órdenes a WePoint está apagado (WEPOINT_CREAR_ORDENES en config.php).');
     try {
-        if (wepoint_transportista() === '') throw new Exception('Falta elegir el transportista en Admin → WePoint.');
+        // Sin transportista elegido: se usa el propio de la empresa (lo busca o lo crea en WePoint), así el
+        // primer pedido confirmado no se frena por un ajuste que nadie cargó
+        $transportista = wepoint_transportista() ?: wepoint_transportista_propio();
         if (!$p['envio_cp']) throw new Exception('El punto de retiro “' . $p['envio_punto'] . '” no tiene código postal: cargalo en Puntos de retiro y reenviá.');
         $detalle = [];
         foreach (q("SELECT pi.*, i.wepoint_id, i.wepoint_variante_id, i.sku FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=?", [$pedido_id]) as $l) {
@@ -306,7 +308,7 @@ function wepoint_crear_orden(int $pedido_id): string {
         $orden = [
             'no_referencia'       => 'MFU-' . $pedido_id,
             'fecha'               => date('Y-m-d'),
-            'id_transportista'    => wepoint_transportista(),
+            'id_transportista'    => $transportista,
             'notas'               => 'Retiro en ' . $p['envio_punto'] . ' (' . $p['envio_direccion'] . ', ' . $p['envio_localidad'] . ')' . ($p['notas'] ? ' · ' . $p['notas'] : ''),
             'destinatario'        => [
                 'nombre'        => mb_substr($p['envio_nombre'] ?: nombre_cliente($p), 0, 100),
