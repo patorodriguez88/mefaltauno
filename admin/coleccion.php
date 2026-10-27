@@ -43,6 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // tenían: lo nuevo vale de ahí en adelante (hay colecciones que arrancan quincenales y pasan a semanales)
         $fijar_salidas = ($per !== $col['periodicidad'] || $inicio !== $col['salida_inicio']) ? salidas_coleccion($col) : [];
         q("UPDATE colecciones SET en_calle=?, salida_inicio=?, periodicidad=? WHERE id=?", [!empty($_POST['en_calle']) ? 1 : 0, $inicio, $per, $id]);
+        $quien = nombre_cliente($admin);
+        registrar_cambio_salida($id, null, 'salida_inicio', $col['salida_inicio'], $inicio, $quien);
+        registrar_cambio_salida($id, null, 'periodicidad', $col['periodicidad'], $per, $quien);
+        registrar_cambio_salida($id, null, 'en_calle', (string)(int)$col['en_calle'], !empty($_POST['en_calle']) ? '1' : '0', $quien);
         q("UPDATE colecciones SET nombre=?, categoria_id=?, bajada=?, descripcion=?, imagen=?, activa=?, destacada=?, proximamente=?, lanzamiento=?, recargo=?, orden=? WHERE id=?", [
             $nombre, (int)($_POST['categoria_id'] ?? 0) ?: null, trim($_POST['bajada'] ?? '') ?: null, trim($_POST['descripcion'] ?? '') ?: null,
             $portada, !empty($_POST['activa']) ? 1 : 0, !empty($_POST['destacada']) ? 1 : 0,
@@ -59,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ((array)($_POST['items'] ?? []) as $iid => $it) {
             $titulo = trim($it['titulo'] ?? '');
             if ($titulo === '') continue;
-            $actual = q("SELECT imagen, foto_origen, stock FROM items WHERE id=? AND coleccion_id=?", [(int)$iid, $id])->fetch();
+            $actual = q("SELECT imagen, foto_origen, stock, salida FROM items WHERE id=? AND coleccion_id=?", [(int)$iid, $id])->fetch();
             if (!$actual) continue;
             $subida = subir_imagen($fotos[$iid] ?? null, 'items', $col['slug'] . '-' . (int)$it['numero']);
             $foto = $subida ?? $actual['imagen'];
@@ -68,7 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $max_cli = trim((string)($it['max_por_cliente'] ?? '')) === '' ? null : max(1, (int)$it['max_por_cliente']);
             // Con WePoint el stock no se toca desde acá; sin WePoint (modo manual) sí
             $stock = $con_wepoint ? (int)$actual['stock'] : max(0, (int)($it['stock'] ?? 0));
-            if ($stock > 0 && (int)$actual['stock'] <= 0) q("UPDATE items SET llegada_at=NOW() WHERE id=?", [(int)$iid]);
+            if ($stock > 0 && (int)$actual['stock'] <= 0) {
+                q("UPDATE items SET llegada_at=NOW() WHERE id=?", [(int)$iid]);
+                registrar_llegada((int)$iid, 'manual', $stock);
+            }
             $precio = monto($it['precio']) ?? 0;
             $activo = !empty($it['activo']) ? 1 : 0;
             if ($activo && ($falta = item_falta_para_publicar($foto, $titulo, $precio))) {
@@ -76,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sin_publicar[] = num((int)$it['numero']) . ' (falta ' . implode(', ', $falta) . ')';
             }
             $salida = preg_match('/^\d{4}-\d{2}-\d{2}$/', $it['salida'] ?? '') ? $it['salida'] : null;
+            registrar_cambio_salida($id, (int)$iid, 'salida', $actual['salida'], $salida, nombre_cliente($admin));
             q("UPDATE items SET numero=?, titulo=?, imagen=?, precio=?, precio_promo=?, stock=?, congelado=?, limite=?, max_por_cliente=?, sku=?, activo=?, salida=? WHERE id=? AND coleccion_id=?", [
                 (int)$it['numero'], $titulo, $foto, $precio, monto($it['precio_promo']),
                 $stock, !empty($it['congelado']) ? 1 : 0, $limite, $max_cli, strtoupper(trim($it['sku'] ?? '')) ?: null,
@@ -85,7 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         foreach ($fijar_salidas as $num => $sf) {
             if (!$sf['manual'] && $sf['fecha'] <= date('Y-m-d')) {
-                q("UPDATE items SET salida=? WHERE coleccion_id=? AND numero=? AND salida IS NULL", [$sf['fecha'], $id, $num]);
+                $fija = q("UPDATE items SET salida=? WHERE coleccion_id=? AND numero=? AND salida IS NULL", [$sf['fecha'], $id, $num])->rowCount();
+                if ($fija) registrar_cambio_salida($id, (int)q("SELECT id FROM items WHERE coleccion_id=? AND numero=?", [$id, $num])->fetchColumn(), 'salida', null, $sf['fecha'], $quien . ' (fijada al cambiar el ritmo)');
             }
         }
 
@@ -125,6 +134,19 @@ foreach (q("SELECT r.item_id, r.stock, r.origen, r.abono_id, r.vence_at, c.nombr
             JOIN items i ON i.id=r.item_id WHERE i.coleccion_id=? AND r.estado='activa' AND r.vence_at > NOW() ORDER BY r.vence_at", [$id]) as $r) {
     $reservas_item[(int)$r['item_id']][] = ['quien' => nombre_cliente($r), 'por' => $r['abono_id'] ? 'abono' : ($r['origen'] === 'manual' ? 'a mano' : 'búsqueda'),
                                             'stock' => $r['stock'], 'vence' => fecha($r['vence_at'])];
+}
+// Historia de cada número (inc/trazabilidad.php): llegadas y cambios de su fecha de salida
+$llegadas_item = $cambios_item = [];
+foreach (q("SELECT l.item_id, l.origen, l.unidades, l.created_at FROM item_llegadas l JOIN items i ON i.id=l.item_id
+            WHERE i.coleccion_id=? ORDER BY l.created_at DESC", [$id]) as $r) {
+    if (count($llegadas_item[(int)$r['item_id']] ?? []) < 8) $llegadas_item[(int)$r['item_id']][] = ['cuando' => fecha($r['created_at']), 'origen' => ORIGENES_LLEGADA[$r['origen']] ?? $r['origen'], 'unidades' => $r['unidades']];
+}
+$cambios_col = [];
+foreach (q("SELECT * FROM salidas_cambios WHERE coleccion_id=? ORDER BY created_at DESC, id DESC", [$id]) as $r) {
+    $c = ['cuando' => fecha($r['created_at']), 'quien' => $r['usuario'], 'que' => CAMPOS_SALIDA[$r['campo']] ?? $r['campo'],
+          'antes' => valor_salida($r['campo'], $r['antes']), 'despues' => valor_salida($r['campo'], $r['despues'])];
+    if ($r['item_id']) $cambios_item[(int)$r['item_id']][] = $c;
+    elseif (count($cambios_col) < 20) $cambios_col[] = $c;
 }
 foreach (q("SELECT pi.item_id, SUM(pi.encargue) AS n FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id JOIN items i ON i.id=pi.item_id
             WHERE i.coleccion_id=? AND pi.encargue > 0 AND pi.encargue_estado='pendiente' AND p.estado<>'cancelado' GROUP BY pi.item_id", [$id]) as $r) {
@@ -178,6 +200,16 @@ admin_header($col['nombre'], 'colecciones');
                                 <li><b><?= e(nombre_cliente($a)) ?></b> <span class="muted"><?= e($a['email']) ?></span><br>
                                     <span class="small"><?= $a['estado'] === 'activo' ? '<span class="badge badge-verde">Activo</span>' : '<span class="badge badge-gris">Pausado</span>' ?>
                                     desde el <?= num((int)$a['desde_numero']) ?> · se abonó el <?= e(fecha($a['created_at'], false)) ?><?= $a['excluidos'] ? ' · sacó ' . (int)$a['excluidos'] . ' número' . ($a['excluidos'] == 1 ? '' : 's') : '' ?><?= $a['reservas'] ? ' · ' . (int)$a['reservas'] . ' reservado' . ($a['reservas'] == 1 ? '' : 's') . ' ahora' : '' ?></span></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
+                <?php endif; ?>
+                <?php if ($cambios_col): ?>
+                    <details class="abonados">
+                        <summary class="small"><u>Historial de cambios</u> <span class="muted">(<?= count($cambios_col) ?>)</span></summary>
+                        <ul>
+                            <?php foreach ($cambios_col as $c): ?>
+                                <li class="small"><?= e($c['que']) ?>: <?= e($c['antes']) ?> → <b><?= e($c['despues']) ?></b><br><span class="muted"><?= e($c['cuando']) ?> · <?= e($c['quien']) ?></span></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>
@@ -242,6 +274,8 @@ admin_header($col['nombre'], 'colecciones');
                             'vende' => $disp, 'brihet' => $it['brihet_stock'] !== null ? (int)$it['brihet_stock'] : null,
                             'brihet_at' => $it['brihet_stock_at'] ? fecha($it['brihet_stock_at']) : null,
                             'encargue_pend' => $encargue_pend[(int)$it['id']] ?? 0, 'encargue' => disponible_encargue($it), 'total' => disponible_total($it),
+                            'primera' => $it['primera_llegada_at'] ? fecha($it['primera_llegada_at']) : null,
+                            'llegadas' => $llegadas_item[(int)$it['id']] ?? [], 'cambios' => $cambios_item[(int)$it['id']] ?? [],
                         ];
                         ?>
                         <?php if (!$con_wepoint): ?><label class="tope-campo">En depósito<input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num"></label><?php endif; ?>
@@ -328,6 +362,11 @@ admin_header($col['nombre'], 'colecciones');
                 ${d.encargue_pend ? fila('− Vendido por encargue, falta pedírselo', d.encargue_pend, 'ambar') : ''}
                 ${resEnc.length ? fila('− Reservado por encargue', resEnc.length, 'ambar') + lista(resEnc) : ''}
                 ${fila('= Se vende por encargue', d.encargue, 'total')}`}
+            </section>
+            <section><h4>Historia</h4>
+                ${fila('Primera llegada al depósito', d.primera ? esc(d.primera) : '—')}
+                ${d.llegadas.length ? '<p class="cajon-sub">Llegadas de stock</p><ul class="cajon-lista">' + d.llegadas.map(l => `<li>${esc(l.cuando)} · ${esc(l.origen)}${l.unidades !== null ? ' · ' + esc(l.unidades) + ' u.' : ''}</li>`).join('') + '</ul>' : '<p class="cajon-nota">Todavía no hay llegadas registradas.</p>'}
+                ${d.cambios.length ? '<p class="cajon-sub">Cambios de la fecha de salida</p><ul class="cajon-lista">' + d.cambios.map(c => `<li>${esc(c.antes)} → <b>${esc(c.despues)}</b><br><small>${esc(c.cuando)} · ${esc(c.quien)}</small></li>`).join('') + '</ul>' : ''}
             </section>
             <section class="cajon-final">
                 ${fila('Disponible para vender en total', d.total, 'total grande')}

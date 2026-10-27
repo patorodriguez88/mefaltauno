@@ -170,8 +170,10 @@ function brihet_importar(int $brihet_id, int $destino = 0): array {
         $num = brihet_numero($v);
         if (!$num) continue;
         // Cantidad de Brihet (referencia), también para los que se quedaron sin stock allá
+        $previo = q("SELECT id, brihet_stock FROM items WHERE coleccion_id=? AND numero=?", [$col['id'], $num])->fetch();
         q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), brihet_stock=?, brihet_stock_at=NOW() WHERE coleccion_id=? AND numero=?",
           [brihet_cantidad($v), brihet_cantidad($v), $col['id'], $num]);
+        if ($previo && (int)$previo['brihet_stock'] <= 0 && brihet_cantidad($v) > 0) registrar_llegada((int)$previo['id'], 'brihet', brihet_cantidad($v));
         if (empty($v['is_in_stock'])) continue;
         $titulo = mb_substr(brihet_texto($v['description'] ?? '') ?: ('Fascículo ' . $num), 0, 255);
         $titulo = strtok($titulo, "\n");
@@ -183,6 +185,7 @@ function brihet_importar(int $brihet_id, int $destino = 0): array {
             $activo = item_falta_para_publicar($foto, $titulo, $precio) ? 0 : 1;
             q("INSERT INTO items (coleccion_id, numero, titulo, imagen, foto_origen, precio, stock, activo, brihet_id, brihet_precio, brihet_stock, brihet_stock_at, llegada_at) VALUES (?,?,?,?,?,?,0,?,?,?,?,NOW(),NOW())",
               [$col['id'], $num, $titulo, $foto, $foto ? 'brihet' : null, $precio, $activo, $v['id'], $precio, brihet_cantidad($v)]);
+            if (brihet_cantidad($v) > 0) registrar_llegada((int)db()->lastInsertId(), 'brihet', brihet_cantidad($v));
             $res['creados']++;
             continue;
         }
@@ -215,6 +218,8 @@ const BRIHET_REFRESCO_MIN = 10;   // en el carrito no se vuelve a consultar un n
 // Aplica a un número lo que informa Brihet: cantidad siempre; precio solo si no lo editó el operador.
 function brihet_aplicar(array $it, array $v): void {
     $precio = brihet_precio($v);
+    $antes = (int)q("SELECT COALESCE(brihet_stock,0) FROM items WHERE id=?", [$it['id']])->fetchColumn();
+    if ($antes <= 0 && brihet_cantidad($v) > 0) registrar_llegada((int)$it['id'], 'brihet', brihet_cantidad($v));
     $sin_tocar = (float)$it['precio'] <= 0 || ($it['brihet_precio'] !== null && abs((float)$it['precio'] - (float)$it['brihet_precio']) < 0.01);
     if ($sin_tocar && $precio > 0) {
         q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), brihet_stock=?, brihet_stock_at=NOW(), precio=?, brihet_precio=? WHERE id=?",

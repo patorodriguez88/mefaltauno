@@ -578,6 +578,33 @@ function schema_pasos(): array {
         36 => [
             "ALTER TABLE puntos_retiro ADD COLUMN domicilio TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN domicilio_nota VARCHAR(160) NULL",
         ],
+
+        // Trazabilidad (inc/trazabilidad.php): primera llegada de cada número, historial de llegadas y cambios de fechas
+        37 => [
+            "ALTER TABLE items ADD COLUMN primera_llegada_at DATETIME NULL",
+            "UPDATE items SET primera_llegada_at = llegada_at WHERE llegada_at IS NOT NULL",
+            "CREATE TABLE IF NOT EXISTS item_llegadas (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id INT NOT NULL,
+                origen VARCHAR(10) NOT NULL,
+                unidades INT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_item (item_id, created_at),
+                CONSTRAINT fk_lleg_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "CREATE TABLE IF NOT EXISTS salidas_cambios (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                coleccion_id INT NOT NULL,
+                item_id INT NULL,
+                campo VARCHAR(20) NOT NULL,
+                antes VARCHAR(20) NULL,
+                despues VARCHAR(20) NULL,
+                usuario VARCHAR(160) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_col (coleccion_id, created_at),
+                KEY idx_item (item_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
     ];
 }
 

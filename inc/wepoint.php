@@ -163,7 +163,7 @@ function wepoint_sincronizar_stock(): array {
     }
 
     $res = ['wepoint' => count($todas), 'actualizados' => 0, 'sin_sku' => 0, 'no_encontrados' => [], 'sin_dato_stock' => 0];
-    foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.wepoint_variante_id, i.numero, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
+    foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.wepoint_variante_id, i.numero, i.stock, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
         $sku = strtoupper(trim((string)$it['sku']));
         $u = null;
         if ($it['wepoint_variante_id']) $u = $todas[wepoint_clave(null, (int)$it['wepoint_variante_id'])] ?? null;
@@ -181,6 +181,7 @@ function wepoint_sincronizar_stock(): array {
         // llegada_at primero: compara con el stock anterior (sin stock en ningún lado → ahora hay)
         q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), stock=?, wepoint_id=?, wepoint_variante_id=?, stock_sync_at=NOW() WHERE id=?",
           [max(0, $disp), max(0, $disp), (int)$u['id_producto'], $u['id_variante'], $it['id']]);
+        if ((int)$it['stock'] <= 0 && $disp > 0) registrar_llegada((int)$it['id'], 'wepoint', (int)$disp);
         $res['actualizados']++;
     }
     $res['nuevos'] = wepoint_registrar_nuevos($todas);
