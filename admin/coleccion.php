@@ -147,8 +147,18 @@ admin_header($col['nombre'], 'colecciones');
                         <select name="periodicidad"><option value="">—</option>
                             <?php foreach (PERIODICIDADES as $k => [$lbl]): ?><option value="<?= $k ?>" <?= $col['periodicidad'] === $k ? 'selected' : '' ?>><?= $lbl ?></option><?php endforeach; ?>
                         </select></label>
-                <?php [$ab_act, $ab_pau] = abonos_conteo($id); if ($ab_act || $ab_pau): ?>
-                    <p class="small" style="margin:0"><b><?= $ab_act ?> abonado<?= $ab_act == 1 ? '' : 's' ?></b> la coleccionan: a cada número nuevo se le guarda una unidad apenas llega<?= $ab_pau ? " · $ab_pau pausado" . ($ab_pau == 1 ? '' : 's') : '' ?>.</p>
+                <?php $abonados = abonos_de_coleccion($id); if ($abonados): $ab_act = count(array_filter($abonados, fn($a) => $a['estado'] === 'activo')); $ab_pau = count($abonados) - $ab_act; ?>
+                    <details class="abonados">
+                        <summary class="small"><b><?= $ab_act ?> abonado<?= $ab_act == 1 ? '' : 's' ?></b><?= $ab_pau ? " · $ab_pau pausado" . ($ab_pau == 1 ? '' : 's') : '' ?> · <u>ver quiénes</u></summary>
+                        <p class="small muted" style="margin:6px 0">A cada número nuevo que llega al depósito se le guarda una unidad a cada abonado activo, por orden de llegada.</p>
+                        <ul>
+                            <?php foreach ($abonados as $a): ?>
+                                <li><b><?= e(nombre_cliente($a)) ?></b> <span class="muted"><?= e($a['email']) ?></span><br>
+                                    <span class="small"><?= $a['estado'] === 'activo' ? '<span class="badge badge-verde">Activo</span>' : '<span class="badge badge-gris">Pausado</span>' ?>
+                                    desde el <?= num((int)$a['desde_numero']) ?> · se abonó el <?= e(fecha($a['created_at'], false)) ?><?= $a['excluidos'] ? ' · sacó ' . (int)$a['excluidos'] . ' número' . ($a['excluidos'] == 1 ? '' : 's') : '' ?><?= $a['reservas'] ? ' · ' . (int)$a['reservas'] . ' reservado' . ($a['reservas'] == 1 ? '' : 's') . ' ahora' : '' ?></span></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
                 <?php endif; ?>
                 <?php if ($salidas): ?>
                     <p class="small" style="margin:0">
@@ -159,7 +169,10 @@ admin_header($col['nombre'], 'colecciones');
                 <?php endif; ?>
             </fieldset>
             <label class="campo">Recargo interior por unidad <small>(vacío = el general, <?= precio(recargo_general()) ?>)</small><input type="text" name="recargo" inputmode="decimal" value="<?= $col['recargo'] !== null ? e((float)$col['recargo']) : '' ?>" placeholder="<?= e((string)recargo_general()) ?>"></label>
-            <label class="campo">Máximo por cliente <small>(para todos los números; vacío = no cambiar)</small><input type="number" name="max_todos" min="0" placeholder="Ej: 2 · 0 = sin máximo"></label>
+            <?php $maxes = array_unique(array_map(fn($i) => $i['max_por_cliente'] === null ? 'sin máximo' : (string)(int)$i['max_por_cliente'], $items)); ?>
+            <label class="campo">Poner el mismo máximo por cliente en todos los números
+                <small>(hoy: <?= $items ? (count($maxes) === 1 ? e(reset($maxes)) . ' en todos' : 'distinto según el número') : '—' ?>. Escribí un número y guardá para cambiarlo en todos; 0 = sin máximo; vacío = no tocar)</small>
+                <input type="number" name="max_todos" min="0" placeholder="Ej: 2"></label>
             <button class="btn btn-primario" type="submit">Guardar todo</button>
         </aside>
     </div>
@@ -174,7 +187,7 @@ admin_header($col['nombre'], 'colecciones');
     </div>
     <div class="tabla-wrap">
         <table class="tabla tabla-items">
-            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th>Tope / x cliente</th><th>Estado</th><th title="Fecha de salida en kioscos. Vacía = calculada con la periodicidad">Salida</th><th>SKU</th></tr>
+            <tr><th>Foto</th><th>N°</th><th>Título</th><th>Precio / promo</th><th>Stock<?= $con_wepoint ? ' WePoint' : '' ?></th><th title="Tope: cuántas más se pueden vender (baja con cada venta). Por cliente: cuántas puede comprar cada uno">Límites de venta</th><th>Estado</th><th title="Fecha de salida en kioscos. Vacía = calculada con la periodicidad">Salida</th><th>SKU</th></tr>
             <?php foreach ($items as $it): $n = 'items[' . (int)$it['id'] . ']'; $disp = disponible($it); ?>
                 <tr class="<?= $it['congelado'] ? 'fila-congelada' : '' ?><?= !$it['activo'] ? ' fila-oculta' : '' ?>">
                     <td>
@@ -207,8 +220,8 @@ admin_header($col['nombre'], 'colecciones');
                         <?php if ($it['brihet_stock'] !== null): ?><div class="small brihet-ref" title="Lo que Brihet informó el <?= e(fecha($it['brihet_stock_at'])) ?>. Solo referencia: no se usa para vender.">Brihet: <b><?= (int)$it['brihet_stock'] ?></b></div><?php endif; ?>
                     </td>
                     <td class="td-topes">
-                        <input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="—" class="in-num" title="Tope total: vender como máximo esta cantidad. Vacío = sin tope">
-                        <input type="number" name="<?= $n ?>[max_por_cliente]" value="<?= $it['max_por_cliente'] !== null ? (int)$it['max_por_cliente'] : '' ?>" min="1" placeholder="x cli." class="in-num" title="Máximo que puede comprar cada cliente (sumando sus pedidos). Vacío = sin máximo">
+                        <label class="tope-campo" title="Cuántas unidades más se pueden vender de este número: baja con cada venta. Vacío = sin tope (manda el stock)">Tope<input type="number" name="<?= $n ?>[limite]" value="<?= $it['limite'] !== null ? (int)$it['limite'] : '' ?>" min="0" placeholder="sin tope" class="in-num"></label>
+                        <label class="tope-campo" title="Cuántas puede comprar cada cliente, sumando todos sus pedidos. Vacío = sin máximo">Por cliente<input type="number" name="<?= $n ?>[max_por_cliente]" value="<?= $it['max_por_cliente'] !== null ? (int)$it['max_por_cliente'] : '' ?>" min="1" placeholder="sin máx." class="in-num"></label>
                     </td>
                     <td class="td-estado">
                         <label title="<?= $it['imagen'] ? 'Visible en la tienda' : 'Subí una foto para poder publicarlo' ?>"><input type="checkbox" name="<?= $n ?>[activo]" value="1" <?= $it['activo'] ? 'checked' : '' ?> <?= $it['imagen'] ? '' : 'disabled data-sin-foto' ?>> Publicado</label>

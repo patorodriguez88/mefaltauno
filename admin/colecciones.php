@@ -78,15 +78,15 @@ admin_header('Stock', 'colecciones');
 </div>
 <div class="tabla-wrap" style="margin-bottom:24px">
     <table class="tabla" id="tabla-cols">
-        <tr><th></th><th>Colección</th><th>Categoría</th><th>Números</th><th title="Números con unidades en WePoint: entrega en 24 h">En depósito</th><th title="Números que Brihet tiene disponibles: por encargue">En Brihet</th><th>La siguen</th><th>Estado</th></tr>
+        <tr><th></th><th>Colección</th><th>Categoría</th><th>Números</th><th title="Números con unidades en WePoint: entrega en 24 h">En depósito</th><th title="Números que Brihet tiene disponibles: por encargue">En Brihet</th><th title="Clientes que la tienen en Mis colecciones">La siguen</th><th>Estado</th></tr>
         <?php foreach ($cols as $c): ?>
             <tr class="clic" data-busca="<?= e($c['nombre'] . ' ' . ($c['categoria'] ?? '')) ?>" onclick="location='<?= url('admin/coleccion.php?id=' . (int)$c['id']) ?>'">
                 <td><?= foto($c['imagen'] ?? '', '📚', 'width:44px;height:44px;border-radius:8px;object-fit:cover;background:var(--teal-50);font-size:1.1rem') ?></td>
                 <td><b><?= e($c['nombre']) ?></b><?= $c['destacada'] ? ' <span class="badge badge-amarillo">Destacada</span>' : '' ?></td>
                 <td class="small"><?= e($c['categoria'] ?? '—') ?></td>
                 <td><?= (int)$c['total'] ?></td>
-                <td><?= $c['en_deposito'] ? '<span class="badge badge-verde">' . (int)$c['en_deposito'] . '</span> <span class="small muted">' . (int)$c['unidades'] . ' u.</span>' : '<span class="muted">—</span>' ?></td>
-                <td><?= $c['en_brihet'] ? '<span class="badge badge-azul">' . (int)$c['en_brihet'] . '</span>' : '<span class="muted">—</span>' ?></td>
+                <td><?= $c['en_deposito'] ? '<span class="badge badge-verde" title="Números distintos con stock en el depósito">' . (int)$c['en_deposito'] . ' número' . ($c['en_deposito'] == 1 ? '' : 's') . '</span> <span class="small muted" title="Unidades en total">' . (int)$c['unidades'] . ' u.</span>' : '<span class="muted">—</span>' ?></td>
+                <td><?= $c['en_brihet'] ? '<span class="badge badge-azul" title="Números distintos que Brihet tiene disponibles">' . (int)$c['en_brihet'] . ' número' . ($c['en_brihet'] == 1 ? '' : 's') . '</span>' : '<span class="muted">—</span>' ?></td>
                 <td><?= (int)$c['seguidores'] ?></td>
                 <td><?= $c['activa'] ? '<span class="badge badge-verde">Visible</span>' : '<span class="badge badge-gris">Oculta</span>' ?>
                     <?= $c['en_calle'] ? '<span class="badge badge-amarillo" title="' . e(PERIODICIDADES[$c['periodicidad']][0] ?? 'Sale en kioscos') . '">En la calle</span>' : ($c['proximamente'] ? '<span class="badge badge-azul">Próximamente</span>' : '') ?></td>

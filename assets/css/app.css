@@ -941,3 +941,9 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 @media (max-width: 700px) { .ayuda-item ul { padding-left: 34px; } }
 .punto-domicilio { display: inline-flex; width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: var(--green-100, #e3f4e8); color: var(--green, #1f7a3d); font-size: .75rem; font-weight: 700; }
 .punto-elegido .punto-domicilio { margin-left: 6px; }
+
+/* Colección (panel): rótulos de los límites de venta y lista de abonados */
+.tope-campo { display: grid; gap: 2px; font-size: .7rem; font-weight: 600; color: var(--muted); }
+.tope-campo + .tope-campo { margin-top: 6px; }
+.abonados summary { cursor: pointer; }
+.abonados ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }

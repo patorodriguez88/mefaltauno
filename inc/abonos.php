@@ -119,6 +119,14 @@ function abono_reserva_vencida(int $abono_id): void {
         . '<p>Si querés seguir recibiéndolos, reactivalo con un toque:</p>' . mail_link('coleccion.php?c=' . urlencode($a['slug']), 'Reactivar mi abono'));
 }
 
+/** Para el panel: los abonados de la colección, con cuántos números sacaron y cuántas reservas tienen ahora. */
+function abonos_de_coleccion(int $coleccion_id): array {
+    return q("SELECT a.*, c.nombre, c.apellido, c.email,
+                     (SELECT COUNT(*) FROM abono_excluidos ae JOIN items i ON i.id=ae.item_id WHERE ae.cliente_id=a.cliente_id AND i.coleccion_id=a.coleccion_id) AS excluidos,
+                     (SELECT COUNT(*) FROM reservas r WHERE r.abono_id=a.id AND r.estado='activa' AND r.vence_at > NOW()) AS reservas
+              FROM abonos a JOIN clientes c ON c.id=a.cliente_id WHERE a.coleccion_id=? ORDER BY a.estado, a.created_at", [$coleccion_id])->fetchAll();
+}
+
 /** Para el panel: abonados de la colección [activos, pausados]. */
 function abonos_conteo(int $coleccion_id): array {
     $r = q("SELECT SUM(estado='activo') AS activos, SUM(estado='pausado') AS pausados FROM abonos WHERE coleccion_id=?", [$coleccion_id])->fetch();
