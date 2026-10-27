@@ -108,6 +108,19 @@ $items = q("SELECT i.*, (SELECT COUNT(*) FROM item_fotos f WHERE f.item_id=i.id)
             FROM items i WHERE coleccion_id=? ORDER BY numero", [$id])->fetchAll();
 
 $salidas = salidas_coleccion($col);
+
+// Composición del stock de cada número, para el panel lateral: reservas activas (de quién y por qué) y
+// lo vendido por encargue que todavía no se le pidió a Brihet
+$reservas_item = $encargue_pend = [];
+foreach (q("SELECT r.item_id, r.stock, r.origen, r.abono_id, r.vence_at, c.nombre, c.apellido FROM reservas r JOIN clientes c ON c.id=r.cliente_id
+            JOIN items i ON i.id=r.item_id WHERE i.coleccion_id=? AND r.estado='activa' AND r.vence_at > NOW() ORDER BY r.vence_at", [$id]) as $r) {
+    $reservas_item[(int)$r['item_id']][] = ['quien' => nombre_cliente($r), 'por' => $r['abono_id'] ? 'abono' : ($r['origen'] === 'manual' ? 'a mano' : 'búsqueda'),
+                                            'stock' => $r['stock'], 'vence' => fecha($r['vence_at'])];
+}
+foreach (q("SELECT pi.item_id, SUM(pi.encargue) AS n FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id JOIN items i ON i.id=pi.item_id
+            WHERE i.coleccion_id=? AND pi.encargue > 0 AND pi.encargue_estado='pendiente' AND p.estado<>'cancelado' GROUP BY pi.item_id", [$id]) as $r) {
+    $encargue_pend[(int)$r['item_id']] = (int)$r['n'];
+}
 $sal = salidas_resumen($col, $salidas);
 
 admin_header($col['nombre'], 'colecciones');
@@ -213,15 +226,19 @@ admin_header($col['nombre'], 'colecciones');
                             <?php if ($con_wepoint): ?><b><?= (int)$it['stock'] ?></b>
                             <?php else: ?><input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num"><?php endif; ?></div>
                         <?php
-                        // La cuenta de "Se vende", para verla al pasar el mouse
                         $res = array_sum(reservas_mapa()[(int)$it['id']] ?? []);
-                        $cuenta = ['En depósito (WePoint): ' . (int)$it['stock'], '− Reservado para clientes: ' . $res];
-                        if ($it['limite'] !== null) $cuenta[] = 'Tope: ' . (int)$it['limite'] . ' (se vende como máximo eso)';
-                        if ($it['congelado']) $cuenta[] = 'Congelado: no se vende';
-                        $cuenta[] = '= Se vende con entrega en 24 h: ' . $disp;
-                        if ($it['brihet_stock'] !== null) $cuenta[] = 'Además por encargue (Brihet): ' . disponible_encargue($it);
+                        $detalle = [
+                            'titulo' => num((int)$it['numero']) . ' · ' . $it['titulo'],
+                            'deposito' => (int)$it['stock'], 'sync' => $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : null,
+                            'reservas' => $reservas_item[(int)$it['id']] ?? [], 'reservado' => $res,
+                            'tope' => $it['limite'] !== null ? (int)$it['limite'] : null, 'congelado' => (bool)$it['congelado'],
+                            'max_cliente' => $it['max_por_cliente'] !== null ? (int)$it['max_por_cliente'] : null,
+                            'vende' => $disp, 'brihet' => $it['brihet_stock'] !== null ? (int)$it['brihet_stock'] : null,
+                            'brihet_at' => $it['brihet_stock_at'] ? fecha($it['brihet_stock_at']) : null,
+                            'encargue_pend' => $encargue_pend[(int)$it['id']] ?? 0, 'encargue' => disponible_encargue($it), 'total' => disponible_total($it),
+                        ];
                         ?>
-                        <div class="stock-linea con-cuenta" title="<?= e(implode("\n", $cuenta)) ?>">Se vende: <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>"><?= $disp ?></span> <span class="stock-info" aria-hidden="true">?</span></div>
+                        <button type="button" class="stock-linea stock-ver" data-detalle="<?= e(json_encode($detalle, JSON_UNESCAPED_UNICODE)) ?>" title="Ver de dónde sale este número">Se vende: <span class="badge <?= $disp > 0 ? 'badge-verde' : 'badge-gris' ?>"><?= $disp ?></span> <span class="stock-info" aria-hidden="true">i</span></button>
                         <?php if ($res): ?><div class="stock-linea" title="Guardado <?= RESERVA_HORAS ?> h para quien lo buscaba o lo tiene en su abono">Reservado: <span class="badge badge-amarillo"><?= $res ?></span></div><?php endif; ?>
                         <?php if ($it['brihet_stock'] !== null): ?><div class="stock-linea brihet-ref" title="Lo que Brihet informó el <?= e(fecha($it['brihet_stock_at'])) ?> (se vende por encargue)">En Brihet: <b><?= (int)$it['brihet_stock'] ?></b></div><?php endif; ?>
                         <?php if ($con_wepoint): ?><div class="muted small"><?= $it['stock_sync_at'] ? 'Actualizado ' . fecha($it['stock_sync_at']) : 'WePoint todavía no lo informó' ?></div><?php endif; ?>
@@ -255,7 +272,53 @@ admin_header($col['nombre'], 'colecciones');
     <div><button class="btn btn-primario" type="submit">Guardar todo</button></div>
 </form>
 
+<dialog class="cajon" id="cajon-stock" aria-labelledby="cajon-titulo">
+    <div class="cajon-cabeza">
+        <div><small>Composición del stock</small><h3 id="cajon-titulo"></h3></div>
+        <button type="button" class="modal-cerrar" aria-label="Cerrar" onclick="this.closest('dialog').close()">×</button>
+    </div>
+    <div class="cajon-cuerpo" id="cajon-cuerpo"></div>
+</dialog>
+
 <script>
+// Stock de un número: al tocar "Se vende" se abre a la derecha de dónde sale cada unidad
+(() => {
+    const cajon = document.getElementById('cajon-stock'), cuerpo = document.getElementById('cajon-cuerpo');
+    const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fila = (txt, n, clase = '') => `<div class="cajon-fila ${clase}"><span>${txt}</span><b>${n}</b></div>`;
+    document.addEventListener('click', ev => {
+        const b = ev.target.closest('.stock-ver');
+        if (!b) return;
+        const d = JSON.parse(b.dataset.detalle);
+        document.getElementById('cajon-titulo').textContent = d.titulo;
+        const resFis = d.reservas.filter(r => r.stock !== 'encargue'), resEnc = d.reservas.filter(r => r.stock === 'encargue');
+        const lista = rs => rs.length ? '<ul class="cajon-lista">' + rs.map(r => `<li><b>${esc(r.quien)}</b> · por ${esc(r.por)}<br><small>hasta el ${esc(r.vence)}</small></li>`).join('') + '</ul>' : '';
+        cuerpo.innerHTML = `
+            <section><h4>Depósito · entrega en 24 h</h4>
+                ${fila('En depósito (WePoint)', d.deposito)}
+                <p class="cajon-nota">${d.sync ? 'Actualizado ' + esc(d.sync) : 'WePoint todavía no lo informó'}</p>
+                ${fila('− Reservado para clientes', d.reservado, d.reservado ? 'ambar' : '')}${lista(resFis)}
+                ${d.tope !== null ? fila('Tope (se vende como máximo)', d.tope) : ''}
+                ${d.congelado ? fila('Congelado', 'no se vende', 'rojo') : ''}
+                ${fila('= Se vende con entrega en 24 h', d.vende, 'total')}
+            </section>
+            <section><h4>Brihet · por encargue</h4>
+                ${d.brihet === null ? '<p class="cajon-nota">Brihet no informó stock de este número.</p>' : `
+                ${fila('Stock en Brihet', d.brihet)}
+                <p class="cajon-nota">${d.brihet_at ? 'Informado el ' + esc(d.brihet_at) : ''}</p>
+                ${d.encargue_pend ? fila('− Vendido por encargue, falta pedírselo', d.encargue_pend, 'ambar') : ''}
+                ${resEnc.length ? fila('− Reservado por encargue', resEnc.length, 'ambar') + lista(resEnc) : ''}
+                ${fila('= Se vende por encargue', d.encargue, 'total')}`}
+            </section>
+            <section class="cajon-final">
+                ${fila('Disponible para vender en total', d.total, 'total grande')}
+                ${d.max_cliente !== null ? `<p class="cajon-nota">Cada cliente puede comprar como máximo ${d.max_cliente}.</p>` : ''}
+            </section>`;
+        cajon.showModal();
+    });
+    cajon.addEventListener('click', ev => { if (ev.target === cajon) cajon.close(); });   // tocar afuera cierra
+})();
+
 // Vista previa de la foto elegida antes de guardar
 function previewFoto(input) {
     const f = input.files && input.files[0];

@@ -951,5 +951,27 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .stock-linea { font-size: .8rem; color: var(--muted); white-space: nowrap; }
 .stock-linea b { color: var(--ink); }
 .stock-linea + .stock-linea { margin-top: 2px; }
-.con-cuenta { cursor: help; }
 .stock-info { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: var(--teal-50); color: var(--teal); font-size: .65rem; font-weight: 800; vertical-align: 1px; }
+
+/* Colección (panel): botón "Se vende" y panel lateral con la composición del stock */
+.stock-ver { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
+.stock-ver:hover .badge, .stock-ver:focus-visible .badge { outline: 2px solid var(--teal); }
+.cajon { margin: 0 0 0 auto; height: 100%; max-height: none; width: min(420px, 100%); border: 0; padding: 0; color: var(--ink); background: var(--white); box-shadow: -20px 0 50px rgba(0, 40, 42, .25); }
+.cajon::backdrop { background: rgba(0, 22, 24, .35); }
+.cajon[open] { animation: cajon-entra .25s ease-out; }
+@keyframes cajon-entra { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.cajon-cabeza { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 20px 12px; background: var(--white); border-bottom: 1px solid var(--line); }
+.cajon-cabeza small { color: var(--muted); }
+.cajon-cabeza h3 { margin: 2px 0 0; font-size: 1.15rem; }
+.cajon-cabeza .modal-cerrar { position: static; }
+.cajon-cuerpo { padding: 8px 20px 24px; display: grid; gap: 18px; }
+.cajon-cuerpo h4 { margin: 10px 0 8px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--teal); }
+.cajon-fila { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: .92rem; }
+.cajon-fila.ambar b { color: var(--amber, #b7791f); }
+.cajon-fila.rojo b { color: var(--red); }
+.cajon-fila.total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; font-weight: 700; }
+.cajon-fila.total b { color: var(--green); }
+.cajon-fila.grande { font-size: 1.05rem; }
+.cajon-nota { margin: -2px 0 4px; font-size: .78rem; color: var(--muted); }
+.cajon-lista { margin: 0 0 6px; padding-left: 18px; font-size: .82rem; display: grid; gap: 4px; }
+.cajon-final { background: var(--teal-50); border-radius: var(--radius-sm); padding: 4px 14px 8px; }
