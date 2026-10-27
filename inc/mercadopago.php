@@ -165,7 +165,7 @@ function mp_estado_pago(int $pedido_id, string $pago_id): array {
 
 /** Qué decirle al cliente según el estado del pago en Mercado Pago. */
 function mp_mensaje_estado(string $estado, string $detalle): string {
-    if ($estado === 'approved') return 'Ya estamos preparando tu pedido. Te avisamos por mail cuando esté listo para retirar.';
+    if ($estado === 'approved') return 'Ya estamos preparando tu pedido. Te avisamos por mail cuando llegue a tu kiosco.';
     if (in_array($estado, ['pending', 'in_process', 'authorized'], true)) {
         return $detalle === 'pending_challenge' ? 'Falta que valides el pago con tu banco.'
             : 'Tu pago está en revisión. Apenas Mercado Pago lo apruebe, confirmamos el pedido y te avisamos por mail.';

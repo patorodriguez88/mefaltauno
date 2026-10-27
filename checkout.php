@@ -148,11 +148,12 @@ require __DIR__ . '/inc/header.php';
                                     <small>Retirás en tu kiosco de siempre</small>
                                     <strong><?= e($punto_guardado['nombre']) ?></strong>
                                     <span><?= e($punto_guardado['direccion']) ?>, <?= e($punto_guardado['localidad']) ?><?= $punto_guardado['horario'] ? ' · ' . e($punto_guardado['horario']) : '' ?></span>
+                                    <?php if ($punto_guardado['domicilio']): ?><span class="punto-domicilio">Entrega a domicilio<?= $punto_guardado['domicilio_nota'] ? ' · ' . e($punto_guardado['domicilio_nota']) : '' ?></span><?php endif; ?>
                                 </div>
                                 <button class="btn btn-linea btn-chico" type="button" id="btn-cambiar-punto">Cambiar</button>
                             </div>
                         <?php else: ?>
-                            <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu pedido esté listo para retirar. Lo recordamos para tus próximas compras.</p>
+                            <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu pedido llegue al kiosco. Lo recordamos para tus próximas compras.</p>
                         <?php endif; ?>
                         <div id="selector-punto" data-puntos="<?= e(json_encode($puntos, JSON_UNESCAPED_UNICODE)) ?>"
                              data-ref="<?= e($ref_coords ? json_encode($ref_coords + ['nombre' => $referencia]) : '') ?>"

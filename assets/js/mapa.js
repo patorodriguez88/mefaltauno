@@ -122,6 +122,11 @@ async function geocodificar(texto) {
     return { lat: +d[0].lat, lng: +d[0].lon, nombre: d[0].display_name };
 }
 
+// El kiosco hace entrega a domicilio (dato informativo de Puntos de retiro, con su detalle opcional)
+function domicilioHtml(p) {
+    return +p.domicilio ? `<span class="punto-domicilio">Entrega a domicilio${p.domicilio_nota ? ' · ' + esc(p.domicilio_nota) : ''}</span>` : '';
+}
+
 function distanciaKm(a, b) {
     const R = 6371, rad = x => x * Math.PI / 180;
     const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
@@ -166,7 +171,7 @@ function armarSelectorPunto(cont) {
 
     puntos.forEach(p => {
         marcadores[p.id] = mapa.marcador(p.lat, p.lng, {
-            html: `<b>${esc(p.nombre)}</b><br>${esc(p.direccion)}, ${esc(p.localidad)}${p.horario ? '<br><small>' + esc(p.horario) + '</small>' : ''}<br><button type="button" class="btn btn-primario btn-chico" style="margin-top:8px" onclick="elegirPunto(${p.id})">Retirar acá</button>`,
+            html: `<b>${esc(p.nombre)}</b><br>${esc(p.direccion)}, ${esc(p.localidad)}${p.horario ? '<br><small>' + esc(p.horario) + '</small>' : ''}${domicilioHtml(p)}<br><button type="button" class="btn btn-primario btn-chico" style="margin-top:8px" onclick="elegirPunto(${p.id})">Retirar acá</button>`,
             onClick: () => resaltar(p.id),
         });
     });
@@ -182,6 +187,7 @@ function armarSelectorPunto(cont) {
                     <strong>${esc(p.nombre)}</strong>
                     <span>${esc(p.direccion)}, ${esc(p.localidad)}</span>
                     ${p.horario ? `<span class="muted">${esc(p.horario)}</span>` : ''}
+                    ${domicilioHtml(p)}
                 </div>
                 ${p.km !== null ? `<em>${fmtKm(p.km)}</em>` : ''}
             </label>`).join('');
@@ -205,7 +211,7 @@ function armarSelectorPunto(cont) {
         resaltar(id);
         const r = lista.querySelector(`input[value="${id}"]`);
         if (r) r.checked = true;
-        elegido.innerHTML = `<b>Retirás en:</b> ${esc(p.nombre)} — ${esc(p.direccion)}, ${esc(p.localidad)}${p.horario ? ' · ' + esc(p.horario) : ''}`;
+        elegido.innerHTML = `<b>Retirás en:</b> ${esc(p.nombre)} — ${esc(p.direccion)}, ${esc(p.localidad)}${p.horario ? ' · ' + esc(p.horario) : ''}${domicilioHtml(p)}`;
         elegido.hidden = false;
         mapa.cerrarPopups();
         mapa.centrar(p.lat, p.lng);

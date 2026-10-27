@@ -162,7 +162,7 @@ admin_header('Pedido #' . $id, 'pedidos');
             </label>
             <label class="campo">Mensaje para el cliente <small>(opcional: link de pago, seguimiento del envío…)</small><textarea name="nota"></textarea></label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="avisar" value="1" checked> Avisarle por mail</label>
-            <p class="muted small" style="margin:0">“Listo para retirar” le avisa que pase a buscarlo. Cancelar devuelve el stock. Retirado suma los números a la colección del cliente.</p>
+            <p class="muted small" style="margin:0">“Llegó a tu kiosco” le avisa que pase a buscarlo. Cancelar devuelve el stock. Retirado suma los números a la colección del cliente.</p>
             <button class="btn btn-primario" type="submit">Guardar</button>
         </form>
         <div class="card">

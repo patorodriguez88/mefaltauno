@@ -939,3 +939,5 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .ayuda-faq p { margin: 0; padding: 0 16px 16px; font-size: .92rem; }
 .ayuda-lista { display: grid; gap: 6px; font-size: .95rem; }
 @media (max-width: 700px) { .ayuda-item ul { padding-left: 34px; } }
+.punto-domicilio { display: inline-flex; width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: var(--green-100, #e3f4e8); color: var(--green, #1f7a3d); font-size: .75rem; font-weight: 700; }
+.punto-elegido .punto-domicilio { margin-left: 6px; }

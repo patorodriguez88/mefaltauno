@@ -6,7 +6,7 @@ require __DIR__ . '/_inc.php';
 // [icono del menú, título, para qué sirve, qué hacés ahí]
 $MENU = [
     ['inicio', 'Inicio', 'El resumen del día.', [
-        'Arriba, los cuatro recuadros: <b>Por cobrar</b> (pedidos esperando el pago), <b>Por preparar</b> (pagos confirmados), <b>Para retirar</b> (ya están en el kiosco) y <b>Me faltan</b> (búsquedas nuevas). Tocá uno y vas directo a esa lista.',
+        'Arriba, los cuatro recuadros: <b>Por cobrar</b> (pedidos esperando el pago), <b>Por preparar</b> (pagos confirmados), <b>En el kiosco</b> (llegaron y esperan que el cliente los retire) y <b>Me faltan</b> (búsquedas nuevas). Tocá uno y vas directo a esa lista.',
         'Abajo, cuánto se vendió en el período y lo último que pasó.',
     ]],
     ['pedidos', 'Pedidos', 'Todas las compras de la tienda.', [
@@ -51,7 +51,8 @@ $MENU = [
     ]],
     ['puntos', 'Puntos de retiro', 'Los kioscos donde los clientes retiran.', [
         'Agregá un kiosco con su dirección y ubicalo en el mapa (con “Ubicar” o tocando el lugar). Solo se ofrecen los activos y ubicados.',
-        'Podés <b>pausar</b> un kiosco (vacaciones, cierre) sin borrarlo. La tabla muestra cuántos pedidos tiene y cuántos esperan retiro.',
+        'Marcá si el kiosco <b>hace entrega a domicilio</b> y, si querés, el detalle (zona, costo): el cliente lo ve al elegir el kiosco.',
+        'Podés <b>pausar</b> un kiosco (vacaciones, cierre) sin borrarlo. La tabla muestra cuántos pedidos tiene y cuántos están esperando en el kiosco.',
     ]],
     ['wepoint', 'WePoint', 'La conexión con el depósito.', [
         'Estado de la conexión, la última sincronización del stock y de los pedidos, y el transportista con el que se crean las órdenes.',
@@ -93,7 +94,7 @@ admin_header('Ayuda', 'ayuda');
         <li><b>Paga</b><span><b>Mercado Pago:</b> se confirma solo al aprobarse el pago. <b class="ayuda-vos">Transferencia:</b> cuando ves la plata en el banco, pasás el pedido a <i>Pago confirmado</i>.</span></li>
         <li><b>Pago confirmado</b><span>La orden se manda sola a WePoint para que la preparen. Si tiene unidades <b>por encargue</b>, <b class="ayuda-vos">las pedís al editor</b> y la orden sale cuando llegan al depósito.</span></li>
         <li><b>El depósito prepara</b><span>WePoint avisa el avance y el pedido pasa a <i>Preparando</i>. Cuando queda listo para enviar, se crea solo el envío de Caddy al kiosco.</span></li>
-        <li><b>Llega al kiosco</b><span>El pedido pasa a <span class="badge badge-azul">Listo para retirar</span> y el cliente recibe el mail para ir a buscarlo.</span></li>
+        <li><b>Llega al kiosco</b><span>El pedido pasa a <span class="badge badge-azul">Llegó a tu kiosco</span> y el cliente recibe el mail para ir a buscarlo. Si el kiosco hace entrega a domicilio, lo coordinan entre ellos.</span></li>
         <li><b>El cliente retira</b><span><b class="ayuda-vos">Marcás <i>Misión cumplida</i></b>. Los números se suman solos a su colección como “Lo tengo”.</span></li>
     </ol>
     <p class="small muted">Si algo sale mal, <b>Cancelado</b> devuelve el stock. El cliente puede usar el <b>Botón de arrepentimiento</b> dentro de los <?= DIAS_ARREPENTIMIENTO ?> días: te llega un mail con el código y queda anotado en el historial del pedido.</p>
@@ -143,7 +144,7 @@ admin_header('Ayuda', 'ayuda');
         <li><b>Inicio:</b> mirá los cuatro recuadros.</li>
         <li><b>Por cobrar:</b> confirmá las transferencias que ya entraron al banco.</li>
         <li><b>Encargues:</b> en los pedidos con unidades por encargue, pedíselas al editor y marcá cada paso.</li>
-        <li><b>Para retirar:</b> cuando el kiosco te avise que retiraron, marcá <i>Misión cumplida</i>.</li>
+        <li><b>En el kiosco:</b> cuando el kiosco te avise que lo retiraron (o que lo entregó a domicilio), marcá <i>Misión cumplida</i>.</li>
         <li><b>Me faltan:</b> respondé las búsquedas nuevas (las “Por salir” no hace falta buscarlas).</li>
         <li><b>Por publicar:</b> ponele foto a los productos nuevos del depósito.</li>
         <li>Una vez por semana: <b>Marketing → Llegadas recientes</b> para avisar lo que llegó, y revisá las fechas de las colecciones <b>En la calle</b>.</li>

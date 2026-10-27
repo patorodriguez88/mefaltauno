@@ -27,11 +27,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vals[] = $lat;
     $vals[] = $lng;
     $vals[] = !empty($_POST['activo']) ? 1 : 0;
+    $vals[] = !empty($_POST['domicilio']) ? 1 : 0;
+    $vals[] = !empty($_POST['domicilio']) ? (trim(mb_substr($_POST['domicilio_nota'] ?? '', 0, 160)) ?: null) : null;
     if ($id) {
         $vals[] = $id;
-        q("UPDATE puntos_retiro SET nombre=?, direccion=?, localidad=?, provincia=?, cp=?, telefono=?, horario=?, notas=?, lat=?, lng=?, activo=? WHERE id=?", $vals);
+        q("UPDATE puntos_retiro SET nombre=?, direccion=?, localidad=?, provincia=?, cp=?, telefono=?, horario=?, notas=?, lat=?, lng=?, activo=?, domicilio=?, domicilio_nota=? WHERE id=?", $vals);
     } else {
-        q("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, cp, telefono, horario, notas, lat, lng, activo) VALUES (?,?,?,?,?,?,?,?,?,?,?)", $vals);
+        q("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, cp, telefono, horario, notas, lat, lng, activo, domicilio, domicilio_nota) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", $vals);
     }
     flash('ok', 'Punto de retiro guardado.');
     redirect('admin/puntos.php');
@@ -42,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($editar !== null):
     $p = $editar ? q("SELECT * FROM puntos_retiro WHERE id=?", [$editar])->fetch() : null;
     if ($editar && !$p) redirect('admin/puntos.php');
-    $p = $p ?: array_fill_keys(array_merge($campos, ['lat', 'lng']), '') + ['id' => 0, 'activo' => 1, 'provincia' => 'Córdoba'];
+    $p = $p ?: array_fill_keys(array_merge($campos, ['lat', 'lng', 'domicilio_nota']), '') + ['id' => 0, 'activo' => 1, 'domicilio' => 0, 'provincia' => 'Córdoba'];
     admin_header($p['id'] ? $p['nombre'] : 'Nuevo punto de retiro', 'puntos');
 ?>
     <p><a href="<?= url('admin/puntos.php') ?>">← Puntos de retiro</a></p>
@@ -71,6 +73,8 @@ if ($editar !== null):
                 <label class="campo">Teléfono<input type="tel" name="telefono" value="<?= e($p['telefono']) ?>"></label>
             </div>
             <label class="campo">Horario <small>(lo ve el cliente)</small><input type="text" name="horario" value="<?= e($p['horario']) ?>" placeholder="Ej: Lun a Sáb 8 a 20 h"></label>
+            <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="domicilio" value="1" <?= $p['domicilio'] ? 'checked' : '' ?>> Hace entrega a domicilio <small class="muted">(lo ve el cliente al elegir el kiosco)</small></label>
+            <label class="campo">Detalle de la entrega a domicilio <small>(opcional, lo ve el cliente: zona, costo, días)</small><input type="text" name="domicilio_nota" maxlength="160" value="<?= e($p['domicilio_nota']) ?>" placeholder="Ej: Barrio centro y alrededores, con cargo"></label>
             <label class="campo">Notas internas<input type="text" name="notas" value="<?= e($p['notas']) ?>"></label>
             <label class="tengo-toggle" style="color:var(--ink)"><input type="checkbox" name="activo" value="1" <?= $p['activo'] ? 'checked' : '' ?>> Disponible para los clientes</label>
             <button class="btn btn-primario" type="submit">Guardar</button>
@@ -103,12 +107,12 @@ admin_header('Puntos de retiro', 'puntos');
 
 <div class="tabla-wrap">
     <table class="tabla">
-        <tr><th>Punto</th><th>Dirección</th><th>Horario</th><th>Teléfono</th><th>Pedidos</th><th>Para retirar</th><th>Estado</th><th></th></tr>
+        <tr><th>Punto</th><th>Dirección</th><th>Horario</th><th>Teléfono</th><th>Pedidos</th><th>En el kiosco</th><th>Estado</th><th></th></tr>
         <?php foreach ($puntos as $p): ?>
             <tr>
                 <td><a href="<?= url('admin/puntos.php?id=' . (int)$p['id']) ?>"><b><?= e($p['nombre']) ?></b></a></td>
                 <td class="small"><?= e($p['direccion']) ?>, <?= e($p['localidad']) ?><?= $p['lat'] === null ? ' <span class="badge badge-rojo">Sin ubicar</span>' : '' ?></td>
-                <td class="small"><?= e($p['horario']) ?></td>
+                <td class="small"><?= e($p['horario']) ?><?= $p['domicilio'] ? '<div><span class="badge badge-verde" title="' . e($p['domicilio_nota'] ?? '') . '">Entrega a domicilio</span></div>' : '' ?></td>
                 <td class="small"><?= e($p['telefono']) ?></td>
                 <td><?= (int)$p['pedidos'] ?></td>
                 <td><?= $p['para_retirar'] ? '<span class="badge badge-azul">' . (int)$p['para_retirar'] . '</span>' : '0' ?></td>

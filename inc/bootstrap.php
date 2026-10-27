@@ -359,7 +359,7 @@ const ESTADOS_PEDIDO = [
     'pendiente'  => ['Misión recibida',      'Recibimos tu pedido. Apenas confirmemos el pago, arranca la misión.', 'amarillo'],
     'confirmado' => ['Pago confirmado',      'Pago confirmado: ya estamos preparando tu pedido.', 'azul'],
     'preparando' => ['Preparando tu pedido', 'Estamos preparando tu pedido con el cuidado que merece.', 'azul'],
-    'enviado'    => ['Listo para retirar',   'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!', 'azul'],
+    'enviado'    => ['Llegó a tu kiosco',    'Tu pedido llegó a tu kiosco. ¡Ya podés pasar a buscarlo!', 'azul'],
     'entregado'  => ['Misión cumplida',      '¡Misión cumplida! Ya los sumamos a tu colección.', 'verde'],
     'cancelado'  => ['Cancelado',            'El pedido fue cancelado.', 'gris'],
 ];
@@ -469,7 +469,7 @@ function mapa_recursos(): array {
 
 // Va al navegador en el checkout: sin teléfono ni notas (datos del kiosquero, solo para el operador)
 function puntos_retiro_activos(): array {
-    return q("SELECT id, nombre, direccion, localidad, provincia, horario, lat+0 AS lat, lng+0 AS lng
+    return q("SELECT id, nombre, direccion, localidad, provincia, horario, domicilio, domicilio_nota, lat+0 AS lat, lng+0 AS lng
               FROM puntos_retiro WHERE activo=1 AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY localidad, nombre")->fetchAll();
 }
 

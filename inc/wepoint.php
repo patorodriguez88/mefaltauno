@@ -339,7 +339,7 @@ function wepoint_crear_orden(int $pedido_id): string {
 
 // ─── Estado de las órdenes ──────────────────────────────────────────────────
 // WePoint: Emitida → Empaquetada → Listo para enviar → (en camino) → Entregada/Completada.
-// En la web: confirmado → preparando ("Preparando tu pedido") → enviado ("Listo para retirar").
+// En la web: confirmado → preparando ("Preparando tu pedido") → enviado ("Llegó a tu kiosco").
 // Cada cambio de estado en WePoint queda en el historial; el mail solo sale cuando cambia el estado de la web.
 
 function wepoint_estado_web(array $ov): ?string {

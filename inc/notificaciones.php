@@ -56,7 +56,7 @@ function notificar_pedido_nuevo(int $ped_id): void {
     } else {
         $pago = '<p>Te vamos a enviar el link de pago de Mercado Pago para confirmarlo.</p>';
     }
-    $pago .= '<p>Te avisamos por mail cuando esté listo para retirar.</p>';
+    $pago .= '<p>Te avisamos por mail cuando llegue a tu kiosco.</p>';
     mail_enviar($p['email'], "Misión en marcha: tu pedido #$ped_id",
         '<p>Hola ' . e($p['nombre']) . ', ¡gracias! Tu colección está a punto de crecer.</p>' . $detalle . $pago
         . mail_link("pedido.php?id=$ped_id", 'Ver mi pedido'));

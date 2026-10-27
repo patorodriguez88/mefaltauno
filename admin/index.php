@@ -54,7 +54,7 @@ $cuantos = fn (int $n, string $uno, string $varios) => $n === 0 ? null : ($n ===
 $tarjetas = [
     ['cobrar', 'Por cobrar', 'pedidos.php?estado=pendiente', $cuantos($ped('pendiente'), 'pedido', 'pedidos'), $monto('pendiente'), 'Sin pedidos'],
     ['colecciones', 'Por preparar', 'pedidos.php?estado=preparar', $cuantos($ped('confirmado', 'preparando'), 'pedido', 'pedidos'), $monto('confirmado', 'preparando'), 'Sin pedidos'],
-    ['puntos', 'Para retirar', 'pedidos.php?estado=enviado', $cuantos($ped('enviado'), 'pedido', 'pedidos'), null, 'Sin pedidos'],
+    ['puntos', 'En el kiosco', 'pedidos.php?estado=enviado', $cuantos($ped('enviado'), 'pedido', 'pedidos'), null, 'Sin pedidos'],
     ['faltantes', 'Me faltan sin atender', 'faltantes.php?estado=pendiente', $cuantos($k['sol_pend'], 'pedido', 'pedidos'), null, 'Nada pendiente'],
 ];
 ?>

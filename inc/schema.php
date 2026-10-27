@@ -573,6 +573,11 @@ function schema_pasos(): array {
         35 => [
             "ALTER TABLE clientes ADD COLUMN punto_id INT NULL, ADD COLUMN dir_lat DECIMAL(10,7) NULL, ADD COLUMN dir_lng DECIMAL(10,7) NULL",
         ],
+
+        // Kioscos con entrega a domicilio (dato informativo para el cliente al elegir dónde retirar)
+        36 => [
+            "ALTER TABLE puntos_retiro ADD COLUMN domicilio TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN domicilio_nota VARCHAR(160) NULL",
+        ],
     ];
 }
 
