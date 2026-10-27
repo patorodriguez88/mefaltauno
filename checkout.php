@@ -10,14 +10,18 @@ $c = carrito_lineas();
 if (!$c['lineas']) redirect('carrito.php');
 
 $puntos = puntos_retiro_activos();
+// El kiosco de la última compra (si sigue activo): la próxima vez se muestra ese y el mapa solo si quiere cambiarlo
+$punto_guardado = null;
+foreach ($puntos as $pt) if ((int)$pt['id'] === (int)$cli['punto_id']) $punto_guardado = $pt;
 $d = [
-    'punto_id'    => (int)($_POST['punto_id'] ?? 0),
+    'punto_id'    => (int)($_POST['punto_id'] ?? ($punto_guardado['id'] ?? 0)),
     'pago_metodo' => $_POST['pago_metodo'] ?? 'mercadopago',
     'nombre'      => $_POST['nombre'] ?? nombre_cliente($cli),
     'telefono'    => $_POST['telefono'] ?? $cli['telefono'],
     'notas'       => $_POST['notas'] ?? '',
 ];
 $referencia = trim(implode(', ', array_filter([$cli['direccion'], $cli['localidad']])));
+$ref_coords = $cli['dir_lat'] !== null ? ['lat' => (float)$cli['dir_lat'], 'lng' => (float)$cli['dir_lng']] : null;
 $errores = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -79,6 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             registrar_historial('pedido', $pid, 'pendiente', null, nombre_cliente($cli));
             if (!$cli['telefono']) q("UPDATE clientes SET telefono=? WHERE id=?", [$d['telefono'], $cli['id']]);
+            // Para la próxima compra: el kiosco elegido y la dirección que ubicó en el mapa (si buscó una)
+            q("UPDATE clientes SET punto_id=? WHERE id=?", [$punto['id'], $cli['id']]);
+            $dir = trim(mb_substr((string)($_POST['dir_texto'] ?? ''), 0, 200));
+            $dlat = (float)($_POST['dir_lat'] ?? 0);
+            $dlng = (float)($_POST['dir_lng'] ?? 0);
+            if ($dir !== '' && $dlat >= -56 && $dlat <= -21 && $dlng >= -74 && $dlng <= -53) {   // dentro de Argentina
+                q("UPDATE clientes SET direccion=?, dir_lat=?, dir_lng=? WHERE id=?", [$dir, $dlat, $dlng, $cli['id']]);
+            }
             $db->commit();
         } catch (Exception $e) {
             $db->rollBack();
@@ -119,14 +131,32 @@ require __DIR__ . '/inc/header.php';
         <form method="post" class="layout-2">
             <?= csrf_field() ?>
             <input type="hidden" name="punto_id" id="punto-id" value="<?= $d['punto_id'] ?: '' ?>">
+            <input type="hidden" name="dir_texto" id="dir-texto" value="">
+            <input type="hidden" name="dir_lat" id="dir-lat" value="">
+            <input type="hidden" name="dir_lng" id="dir-lng" value="">
             <div>
                 <div class="card">
                     <h3>Elegí tu punto de encuentro</h3>
                     <?php if (!$puntos): ?>
                         <div class="aviso">Todavía no hay puntos de retiro disponibles. Escribinos y coordinamos la entrega.</div>
                     <?php else: ?>
-                        <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu pedido esté listo para retirar.</p>
-                        <div id="selector-punto" data-puntos="<?= e(json_encode($puntos, JSON_UNESCAPED_UNICODE)) ?>">
+                        <?php $mostrar_guardado = $punto_guardado && $d['punto_id'] === (int)$punto_guardado['id']; ?>
+                        <?php if ($mostrar_guardado): ?>
+                            <div class="punto-guardado" id="punto-guardado">
+                                <svg class="punto-guardado-ico" viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><path d="M15 29s11-10 11-17a11 11 0 0 0-22 0c0 7 11 17 11 17z" fill="#006368" stroke="#fff" stroke-width="2"/><circle cx="15" cy="12" r="4.5" fill="#f1e52f"/></svg>
+                                <div>
+                                    <small>Retirás en tu kiosco de siempre</small>
+                                    <strong><?= e($punto_guardado['nombre']) ?></strong>
+                                    <span><?= e($punto_guardado['direccion']) ?>, <?= e($punto_guardado['localidad']) ?><?= $punto_guardado['horario'] ? ' · ' . e($punto_guardado['horario']) : '' ?></span>
+                                </div>
+                                <button class="btn btn-linea btn-chico" type="button" id="btn-cambiar-punto">Cambiar</button>
+                            </div>
+                        <?php else: ?>
+                            <p class="muted small" style="margin-top:-4px">Elegí el kiosco que te quede más cómodo. Te avisamos cuando tu pedido esté listo para retirar. Lo recordamos para tus próximas compras.</p>
+                        <?php endif; ?>
+                        <div id="selector-punto" data-puntos="<?= e(json_encode($puntos, JSON_UNESCAPED_UNICODE)) ?>"
+                             data-ref="<?= e($ref_coords ? json_encode($ref_coords + ['nombre' => $referencia]) : '') ?>"
+                             data-places="<?= defined('GOOGLE_PLACES') && GOOGLE_PLACES ? '1' : '0' ?>" <?= $mostrar_guardado ? 'hidden' : '' ?>>
                             <div class="buscador-dir">
                                 <input type="search" id="buscar-dir" value="<?= e($referencia) ?>" placeholder="Tu dirección o barrio, ej: Av. Colón 1200, Córdoba" autocomplete="street-address">
                                 <button class="btn btn-teal" type="button" id="btn-buscar-dir">Buscar</button>

@@ -134,9 +134,24 @@ function fmtKm(km) {
 }
 
 // ─── Checkout: elegir punto de retiro ──────────────────────────────────────
+// Si el cliente ya tiene su kiosco de siempre, se muestra ese y el mapa se arma recién al tocar "Cambiar"
+// (un mapa armado oculto queda sin tamaño).
 function selectorPunto() {
     const cont = document.getElementById('selector-punto');
     if (!cont) return;
+    if (cont.hidden) {
+        const btn = document.getElementById('btn-cambiar-punto');
+        if (btn) btn.addEventListener('click', () => {
+            document.getElementById('punto-guardado').hidden = true;
+            cont.hidden = false;
+            armarSelectorPunto(cont);
+        }, { once: true });
+        return;
+    }
+    armarSelectorPunto(cont);
+}
+
+function armarSelectorPunto(cont) {
     const puntos = JSON.parse(cont.dataset.puntos || '[]');
     const input = document.getElementById('punto-id');
     const lista = document.getElementById('puntos-lista');
@@ -196,7 +211,11 @@ function selectorPunto() {
         mapa.centrar(p.lat, p.lng);
     };
 
-    function ubicarme(pos, etiqueta) {
+    // guardar: la dirección escrita se recuerda para la próxima compra (la ubicación del GPS no)
+    function ubicarme(pos, etiqueta, guardar = true) {
+        document.getElementById('dir-texto').value = guardar ? etiqueta || '' : '';
+        document.getElementById('dir-lat').value = guardar ? pos.lat : '';
+        document.getElementById('dir-lng').value = guardar ? pos.lng : '';
         if (yoMarcador) yoMarcador.quitar();
         yoMarcador = mapa.marcador(pos.lat, pos.lng, { clase: 'yo', titulo: etiqueta || 'Tu dirección' });
         render(pos);
@@ -221,7 +240,7 @@ function selectorPunto() {
         if (!navigator.geolocation) { msg.textContent = 'Tu navegador no permite usar la ubicación.'; return; }
         msg.textContent = 'Buscando tu ubicación…';
         navigator.geolocation.getCurrentPosition(
-            p => ubicarme({ lat: p.coords.latitude, lng: p.coords.longitude }, 'Estás acá'),
+            p => ubicarme({ lat: p.coords.latitude, lng: p.coords.longitude }, 'Estás acá', false),
             () => { msg.textContent = 'No pudimos acceder a tu ubicación. Escribí una dirección.'; },
             { enableHighAccuracy: true, timeout: 10000 }
         );
@@ -229,7 +248,33 @@ function selectorPunto() {
 
     render(null);
     if (input.value) elegirPunto(+input.value);
-    if (buscar.value.trim().length >= 4) buscarDireccion();
+    // Su dirección de la compra anterior ya ubicada: ordena los kioscos por cercanía sin volver a buscarla
+    const ref = cont.dataset.ref ? JSON.parse(cont.dataset.ref) : null;
+    if (ref) ubicarme(ref, ref.nombre);
+    else if (buscar.value.trim().length >= 4) buscarDireccion();
+    if (cont.dataset.places === '1' && usaGoogle()) autocompletarDireccion(buscar, (pos, nombre) => ubicarme(pos, nombre));
+}
+
+// Sugerencias de direcciones de Google mientras se escribe (Places API (New), se enciende con GOOGLE_PLACES en
+// config.php). Reemplaza al buscador; si Google no lo carga, queda el buscador de siempre.
+async function autocompletarDireccion(input, alElegir) {
+    try {
+        const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
+        const pac = new PlaceAutocompleteElement({ includedRegionCodes: ['ar'] });
+        pac.id = 'buscar-dir-google';
+        pac.setAttribute('placeholder', input.placeholder);
+        const usar = async (place) => {
+            await place.fetchFields({ fields: ['location', 'formattedAddress'] });
+            if (place.location) alElegir({ lat: place.location.lat(), lng: place.location.lng() }, place.formattedAddress);
+        };
+        pac.addEventListener('gmp-select', ev => usar(ev.placePrediction.toPlace()));
+        pac.addEventListener('gmp-placeselect', ev => usar(ev.place));   // nombre del evento en versiones anteriores
+        const caja = input.closest('.buscador-dir');
+        caja.hidden = true;
+        caja.insertAdjacentElement('afterend', pac);
+    } catch (e) {
+        console.warn('[mapa] sin autocompletado de Google:', e);
+    }
 }
 
 // ─── Admin: ubicar un punto en el mapa ─────────────────────────────────────

@@ -567,6 +567,12 @@ function schema_pasos(): array {
             "ALTER TABLE abonos ADD COLUMN activo_desde DATETIME NULL AFTER estado",
             "UPDATE abonos SET activo_desde = created_at",
         ],
+
+        // Checkout: el kiosco que eligió el cliente la última vez y su dirección ubicada en el mapa,
+        // para que la próxima compra arranque con eso (y el mapa solo si quiere cambiarlo)
+        35 => [
+            "ALTER TABLE clientes ADD COLUMN punto_id INT NULL, ADD COLUMN dir_lat DECIMAL(10,7) NULL, ADD COLUMN dir_lng DECIMAL(10,7) NULL",
+        ],
     ];
 }
 

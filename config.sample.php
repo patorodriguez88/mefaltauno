@@ -46,3 +46,11 @@ define('CADDY_CREAR_ENVIOS', false);   // true = se crean envíos reales en Cadd
 define('ADMIN_EMAILS', '');
 
 define('APP_DEBUG', false);
+
+// Google Maps (opcional). Sin claves, el mapa de kioscos usa OpenStreetMap.
+// BROWSER: mapa y búsqueda en el checkout (queda visible: restringila a los dominios de la tienda en Google Cloud).
+// SERVER: ubicar kioscos desde el panel. GOOGLE_PLACES: sugerencias de direcciones mientras el cliente escribe
+// (requiere habilitar "Places API (New)" para la clave del navegador).
+if (!defined('GOOGLE_API_KEY_BROWSER')) define('GOOGLE_API_KEY_BROWSER', '');
+if (!defined('GOOGLE_API_KEY_SERVER'))  define('GOOGLE_API_KEY_SERVER', '');
+if (!defined('GOOGLE_PLACES'))          define('GOOGLE_PLACES', false);

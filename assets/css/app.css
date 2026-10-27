@@ -898,3 +898,13 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .slide-cabeza { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .slide-botones { display: flex; gap: 6px; flex-wrap: wrap; }
 .slide-pie { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+/* Checkout: el kiosco de la compra anterior, con "Cambiar" para abrir el mapa */
+.punto-guardado { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 2px solid var(--teal); border-radius: var(--radius-sm); background: var(--teal-50); }
+.punto-guardado-ico { flex: none; }
+.punto-guardado > div { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.punto-guardado small { color: var(--muted); font-size: .78rem; }
+.punto-guardado strong { color: var(--teal-900); }
+.punto-guardado span { font-size: .88rem; }
+.punto-guardado[hidden], #selector-punto[hidden] { display: none; }
+#buscar-dir-google { display: block; width: 100%; margin-bottom: 8px; }
