@@ -8,8 +8,14 @@ $d = ['nombre' => '', 'apellido' => '', 'email' => '', 'telefono' => ''];
 $errores = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
-    foreach ($d as $k => $_) $d[$k] = trim($_POST[$k] ?? '');
+    if (trim($_POST['web'] ?? '') !== '') redirect('');   // trampa para bots: campo invisible que una persona no completa
+    foreach ($d as $k => $_) $d[$k] = trim(mb_substr((string)($_POST[$k] ?? ''), 0, 160));
     $pass = $_POST['password'] ?? '';
+    // Los bots mandan el formulario apenas lo bajan y ponen publicidad con links en el nombre
+    $abierto = (int)($_SESSION['registro_form_at'] ?? 0);
+    if (!$abierto || time() - $abierto < 3) $errores[] = 'Revisá los datos y volvé a tocar “Crear mi cuenta”.';
+    if (preg_match('~https?:|www\.|://|[<>]|\.(com|net|org|pink|xyz|ru)\b~i', $d['nombre'] . ' ' . $d['apellido'])) $errores[] = 'El nombre y el apellido no pueden tener links.';
+    elseif (mb_strlen($d['nombre']) > 60 || mb_strlen($d['apellido']) > 60) $errores[] = 'El nombre o el apellido son demasiado largos.';
     if ($d['nombre'] === '') $errores[] = 'Ingresá tu nombre.';
     if (!filter_var($d['email'], FILTER_VALIDATE_EMAIL)) $errores[] = 'El email no es válido.';
     if (strlen($pass) < 8) $errores[] = 'La contraseña tiene que tener al menos 8 caracteres.';
@@ -35,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$_SESSION['registro_form_at'] = time();
 $titulo = 'Crear cuenta';
 require __DIR__ . '/inc/header.php';
 ?>
@@ -48,6 +55,7 @@ require __DIR__ . '/inc/header.php';
         <form method="post" class="form">
             <?= csrf_field() ?>
             <input type="hidden" name="volver" value="<?= e(volver_actual()) ?>">
+            <input type="text" name="web" value="" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
             <div class="form-row">
                 <label class="campo">Nombre<input type="text" name="nombre" value="<?= e($d['nombre']) ?>" required autocomplete="given-name"></label>
                 <label class="campo">Apellido<input type="text" name="apellido" value="<?= e($d['apellido']) ?>" autocomplete="family-name"></label>
