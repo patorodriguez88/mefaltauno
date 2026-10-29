@@ -21,7 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('admin/brihet.php');
         }
     } catch (Exception $e) {
-        json_out(['ok' => false, 'error' => $e->getMessage()]);
+        if (($_POST['accion'] ?? '') === 'importar') json_out(['ok' => false, 'error' => $e->getMessage()]);
+        flash('error', $e->getMessage());
+        redirect('admin/brihet.php');
     }
 }
 
@@ -65,7 +67,8 @@ admin_header('Importar desde Brihet', 'colecciones');
     Se publican; el stock lo sigue informando WePoint (mientras tanto se ven “Sin stock · Conseguímelo”).
     Si la colección ya existe en la web se completa: <b>no se pisa</b> lo que hayas cambiado a mano (título, foto o precio).
     Se puede volver a importar para traer números nuevos o precios actualizados.
-    <?php if ($cat['leido']): ?><br><span class="small">Catálogo leído el <?= e(fecha($cat['leido'])) ?>.</span><?php endif; ?>
+    <?php if ($cat['leido']): ?><br><span class="small">Catálogo leído el <?= e(fecha($cat['leido'])) ?><?= ($cat['origen'] ?? '') === 'enviado' ? ' (mandado desde una PC de la oficina)' : '' ?>.</span><?php endif; ?>
+    <?php if (brihet_bloqueado()): ?><br><span class="small"><b>Brihet bloquea a este servidor:</b> para traer catálogo, stock, precios y fotos nuevas, en una PC de la oficina correr <code>php tools/brihet-enviar.php</code> y después importar acá.</span><?php endif; ?>
 </div>
 <?php if ($error): ?><div class="aviso" style="background:var(--red-100);color:var(--red)"><?= e($error) ?></div><?php endif; ?>
 

@@ -4,11 +4,20 @@
 // Se importan solo los números que Brihet tiene en stock; el stock de la web lo sigue manejando WePoint.
 // Precio: el de Brihet tal cual. Su "envío" fijo de $1.600 por número se cobra aparte en el carrito como
 // "Recargo interior" (Admin → Ajustes). Las fotos se bajan a nuestro servidor (uploads/).
+// Brihet (Cloudflare) le contesta 403 a nuestro servidor: el catálogo y las fotos que hacen falta se leen desde
+// una PC de la oficina con tools/brihet-enviar.php, que los sube a cron/brihet-recibir.php (a demanda).
 require_once __DIR__ . '/subidas.php';
 require_once __DIR__ . '/vistas.php';
 
 const BRIHET_API = 'https://brihet.com.ar/wp-json/wc/store/v1/products';
 const BRIHET_CACHE_MIN = 60;   // el catálogo leído se guarda una hora (no pedirle todo a Brihet en cada clic)
+const BRIHET_CACHE = __DIR__ . '/../storage/brihet_catalogo.json';
+const BRIHET_FOTOS = __DIR__ . '/../storage/brihet_fotos';      // fotos mandadas desde la PC, por sha1 de su URL
+const BRIHET_BLOQUEO = __DIR__ . '/../storage/brihet_bloqueado'; // la última vez que Brihet nos contestó 403
+
+function brihet_bloqueado(): bool {
+    return is_file(BRIHET_BLOQUEO) && filemtime(BRIHET_BLOQUEO) > time() - 86400;
+}
 
 function brihet_get(string $query): array {
     $ch = curl_init(BRIHET_API . '?' . $query);
@@ -21,15 +30,20 @@ function brihet_get(string $query): array {
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     $r = json_decode((string)$raw, true);
+    if ($code === 403) {
+        @touch(BRIHET_BLOQUEO);
+        throw new Exception('Brihet está bloqueando a este servidor (HTTP 403). Actualizá el catálogo desde una PC de la oficina: php tools/brihet-enviar.php');
+    }
     if ($code !== 200 || !is_array($r)) throw new Exception("Brihet no respondió bien (HTTP $code).");
     return $r;
 }
 
 // Catálogo completo: [colecciones (productos variables) indexadas por id, variantes agrupadas por colección]
 function brihet_catalogo(bool $refrescar = false): array {
-    $cache = dirname(__DIR__) . '/storage/brihet_catalogo.json';
-    if (!$refrescar && is_file($cache) && filemtime($cache) > time() - BRIHET_CACHE_MIN * 60) {
-        return json_decode((string)file_get_contents($cache), true);
+    if (!$refrescar && is_file(BRIHET_CACHE)) {
+        $c = json_decode((string)file_get_contents(BRIHET_CACHE), true);
+        // El mandado desde la PC vale hasta el próximo envío (el servidor no puede releerlo)
+        if (($c['origen'] ?? '') === 'enviado' || filemtime(BRIHET_CACHE) > time() - BRIHET_CACHE_MIN * 60) return $c;
     }
     @set_time_limit(300);
     $productos = [];
@@ -45,9 +59,44 @@ function brihet_catalogo(bool $refrescar = false): array {
         if (count($lote) < 100) break;
         usleep(400000);   // de a poco: no cargar el servidor de Brihet
     }
-    $out = ['leido' => date('Y-m-d H:i:s'), 'colecciones' => $productos, 'variantes' => $variantes];
-    @file_put_contents($cache, json_encode($out));
+    return brihet_guardar_catalogo($productos, $variantes, 'servidor');
+}
+
+function brihet_guardar_catalogo(array $colecciones, array $variantes, string $origen): array {
+    $out = ['leido' => date('Y-m-d H:i:s'), 'origen' => $origen, 'colecciones' => $colecciones, 'variantes' => $variantes];
+    @file_put_contents(BRIHET_CACHE, json_encode($out));
     return $out;
+}
+
+// URLs de las fotos que una importación todavía bajaría: portada de colecciones sin foto y números con stock sin foto.
+// Las ya mandadas que dejaron de hacer falta se borran.
+function brihet_fotos_necesarias(array $cat): array {
+    $urls = [];
+    foreach ($cat['colecciones'] as $id => $p) {
+        $vs = array_filter($cat['variantes'][$id] ?? [], fn($v) => !empty($v['is_in_stock']) && brihet_numero($v));
+        if (!$vs) continue;
+        $col = brihet_coleccion_web($p);
+        $foto_col = $p['images'][0]['src'] ?? null;
+        if ($foto_col && (!$col || !$col['imagen'])) $urls[$foto_col] = true;
+        $con_foto = $col ? q("SELECT numero, imagen FROM items WHERE coleccion_id=?", [$col['id']])->fetchAll(PDO::FETCH_KEY_PAIR) : [];
+        foreach ($vs as $v) {
+            $url = $v['images'][0]['src'] ?? $foto_col;
+            if ($url && empty($con_foto[brihet_numero($v)])) $urls[$url] = true;
+        }
+    }
+    $urls = array_filter($urls, fn($u) => parse_url($u, PHP_URL_HOST) === 'brihet.com.ar', ARRAY_FILTER_USE_KEY);
+    $hash = [];
+    foreach (array_keys($urls) as $u) $hash[sha1($u)] = $u;
+    foreach (glob(BRIHET_FOTOS . '/*') ?: [] as $f) if (!isset($hash[basename($f)])) @unlink($f);
+    return array_values(array_filter($hash, fn($h) => !is_file(BRIHET_FOTOS . "/$h"), ARRAY_FILTER_USE_KEY));
+}
+
+function brihet_guardar_foto(string $url, string $datos): bool {
+    if (parse_url($url, PHP_URL_HOST) !== 'brihet.com.ar' || strlen($datos) > 8 * 1024 * 1024) return false;
+    $info = @getimagesizefromstring($datos);
+    if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)) return false;
+    if (!is_dir(BRIHET_FOTOS) && !@mkdir(BRIHET_FOTOS, 0775, true)) return false;
+    return file_put_contents(BRIHET_FOTOS . '/' . sha1($url), $datos) !== false;
 }
 
 function brihet_texto(?string $html): string {
@@ -114,15 +163,21 @@ function brihet_coleccion_web(array $p): ?array {
 }
 
 // Baja una foto de Brihet (solo de brihet.com.ar) y la guarda como subida. Reusa la misma URL dentro del request.
+// Si se mandó desde la PC (ver brihet_fotos_necesarias) se usa esa, sin pedírsela a Brihet.
 function brihet_foto(string $url, string $carpeta, string $prefijo): ?string {
     static $hechas = [];
     if (isset($hechas[$url])) return $hechas[$url];
     if (parse_url($url, PHP_URL_HOST) !== 'brihet.com.ar') return null;
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30, CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0)']);
-    $datos = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $guardada = BRIHET_FOTOS . '/' . sha1($url);
+    if (is_file($guardada)) {
+        [$datos, $code] = [file_get_contents($guardada), 200];
+    } else {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30, CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; MeFaltaUno/1.0)']);
+        $datos = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+    }
     if ($code !== 200 || !$datos || strlen($datos) > 8 * 1024 * 1024) return null;
     $tmp = tempnam(sys_get_temp_dir(), 'bri');
     file_put_contents($tmp, $datos);
@@ -232,7 +287,9 @@ function brihet_aplicar(array $it, array $v): void {
 
 // En vivo para unos pocos números (el carrito): una consulta por número, todas en paralelo y con tiempo corto.
 // Si Brihet no responde, queda el último dato guardado. Devuelve cuántos se actualizaron.
+// Mientras Brihet nos bloquee no se consulta (no demorar el carrito): vale lo último que se mandó desde la PC.
 function brihet_refrescar_items(array $item_ids): int {
+    if (brihet_bloqueado()) return 0;
     $item_ids = array_values(array_filter(array_map('intval', $item_ids)));
     if (!$item_ids) return 0;
     $in = implode(',', array_fill(0, count($item_ids), '?'));
@@ -252,6 +309,7 @@ function brihet_refrescar_items(array $item_ids): int {
     $n = 0;
     foreach ($hs as [$ch, $it]) {
         $v = json_decode((string)curl_multi_getcontent($ch), true);
+        if ((int)curl_getinfo($ch, CURLINFO_HTTP_CODE) === 403) @touch(BRIHET_BLOQUEO);
         if ((int)curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200 && is_array($v) && isset($v['prices'])) {
             brihet_aplicar($it, $v);
             $n++;
@@ -263,9 +321,10 @@ function brihet_refrescar_items(array $item_ids): int {
     return $n;
 }
 
-// Botón del operador: relee todo el catálogo y actualiza cantidad y precio de todo lo importado (sin fotos ni números nuevos)
-function brihet_actualizar_todo(): array {
-    $cat = brihet_catalogo(true);
+// Botón del operador: relee todo el catálogo y actualiza cantidad y precio de todo lo importado (sin fotos ni números nuevos).
+// $cat: el catálogo ya leído (el que manda la PC); sin él se le pide a Brihet.
+function brihet_actualizar_todo(?array $cat = null): array {
+    $cat = $cat ?? brihet_catalogo(true);
     $por_id = [];
     foreach ($cat['variantes'] as $lista) foreach ($lista as $v) $por_id[(int)$v['id']] = $v;
     $res = ['actualizados' => 0, 'sin_dato' => 0];
