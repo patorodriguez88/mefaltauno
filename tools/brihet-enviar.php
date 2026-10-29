@@ -3,16 +3,21 @@
 // Brihet le contesta 403 a nuestro servidor: este script lee su catálogo desde acá, lo sube a cron/brihet-recibir.php
 // (que actualiza stock y precios de lo importado) y después sube las fotos que el servidor pide. Se corre a demanda,
 // antes de importar o para refrescar precios. No usa la base local: solo PHP con curl.
-// La clave es WEPOINT_CRON_TOKEN de producción: --token, la variable MFU_TOKEN o se pregunta.
+// La clave es WEPOINT_CRON_TOKEN de producción: --token, la variable MFU_TOKEN, la guardada en ~/.mefaltauno-brihet-token
+// o se pregunta (y si el envío sale bien se guarda ahí, solo legible por el usuario). Para doble clic: tools/Actualizar Brihet.command
 if (PHP_SAPI !== 'cli') exit('Solo por línea de comandos.');
 
 const BRIHET_API = 'https://brihet.com.ar/wp-json/wc/store/v1/products';
 const UA = 'Mozilla/5.0 (compatible; MeFaltaUno/1.0; +https://www.mefaltauno.com.ar)';
+define('TOKEN_ARCHIVO', (getenv('HOME') ?: '.') . '/.mefaltauno-brihet-token');
 
 $opt = getopt('', ['servidor:', 'token:']);
 $servidor = rtrim($opt['servidor'] ?? 'https://www.mefaltauno.com.ar', '/');
 $token = $opt['token'] ?? (getenv('MFU_TOKEN') ?: '');
+$guardar = false;
+if ($token === '' && is_file(TOKEN_ARCHIVO)) $token = trim((string)file_get_contents(TOKEN_ARCHIVO));
 if ($token === '') {
+    $guardar = true;
     echo 'Clave del servidor (WEPOINT_CRON_TOKEN): ';
     system('stty -echo');
     $token = trim((string)fgets(STDIN));
@@ -44,6 +49,7 @@ function servidor(string $accion, $cuerpo, array $headers = []): array {
         CURLOPT_HTTPHEADER => array_merge(["X-Token: $token"], $headers),
     ]);
     $r = json_decode($raw, true);
+    if ($code === 403 && is_file(TOKEN_ARCHIVO)) @unlink(TOKEN_ARCHIVO);   // clave guardada vieja: la próxima vez se pregunta
     if (!is_array($r) || empty($r['ok'])) exit("El servidor no aceptó el envío (HTTP $code): " . ($r['error'] ?? ($err ?: mb_substr($raw, 0, 200))) . "\n");
     return $r;
 }
@@ -71,6 +77,11 @@ echo "\n" . count($productos) . " colecciones, $n números.\n";
 // 2. Al servidor
 echo "Subiendo catálogo a {$servidor}…\n";
 $r = servidor('catalogo', gzencode(json_encode(['colecciones' => $productos, 'variantes' => $variantes]), 6), ['Content-Type: application/octet-stream']);
+if ($guardar && $servidor === 'https://www.mefaltauno.com.ar') {
+    file_put_contents(TOKEN_ARCHIVO, $token);
+    chmod(TOKEN_ARCHIVO, 0600);
+    echo "Clave guardada en esta PC: la próxima vez no se pide.\n";
+}
 echo "Stock y precios actualizados en {$r['actualizados']} números" . ($r['sin_dato'] ? " ({$r['sin_dato']} ya no están en Brihet)" : '') . ".\n";
 
 // 3. Fotos que el servidor todavía no tiene (para las importaciones)
