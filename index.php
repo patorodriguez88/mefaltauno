@@ -5,7 +5,7 @@ require __DIR__ . '/inc/comics.php';
 
 $destacadas = q("SELECT c.*, MIN(CASE WHEN i.congelado=0 AND (i.stock>0 OR COALESCE(i.brihet_stock,0)>0) AND c.proximamente=0 THEN COALESCE(NULLIF(i.precio_promo,0), i.precio) END) AS desde, COUNT(i.id) AS total
                  FROM colecciones c LEFT JOIN items i ON i.coleccion_id=c.id AND i.activo=1
-                 WHERE c.activa=1 GROUP BY c.id ORDER BY c.destacada DESC, c.orden LIMIT 8")->fetchAll();
+                 WHERE c.activa=1 GROUP BY c.id ORDER BY c.destacada DESC, c.orden LIMIT 10")->fetchAll();
 
 // Imágenes para el "álbum" del hero
 $fotos = q("SELECT imagen FROM items WHERE activo=1 AND imagen IS NOT NULL ORDER BY RAND() LIMIT 9")->fetchAll(PDO::FETCH_COLUMN);
@@ -86,7 +86,7 @@ require __DIR__ . '/inc/header.php';
             <h2>Colecciones <span class="hl">legendarias</span></h2>
             <a href="<?= url('colecciones.php') ?>">Ver todas →</a>
         </div>
-        <div class="grid-colecciones">
+        <div class="grid-colecciones grid-portada">
             <?php foreach ($destacadas as $c) echo tarjeta_coleccion($c); ?>
         </div>
     </div>

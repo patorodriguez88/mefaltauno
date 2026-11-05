@@ -1,10 +1,12 @@
 </main>
 
-<div class="franja-epica" aria-hidden="true">
-    <div class="franja-pista">
-        <?php for ($vuelta = 0; $vuelta < 2; $vuelta++): foreach (FRASES_EPICAS as $f): ?>
-            <span><?= e($f) ?></span><i>★</i>
-        <?php endforeach; endfor; ?>
+<div class="franja-marco">
+    <div class="franja-epica" aria-hidden="true">
+        <div class="franja-pista">
+            <?php for ($vuelta = 0; $vuelta < 2; $vuelta++): foreach (FRASES_EPICAS as $f): ?>
+                <span><?= e($f) ?></span><i>★</i>
+            <?php endforeach; endfor; ?>
+        </div>
     </div>
 </div>
 
