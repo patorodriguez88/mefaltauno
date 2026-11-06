@@ -27,9 +27,10 @@
     --shadow: 0 1px 2px rgba(0, 57, 60, .06), 0 6px 20px rgba(0, 57, 60, .07);
     --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-display: 'Nunito', var(--font);
-    /* Ancho de la tienda: en pantallas grandes aprovecha los costados; hasta 1120 px el margen sigue en 16 px */
-    --ancho-sitio: 1720px;
-    --margen-sitio: clamp(16px, 5vw - 40px, 48px);
+    /* Ancho de la tienda: hasta 1120 px el margen es de 16 px, crece hasta 2,5 cm en 1366 px y de ahí no baja.
+       El contenido llega como máximo a 1624 px: en monitores más grandes queda centrado */
+    --margen-sitio: clamp(16px, 32vw - 342px, 2.5cm);
+    --ancho-sitio: calc(1624px + 2 * 2.5cm);
 }
 
 * { box-sizing: border-box; }
@@ -140,8 +141,8 @@ p { margin: 0 0 1em; }
 /* ── Tarjetas de colección ──────────────────────────────── */
 .grid-colecciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(230px, 15vw, 280px), 1fr)); gap: 20px; }
 /* Portada: dos filas parejas (4 columnas con 8 tarjetas; en pantallas anchas, 5 con 10) */
-@media (max-width: 1299px) { .grid-portada > :nth-child(n+9) { display: none; } }
-@media (min-width: 1300px) { .grid-portada { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 1419px) { .grid-portada > :nth-child(n+9) { display: none; } }
+@media (min-width: 1420px) { .grid-portada { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .col-card { display: flex; flex-direction: column; background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); text-decoration: none; color: inherit; transition: transform .15s, box-shadow .15s; }
 .col-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(0, 57, 60, .08), 0 14px 30px rgba(0, 57, 60, .12); }
 .col-card-img { aspect-ratio: 1; background: var(--teal-50) center/cover no-repeat; position: relative; }
