@@ -163,6 +163,14 @@ function wepoint_sincronizar_stock(): array {
     }
 
     $res = ['wepoint' => count($todas), 'actualizados' => 0, 'sin_sku' => 0, 'no_encontrados' => [], 'sin_dato_stock' => 0];
+    // Vendido que WePoint todavía no descontó: unidades de pedidos abiertos que no se le mandaron como orden
+    // (sin pagar, o esperando el encargue). Sin restarlas, cada sincronización las devolvería al stock y se
+    // podrían vender dos veces. Lo de encargue cuenta recién cuando llegó al depósito.
+    $comprometido = [];
+    foreach (q("SELECT pi.item_id, SUM(pi.fisico + IF(pi.encargue_estado='recibido', pi.encargue, 0)) AS n FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id
+                WHERE p.estado IN ('pendiente','confirmado','preparando') AND p.wepoint_orden_id IS NULL AND pi.item_id IS NOT NULL GROUP BY pi.item_id") as $r) {
+        $comprometido[(int)$r['item_id']] = (int)$r['n'];
+    }
     foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.wepoint_variante_id, i.numero, i.stock, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
         $sku = strtoupper(trim((string)$it['sku']));
         $u = null;
@@ -179,11 +187,14 @@ function wepoint_sincronizar_stock(): array {
         $disp = wepoint_disponible_de($u);
         if ($disp === null) { $res['sin_dato_stock']++; continue; }
         // llegada_at primero: compara con el stock anterior (sin stock en ningún lado → ahora hay)
+        $comp = $comprometido[(int)$it['id']] ?? 0;
+        $nuevo = max(0, $disp - $comp);
         q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), stock=?, wepoint_id=?, wepoint_variante_id=?, stock_sync_at=NOW() WHERE id=?",
-          [max(0, $disp), max(0, $disp), (int)$u['id_producto'], $u['id_variante'], $it['id']]);
-        if ((int)$it['stock'] <= 0 && $disp > 0) registrar_llegada((int)$it['id'], 'wepoint', (int)$disp);
-        $dif = max(0, $disp) - (int)$it['stock'];
-        if ($dif) registrar_movimiento((int)$it['id'], $dif > 0 ? 'ingreso' : 'salida_wp', $dif, ['detalle' => 'WePoint informó ' . max(0, $disp) . ' (había ' . (int)$it['stock'] . ')']);
+          [$nuevo, $nuevo, (int)$u['id_producto'], $u['id_variante'], $it['id']]);
+        if ((int)$it['stock'] <= 0 && $nuevo > 0) registrar_llegada((int)$it['id'], 'wepoint', $nuevo);
+        $dif = $nuevo - (int)$it['stock'];
+        if ($dif) registrar_movimiento((int)$it['id'], $dif > 0 ? 'ingreso' : 'salida_wp', $dif, ['detalle' => 'WePoint informó ' . max(0, $disp)
+            . ($comp ? " − $comp ya vendidas que todavía no se le mandaron" : '') . ' (había ' . (int)$it['stock'] . ')']);
         $res['actualizados']++;
     }
     $res['nuevos'] = wepoint_registrar_nuevos($todas);
