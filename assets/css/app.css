@@ -973,7 +973,7 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 /* Colección (panel): botón "Se vende" y panel lateral con la composición del stock */
 .stock-ver { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
 .stock-ver:hover .badge, .stock-ver:focus-visible .badge { outline: 2px solid var(--teal); }
-.cajon { margin: 0 0 0 auto; height: 100%; max-height: none; width: min(420px, 100%); border: 0; padding: 0; color: var(--ink); background: var(--white); box-shadow: -20px 0 50px rgba(0, 40, 42, .25); }
+.cajon { margin: 0 0 0 auto; height: 100%; max-height: none; width: min(480px, 100%); border: 0; padding: 0; color: var(--ink); background: var(--white); box-shadow: -20px 0 50px rgba(0, 40, 42, .25); }
 .cajon::backdrop { background: rgba(0, 22, 24, .35); }
 .cajon[open] { animation: cajon-entra .25s ease-out; }
 @keyframes cajon-entra { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -1010,3 +1010,19 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .barra-guardar span { color: var(--muted); font-size: .9rem; }
 .barra-guardar[hidden] { display: none; }
 .cajon-sub { margin: 8px 0 4px; font-size: .78rem; font-weight: 700; color: var(--teal-900); }
+
+/* Panel de stock: movimientos del depósito (ingresos, ventas, cancelaciones) con su saldo */
+.mov-resumen { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; font-size: .85rem; color: var(--muted); }
+.mov-resumen b { color: var(--ink); }
+.mov-scroll { max-height: 60vh; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.mov-tabla { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.mov-tabla th { position: sticky; top: 0; background: var(--teal-50); text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--teal); padding: 6px 8px; }
+.mov-tabla td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+.mov-tabla small { display: block; color: var(--muted); margin-top: 1px; overflow-wrap: anywhere; }
+.mov-fecha { white-space: nowrap; color: var(--muted); }
+.mov-num { text-align: right; white-space: nowrap; }
+.mov-tipo { font-weight: 600; }
+.mov-mas .mov-cant { color: var(--green); font-weight: 700; }
+.mov-menos .mov-cant { color: var(--red); font-weight: 700; }
+.mov-inicio td { background: var(--teal-50); }
+.mov-rec td { opacity: .6; }

@@ -182,6 +182,8 @@ function wepoint_sincronizar_stock(): array {
         q("UPDATE items SET llegada_at = IF(stock<=0 AND COALESCE(brihet_stock,0)<=0 AND ?>0, NOW(), llegada_at), stock=?, wepoint_id=?, wepoint_variante_id=?, stock_sync_at=NOW() WHERE id=?",
           [max(0, $disp), max(0, $disp), (int)$u['id_producto'], $u['id_variante'], $it['id']]);
         if ((int)$it['stock'] <= 0 && $disp > 0) registrar_llegada((int)$it['id'], 'wepoint', (int)$disp);
+        $dif = max(0, $disp) - (int)$it['stock'];
+        if ($dif) registrar_movimiento((int)$it['id'], $dif > 0 ? 'ingreso' : 'salida_wp', $dif, ['detalle' => 'WePoint informó ' . max(0, $disp) . ' (había ' . (int)$it['stock'] . ')']);
         $res['actualizados']++;
     }
     $res['nuevos'] = wepoint_registrar_nuevos($todas);

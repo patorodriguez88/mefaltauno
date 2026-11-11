@@ -605,6 +605,52 @@ function schema_pasos(): array {
                 KEY idx_item (item_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // Movimientos de stock del depósito (inc/trazabilidad.php): cada ingreso, venta, cancelación y ajuste con su
+        // saldo. Lo anterior se reconstruye con los pedidos y las llegadas (reconstruido=1, sin saldo) y cierra con
+        // una línea "inicio" con el stock de ese momento.
+        38 => [
+            "CREATE TABLE IF NOT EXISTS stock_movimientos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id INT NOT NULL,
+                tipo VARCHAR(12) NOT NULL,
+                cantidad INT NOT NULL,
+                saldo INT NULL,
+                pedido_id INT NULL,
+                cliente_id INT NULL,
+                detalle VARCHAR(200) NULL,
+                usuario VARCHAR(160) NULL,
+                reconstruido TINYINT(1) NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_item (item_id, created_at, id),
+                CONSTRAINT fk_mov_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            function (PDO $db) {
+                $ins = $db->prepare("INSERT INTO stock_movimientos (item_id, tipo, cantidad, pedido_id, cliente_id, detalle, reconstruido, created_at) VALUES (?,?,?,?,?,?,1,?)");
+                // Llegadas al depósito que quedaron anotadas (Brihet es stock del editor, no del depósito)
+                foreach ($db->query("SELECT item_id, origen, unidades, created_at FROM item_llegadas WHERE origen<>'brihet'") as $r) {
+                    $ins->execute([$r['item_id'], $r['origen'] === 'manual' ? 'manual' : 'ingreso', (int)$r['unidades'], null, null,
+                                   $r['origen'] === 'manual' ? 'Carga a mano' : 'Informado por WePoint', $r['created_at']]);
+                }
+                // Ventas: lo físico sale del depósito; lo de encargue se anota sin mover el saldo
+                foreach ($db->query("SELECT pi.item_id, pi.fisico, pi.encargue, p.id AS pedido_id, p.cliente_id, p.created_at
+                                     FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id JOIN items i ON i.id=pi.item_id") as $r) {
+                    if ($r['fisico'] > 0) $ins->execute([$r['item_id'], 'venta', -(int)$r['fisico'], $r['pedido_id'], $r['cliente_id'], null, $r['created_at']]);
+                    if ($r['encargue'] > 0) $ins->execute([$r['item_id'], 'encargue', 0, $r['pedido_id'], $r['cliente_id'], (int)$r['encargue'] . ' u. por encargue a Brihet (no sale del depósito)', $r['created_at']]);
+                }
+                // Cancelaciones: vuelve al depósito lo físico, con la fecha en que se canceló
+                foreach ($db->query("SELECT pi.item_id, pi.fisico, p.id AS pedido_id, p.cliente_id,
+                                            (SELECT MIN(h.created_at) FROM historial h WHERE h.entidad='pedido' AND h.entidad_id=p.id AND h.estado='cancelado') AS cuando
+                                     FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id JOIN items i ON i.id=pi.item_id
+                                     WHERE p.estado='cancelado' AND pi.fisico>0") as $r) {
+                    $ins->execute([$r['item_id'], 'cancelacion', (int)$r['fisico'], $r['pedido_id'], $r['cliente_id'], null, $r['cuando'] ?: date('Y-m-d H:i:s')]);
+                }
+                // Cierre: el stock de hoy, para que desde acá el saldo cuadre línea por línea
+                $db->exec("INSERT INTO stock_movimientos (item_id, tipo, cantidad, saldo, detalle, reconstruido, created_at)
+                           SELECT i.id, 'inicio', 0, i.stock, 'Stock al empezar el historial. Lo anterior sale de los pedidos y las llegadas anotadas: puede faltar algún ingreso.', 1, NOW()
+                           FROM items i WHERE i.stock>0 OR EXISTS (SELECT 1 FROM stock_movimientos m WHERE m.item_id=i.id)");
+            },
+        ],
     ];
 }
 

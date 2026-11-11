@@ -8,6 +8,13 @@ $col = q("SELECT * FROM colecciones WHERE id=?", [$id])->fetch();
 if (!$col) redirect('admin/colecciones.php');
 $con_wepoint = wepoint_listo();
 
+// Movimientos de stock de un número, para la tabla del panel lateral (se piden al abrirlo)
+if (isset($_GET['movimientos'])) {
+    $iid = (int)q("SELECT id FROM items WHERE id=? AND coleccion_id=?", [(int)$_GET['movimientos'], $id])->fetchColumn();
+    header('Content-Type: application/json; charset=utf-8');
+    exit(json_encode($iid ? movimientos_item($iid) : [], JSON_UNESCAPED_UNICODE));
+}
+
 function monto($v): ?float {
     $v = trim((string)$v);
     if ($v === '') return null;
@@ -89,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stock, !empty($it['congelado']) ? 1 : 0, $limite, $max_cli, strtoupper(trim($it['sku'] ?? '')) ?: null,
                 $activo, $salida, (int)$iid, $id,
             ]);
+            if ($stock !== (int)$actual['stock']) registrar_movimiento((int)$iid, 'manual', $stock - (int)$actual['stock'], ['usuario' => nombre_cliente($admin), 'detalle' => 'Cargado desde el panel']);
         }
 
         foreach ($fijar_salidas as $num => $sf) {
@@ -135,12 +143,8 @@ foreach (q("SELECT r.item_id, r.stock, r.origen, r.abono_id, r.vence_at, c.nombr
     $reservas_item[(int)$r['item_id']][] = ['quien' => nombre_cliente($r), 'por' => $r['abono_id'] ? 'abono' : ($r['origen'] === 'manual' ? 'a mano' : 'búsqueda'),
                                             'stock' => $r['stock'], 'vence' => fecha($r['vence_at'])];
 }
-// Historia de cada número (inc/trazabilidad.php): llegadas y cambios de su fecha de salida
-$llegadas_item = $cambios_item = [];
-foreach (q("SELECT l.item_id, l.origen, l.unidades, l.created_at FROM item_llegadas l JOIN items i ON i.id=l.item_id
-            WHERE i.coleccion_id=? ORDER BY l.created_at DESC", [$id]) as $r) {
-    if (count($llegadas_item[(int)$r['item_id']] ?? []) < 8) $llegadas_item[(int)$r['item_id']][] = ['cuando' => fecha($r['created_at']), 'origen' => ORIGENES_LLEGADA[$r['origen']] ?? $r['origen'], 'unidades' => $r['unidades']];
-}
+// Historia de cada número (inc/trazabilidad.php): cambios de su fecha de salida. Los movimientos de stock se piden al abrir el panel.
+$cambios_item = [];
 $cambios_col = [];
 foreach (q("SELECT * FROM salidas_cambios WHERE coleccion_id=? ORDER BY created_at DESC, id DESC", [$id]) as $r) {
     $c = ['cuando' => fecha($r['created_at']), 'quien' => $r['usuario'], 'que' => CAMPOS_SALIDA[$r['campo']] ?? $r['campo'],
@@ -266,6 +270,7 @@ admin_header($col['nombre'], 'colecciones');
                         <?php
                         $res = array_sum(reservas_mapa()[(int)$it['id']] ?? []);
                         $detalle = [
+                            'id' => (int)$it['id'],
                             'titulo' => num((int)$it['numero']) . ' · ' . $it['titulo'],
                             'deposito' => (int)$it['stock'], 'sync' => $it['stock_sync_at'] ? fecha($it['stock_sync_at']) : null,
                             'reservas' => $reservas_item[(int)$it['id']] ?? [], 'reservado' => $res,
@@ -275,7 +280,7 @@ admin_header($col['nombre'], 'colecciones');
                             'brihet_at' => $it['brihet_stock_at'] ? fecha($it['brihet_stock_at']) : null,
                             'encargue_pend' => $encargue_pend[(int)$it['id']] ?? 0, 'encargue' => disponible_encargue($it), 'total' => disponible_total($it),
                             'primera' => $it['primera_llegada_at'] ? fecha($it['primera_llegada_at']) : null,
-                            'llegadas' => $llegadas_item[(int)$it['id']] ?? [], 'cambios' => $cambios_item[(int)$it['id']] ?? [],
+                            'cambios' => $cambios_item[(int)$it['id']] ?? [],
                         ];
                         ?>
                         <?php if (!$con_wepoint): ?><label class="tope-campo">En depósito<input type="number" name="<?= $n ?>[stock]" value="<?= (int)$it['stock'] ?>" min="0" class="in-num"></label><?php endif; ?>
@@ -363,9 +368,11 @@ admin_header($col['nombre'], 'colecciones');
                 ${resEnc.length ? fila('− Reservado por encargue', resEnc.length, 'ambar') + lista(resEnc) : ''}
                 ${fila('= Se vende por encargue', d.encargue, 'total')}`}
             </section>
+            <section><h4>Movimientos del depósito</h4>
+                <div id="cajon-movs"><p class="cajon-nota">Cargando…</p></div>
+            </section>
             <section><h4>Historia</h4>
                 ${fila('Primera llegada al depósito', d.primera ? esc(d.primera) : '—')}
-                ${d.llegadas.length ? '<p class="cajon-sub">Llegadas de stock</p><ul class="cajon-lista">' + d.llegadas.map(l => `<li>${esc(l.cuando)} · ${esc(l.origen)}${l.unidades !== null ? ' · ' + esc(l.unidades) + ' u.' : ''}</li>`).join('') + '</ul>' : '<p class="cajon-nota">Todavía no hay llegadas registradas.</p>'}
                 ${d.cambios.length ? '<p class="cajon-sub">Cambios de la fecha de salida</p><ul class="cajon-lista">' + d.cambios.map(c => `<li>${esc(c.antes)} → <b>${esc(c.despues)}</b><br><small>${esc(c.cuando)} · ${esc(c.quien)}</small></li>`).join('') + '</ul>' : ''}
             </section>
             <section class="cajon-final">
@@ -373,7 +380,42 @@ admin_header($col['nombre'], 'colecciones');
                 ${d.max_cliente !== null ? `<p class="cajon-nota">Cada cliente puede comprar como máximo ${d.max_cliente}.</p>` : ''}
             </section>`;
         cajon.showModal();
+        movimientos(d.id);
     });
+    // Tabla de movimientos: ingresos, ventas y cancelaciones con el saldo que fue quedando
+    const PEDIDO_URL = <?= json_encode(url('admin/pedido.php?id=')) ?>;
+    const signo = n => n > 0 ? '+' + n : String(n);
+    async function movimientos(itemId) {
+        const caja = document.getElementById('cajon-movs');
+        let ms;
+        try {
+            const r = await fetch(`?id=<?= (int)$id ?>&movimientos=${itemId}`, { headers: { Accept: 'application/json' } });
+            ms = await r.json();
+        } catch (e) { caja.innerHTML = '<p class="cajon-nota">No se pudieron cargar los movimientos.</p>'; return; }
+        if (!caja.isConnected) return;
+        if (!ms.length) { caja.innerHTML = '<p class="cajon-nota">Todavía no hay movimientos registrados.</p>'; return; }
+        const suma = t => ms.filter(m => t.includes(m.tipo)).reduce((a, m) => a + Math.abs(m.cantidad), 0);
+        const entraron = ms.filter(m => (m.tipo === 'ingreso' || m.tipo === 'manual') && m.cantidad > 0).reduce((a, m) => a + m.cantidad, 0);
+        const filas = ms.map(m => {
+            const quien = [m.cliente ? `<b>${esc(m.cliente)}</b>` : '', m.pedido ? `<a href="${PEDIDO_URL}${m.pedido}" target="_blank">pedido #${m.pedido}</a>` : '',
+                           m.detalle ? esc(m.detalle) : '', m.usuario ? 'por ' + esc(m.usuario) : ''].filter(Boolean).join(' · ');
+            const cant = m.tipo === 'inicio' || m.tipo === 'encargue' ? '—' : signo(m.cantidad);
+            const signoCls = cant === '—' ? '' : m.cantidad > 0 ? ' mov-mas' : ' mov-menos';
+            return `<tr class="mov-${m.tipo}${signoCls}${m.reconstruido ? ' mov-rec' : ''}">
+                <td class="mov-fecha">${esc(m.cuando)}</td>
+                <td><span class="mov-tipo">${esc(m.que)}</span>${quien ? `<small>${quien}</small>` : ''}</td>
+                <td class="mov-num mov-cant">${cant}</td>
+                <td class="mov-num"><b>${m.saldo ?? '—'}</b></td></tr>`;
+        }).join('');
+        caja.innerHTML = `
+            <div class="mov-resumen"><span>Entraron <b>${entraron}</b></span>
+                <span>Vendidas <b>${suma(['venta'])}</b></span><span>Canceladas <b>${suma(['cancelacion'])}</b></span></div>
+            <div class="mov-scroll"><table class="mov-tabla">
+                <thead><tr><th>Fecha</th><th>Movimiento</th><th class="mov-num">Cant.</th><th class="mov-num">Saldo</th></tr></thead>
+                <tbody>${filas}</tbody></table></div>
+            ${ms.some(m => m.reconstruido) ? '<p class="cajon-nota">Las líneas en gris son anteriores al historial: salen de los pedidos y las llegadas anotadas, por eso no tienen saldo.</p>' : ''}`;
+        caja.querySelector('.mov-scroll').scrollTop = 1e6;   // lo último a la vista
+    }
     cajon.addEventListener('click', ev => { if (ev.target === cajon) cajon.close(); });   // tocar afuera cierra
 })();
 

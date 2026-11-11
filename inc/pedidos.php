@@ -15,7 +15,10 @@ function pedido_cambiar_estado(int $id, string $nuevo, ?string $nota, bool $avis
     $lineas = q("SELECT item_id, cantidad, fisico FROM pedido_items WHERE pedido_id=? AND item_id IS NOT NULL", [$id])->fetchAll();
     if ($nuevo === 'cancelado' && $viejo !== 'cancelado') {
         // Vuelve al stock del depósito solo lo físico; lo de encargue nunca salió de ahí
-        foreach ($lineas as $l) q("UPDATE items SET stock = stock + ?, limite = IF(limite IS NULL, NULL, limite + ?) WHERE id=?", [$l['fisico'], $l['cantidad'], $l['item_id']]);
+        foreach ($lineas as $l) {
+            q("UPDATE items SET stock = stock + ?, limite = IF(limite IS NULL, NULL, limite + ?) WHERE id=?", [$l['fisico'], $l['cantidad'], $l['item_id']]);
+            registrar_movimiento((int)$l['item_id'], 'cancelacion', (int)$l['fisico'], ['pedido_id' => $id, 'cliente_id' => (int)$p['cliente_id'], 'usuario' => $usuario]);
+        }
         if ($p['cupon_codigo']) q("UPDATE cupones SET usos = GREATEST(usos - 1, 0) WHERE codigo=?", [$p['cupon_codigo']]);
     }
     if ($nuevo === 'entregado' && $viejo !== 'entregado') {

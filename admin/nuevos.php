@@ -39,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               [$col['id'], $numero, $titulo, $foto, $foto ? 'manual' : null, $precio, (int)$n['stock'], $n['sku'], $n['wepoint_id'], $n['wepoint_variante_id'], $falta ? 0 : 1]);
             $item_id = (int)db()->lastInsertId();
         }
+        $dif = (int)$n['stock'] - ($existe ? (int)$existe['stock'] : 0);
+        if ($dif) registrar_movimiento($item_id, $dif > 0 ? 'ingreso' : 'salida_wp', $dif, ['usuario' => nombre_cliente($admin), 'detalle' => 'Publicado desde WePoint con ' . (int)$n['stock'] . ' u.']);
         q("DELETE FROM wepoint_nuevos WHERE clave=?", [$clave]);
         // ¿Es lo que pidió alguien en "Me falta"? Se vincula y, si hay stock, se le reserva
         $si_id = (int)($_POST['solicitud_item_id'] ?? 0);

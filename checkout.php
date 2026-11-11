@@ -78,6 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   [$pid, $it['id'], $it['coleccion'], $it['numero'], $it['titulo'], $l['precio'], $l['recargo'], $l['cantidad'], $fis, $enc, $enc ? 'pendiente' : null]);
                 // Solo lo físico sale del stock del depósito; el tope del operador cuenta todo lo vendido
                 q("UPDATE items SET stock = stock - ?, limite = IF(limite IS NULL, NULL, limite - ?) WHERE id=?", [$fis, $l['cantidad'], $it['id']]);
+                registrar_movimiento((int)$it['id'], 'venta', -$fis, ['pedido_id' => $pid, 'cliente_id' => (int)$cli['id']]);
+                if ($enc) registrar_movimiento((int)$it['id'], 'encargue', 0, ['pedido_id' => $pid, 'cliente_id' => (int)$cli['id'],
+                                                                                'detalle' => "$enc u. por encargue a Brihet (no sale del depósito)"]);
                 if ($fis) reservas_usar((int)$cli['id'], (int)$it['id'], $fis, $pid);
                 q("INSERT IGNORE INTO cliente_colecciones (cliente_id, coleccion_id) VALUES (?,?)", [$cli['id'], $it['coleccion_id']]);
             }
