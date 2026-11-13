@@ -28,6 +28,10 @@ try {
         $mp = mp_revisar_pendientes();
         echo date('Y-m-d H:i:s') . " MERCADO PAGO · revisados {$mp['revisados']} · confirmados {$mp['confirmados']}" . ($mp['errores'] ? ' · errores: ' . implode(' | ', $mp['errores']) : '') . "\n";
     }
+    // Pedidos pagados que WePoint rechazó (sin stock posicionado todavía): se reintentan en cada pasada
+    $t = wepoint_reintentar_trabados();
+    if ($t['intentados']) echo date('Y-m-d H:i:s') . " TRABADOS · reintentados {$t['intentados']} · enviados " . count($t['enviados'])
+        . ($t['siguen'] ? ' · siguen: ' . implode(' | ', $t['siguen']) : '') . "\n";
     $p = wepoint_sincronizar_pedidos();
     echo date('Y-m-d H:i:s') . " PEDIDOS OK · revisados {$p['revisados']} · actualizados {$p['actualizados']}" . ($p['errores'] ? ' · errores: ' . implode(' | ', $p['errores']) : '') . "\n";
 } catch (Exception $e) {

@@ -149,6 +149,19 @@ function wepoint_unidades(): array {
     return $todas;
 }
 
+// Vendido en la web que WePoint todavía no descontó (por número): unidades de pedidos abiertos que no se le
+// mandaron como orden (sin pagar, esperando el encargue o rechazadas por WePoint). Lo de encargue cuenta recién
+// cuando llegó al depósito.
+function wepoint_comprometido(?int $item_id = null): array {
+    $out = [];
+    foreach (q("SELECT pi.item_id, SUM(pi.fisico + IF(pi.encargue_estado='recibido', pi.encargue, 0)) AS n FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id
+                WHERE p.estado IN ('pendiente','confirmado','preparando') AND p.wepoint_orden_id IS NULL AND pi.item_id IS NOT NULL"
+                . ($item_id ? ' AND pi.item_id=' . (int)$item_id : '') . " GROUP BY pi.item_id") as $r) {
+        $out[(int)$r['item_id']] = (int)$r['n'];
+    }
+    return $out;
+}
+
 // Trae las unidades de WePoint y actualiza stock y vínculo de cada número. Busca en este orden:
 // la edición vinculada, el SKU, el SKU + el número ("15200" N° 1 → edición "15200-1": se vinculó cuando en
 // WePoint era un producto simple y después lo pasaron a título con ediciones) y el título vinculado + el número.
@@ -166,11 +179,7 @@ function wepoint_sincronizar_stock(): array {
     // Vendido que WePoint todavía no descontó: unidades de pedidos abiertos que no se le mandaron como orden
     // (sin pagar, o esperando el encargue). Sin restarlas, cada sincronización las devolvería al stock y se
     // podrían vender dos veces. Lo de encargue cuenta recién cuando llegó al depósito.
-    $comprometido = [];
-    foreach (q("SELECT pi.item_id, SUM(pi.fisico + IF(pi.encargue_estado='recibido', pi.encargue, 0)) AS n FROM pedido_items pi JOIN pedidos p ON p.id=pi.pedido_id
-                WHERE p.estado IN ('pendiente','confirmado','preparando') AND p.wepoint_orden_id IS NULL AND pi.item_id IS NOT NULL GROUP BY pi.item_id") as $r) {
-        $comprometido[(int)$r['item_id']] = (int)$r['n'];
-    }
+    $comprometido = wepoint_comprometido();
     foreach (q("SELECT i.id, i.sku, i.wepoint_id, i.wepoint_variante_id, i.numero, i.stock, c.nombre FROM items i JOIN colecciones c ON c.id=i.coleccion_id")->fetchAll() as $it) {
         $sku = strtoupper(trim((string)$it['sku']));
         $u = null;
@@ -407,5 +416,107 @@ function wepoint_sincronizar_pedidos(): array {
         }
     }
     wepoint_ajuste_set('wepoint_ultima_sync_pedidos', date('Y-m-d H:i:s'));
+    return $res;
+}
+
+// ─── Kardex de WePoint de un número (panel de stock) ────────────────────────
+// Lo que pasó en el depósito con esa edición: orden de ingreso, recepción, posicionado (suma stock), orden de
+// egreso, picking (resta), paquete y envío, con el saldo físico que fue quedando. Más el disponible para vender
+// que informa WePoint ahora, para compararlo con lo que la web tiene a la venta.
+const WEPOINT_TIPOS_KARDEX = 'ajustes,posicionamiento,colocacion_suelta,picking,extraccion_suelta,ordenes_ingreso,ordenes_recepcion,ordenes_egreso,ordenes_envio';
+
+function wepoint_kardex_item(int $item_id): array {
+    $it = q("SELECT id, sku, numero, stock, wepoint_id, wepoint_variante_id FROM items WHERE id=?", [$item_id])->fetch();
+    if (!$it || !$it['wepoint_id']) return ['vinculado' => false];
+    $var = $it['wepoint_variante_id'] ? (int)$it['wepoint_variante_id'] : null;
+    $ruta = $var ? "v2/variantes/$var/transacciones" : 'v2/productos/' . (int)$it['wepoint_id'] . '/transacciones';
+
+    $movs = [];
+    for ($pag = 1; $pag <= 5; $pag++) {
+        $r = wepoint_api('GET', "$ruta?per_page=100&page=$pag&tipos=" . WEPOINT_TIPOS_KARDEX);
+        $d = $r['data'] ?? [];
+        $ult = null;
+        // {data:{data:[…], last_page}} → la lista de movimientos (una lista no tiene clave 'data')
+        while (is_array($d) && isset($d['data']) && is_array($d['data'])) { if (isset($d['last_page'])) $ult = (int)$d['last_page']; $d = $d['data']; }
+        foreach ((array)$d as $m) {
+            $impacto = (int)($m['stock_impact'] ?? 0);
+            $movs[] = [
+                'cuando'     => fecha($m['fecha_movimiento'] ?? $m['created_at'] ?? null),
+                'orden'      => (string)($m['fecha_movimiento'] ?? $m['created_at'] ?? '') . sprintf('%012d', (int)($m['id_movimiento'] ?? $m['id_movimiento_historial'] ?? 0)),
+                'tipo'       => (string)($m['tipo'] ?? ''),
+                'documento'  => (string)($m['documento'] ?? ''),
+                'cantidad'   => (int)($m['cantidad'] ?? 0),
+                'mueve'      => $impacto !== 0,
+                'impacto'    => $impacto,
+                'saldo'      => isset($m['saldo']) ? (int)$m['saldo'] : null,
+                'usuario'    => (string)($m['usuario'] ?? ''),
+            ];
+        }
+        if (!$ult || $pag >= $ult) break;
+    }
+    usort($movs, fn($a, $b) => strcmp($a['orden'], $b['orden']));   // del más viejo al más nuevo
+
+    // Disponible para vender ahora: de la unidad en /variantes/operables (busca por el SKU de WePoint)
+    $disponible = null;
+    $sku_wp = null;
+    try {
+        if ($var) {
+            $v = wepoint_api('GET', "v2/variantes/$var")['data'] ?? [];
+            $sku_wp = $v['sku'] ?? null;
+        } else {
+            $p = wepoint_api('GET', 'v2/productos/' . (int)$it['wepoint_id'])['data'] ?? [];
+            $sku_wp = $p['sku'] ?? null;
+            $disponible = wepoint_disponible_de($p);
+        }
+        if ($var && $sku_wp) {
+            [$filas] = wepoint_filas(wepoint_api('GET', 'v2/variantes/operables?per_page=20&search_text=' . rawurlencode($sku_wp)));
+            foreach ($filas as $u) if ((int)($u['id_variante'] ?? 0) === $var) $disponible = wepoint_disponible_de($u);
+        }
+    } catch (Exception $e) {
+        // sin el disponible igual se muestra el kardex
+    }
+
+    $fisico = null;
+    foreach (array_reverse($movs) as $m) if ($m['saldo'] !== null) { $fisico = $m['saldo']; break; }
+    $comp = wepoint_comprometido($item_id)[$item_id] ?? 0;
+    return [
+        'vinculado'     => true,
+        'sku_wp'        => $sku_wp,
+        'fisico'        => $fisico,
+        'disponible'    => $disponible,
+        'comprometido'  => $comp,
+        'en_web'        => (int)$it['stock'],
+        // Lo que la web debería tener a la venta según WePoint (lo mismo que calcula la sincronización)
+        'esperado'      => $disponible === null ? null : max(0, $disponible - $comp),
+        'movimientos'   => array_map(fn($m) => array_diff_key($m, ['orden' => 1]), $movs),
+    ];
+}
+
+// ─── Pedidos pagados que no llegaron a WePoint ──────────────────────────────
+// Confirmados (o preparando) sin orden en WePoint y sin encargue pendiente: WePoint los rechazó (casi siempre
+// "no hay stock" porque la mercadería todavía no estaba posicionada) o no se pudieron mandar.
+function wepoint_pedidos_trabados(): array {
+    return q("SELECT p.id, p.estado, p.total, p.created_at, p.wepoint_error, c.nombre, c.apellido
+              FROM pedidos p JOIN clientes c ON c.id=p.cliente_id
+              WHERE p.estado IN ('confirmado','preparando') AND p.wepoint_orden_id IS NULL
+                AND NOT EXISTS (SELECT 1 FROM pedido_items pi WHERE pi.pedido_id=p.id AND pi.encargue>0 AND pi.encargue_estado<>'recibido')
+              ORDER BY p.created_at")->fetchAll();
+}
+
+// Vuelve a mandar los pedidos trabados que WePoint ya rechazó una vez (los que nunca se intentaron se mandan a
+// mano desde el pedido: pueden ser de antes de la integración). El cron solo toma los de los últimos 15 días.
+function wepoint_reintentar_trabados(bool $solo_recientes = true): array {
+    $res = ['intentados' => 0, 'enviados' => [], 'siguen' => []];
+    if (!wepoint_ordenes_activas()) return $res;
+    foreach (wepoint_pedidos_trabados() as $p) {
+        if (!$p['wepoint_error']) continue;
+        if ($solo_recientes && strtotime($p['created_at']) < strtotime('-15 days')) continue;
+        $res['intentados']++;
+        try {
+            $res['enviados'][] = '#' . $p['id'] . ' → ' . wepoint_crear_orden((int)$p['id']);
+        } catch (Exception $e) {
+            $res['siguen'][] = '#' . $p['id'] . ': ' . $e->getMessage();
+        }
+    }
     return $res;
 }

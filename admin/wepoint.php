@@ -113,6 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($reservadas) $log[] = "$reservadas números encontrados quedaron reservados para quienes los buscaban.";
             $log[] = "Stock sincronizado: {$s['actualizados']} números actualizados · {$s['sin_dato_stock']} sin dato de stock · " . count($s['no_encontrados']) . ' SKU sin coincidencia · ' . $s['nuevos'] . ' productos nuevos por publicar.';
         }
+        if ($accion === 'reintentar_trabados') {
+            if (!wepoint_ordenes_activas()) throw new Exception('El envío de órdenes a WePoint está apagado (WEPOINT_CREAR_ORDENES en config.php).');
+            $r = wepoint_reintentar_trabados(false);
+            $log[] = count($r['enviados']) . ' de ' . $r['intentados'] . ' pedidos enviados a WePoint' . ($r['enviados'] ? ': ' . implode(', ', $r['enviados']) : '.');
+            foreach ($r['siguen'] as $s) $log[] = 'Sigue sin entrar ' . $s;
+        }
         if ($accion === 'crear_transportista') {
             $nombre = trim(mb_substr($_POST['nombre'] ?? '', 0, 100)) ?: 'Retiro en kiosco · MeFaltaUno';
             $r = wepoint_api('POST', 'v2/transportistas', ['nombre' => $nombre]);
@@ -164,6 +170,30 @@ admin_header('WePoint', 'wepoint');
 <?php if (!wepoint_listo()): ?>
     <div class="aviso">Faltan WEPOINT_URL, WEPOINT_EMAIL y WEPOINT_PASSWORD en config.php.</div>
 <?php else: ?>
+<?php $trabados = wepoint_pedidos_trabados(); ?>
+<?php if ($trabados): ?>
+<div class="card" style="border-color:var(--red);margin-bottom:20px">
+    <h3>Pedidos pagados que no llegaron a WePoint (<?= count($trabados) ?>)</h3>
+    <p class="small muted">WePoint los rechazó o no se pudieron mandar. Casi siempre es "no hay stock" porque la mercadería todavía no estaba
+        posicionada en el depósito. Los rechazados se reintentan solos en cada sincronización (hasta 15 días); también podés reintentarlos ahora.
+        Los que dicen "Todavía no se intentó" se mandan desde el pedido.</p>
+    <div class="tabla-wrap"><table class="tabla">
+        <thead><tr><th>Pedido</th><th>Cliente</th><th>Pagado</th><th>Respuesta de WePoint</th></tr></thead>
+        <tbody>
+        <?php foreach ($trabados as $t): ?>
+            <tr>
+                <td><a href="<?= e(url('admin/pedido.php?id=' . (int)$t['id'])) ?>">#<?= (int)$t['id'] ?></a></td>
+                <td><?= e(nombre_cliente($t)) ?></td>
+                <td class="small"><?= e(fecha($t['created_at'])) ?></td>
+                <td class="small"><?= $t['wepoint_error'] ? e($t['wepoint_error']) : '<span class="muted">Todavía no se intentó</span>' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table></div>
+    <form method="post" style="margin-top:10px"><?= csrf_field() ?><input type="hidden" name="accion" value="reintentar_trabados">
+        <button class="btn btn-teal btn-chico" <?= wepoint_ordenes_activas() ? '' : 'disabled title="Órdenes apagadas en config.php"' ?>>Reintentar ahora</button></form>
+</div>
+<?php endif; ?>
 <div class="layout-2">
     <div>
         <div class="card">

@@ -1025,4 +1025,6 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .mov-mas .mov-cant { color: var(--green); font-weight: 700; }
 .mov-menos .mov-cant { color: var(--red); font-weight: 700; }
 .mov-inicio td { background: var(--teal-50); }
+.mov-info td { color: var(--muted); }
+.mov-info .mov-tipo { font-weight: 500; }
 .mov-rec td { opacity: .6; }

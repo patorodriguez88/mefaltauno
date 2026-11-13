@@ -39,6 +39,7 @@ function admin_header(string $titulo_pag, string $activo): void {
         'pedidos'     => (int)q("SELECT COUNT(*) FROM pedidos WHERE estado='pendiente'")->fetchColumn(),
         'faltantes'   => (int)q("SELECT COUNT(*) FROM solicitudes WHERE estado='pendiente'")->fetchColumn(),
         'colecciones' => wepoint_nuevos_pendientes(),
+        'wepoint'     => wepoint_listo() ? count(wepoint_pedidos_trabados()) : 0,
     ];
     $grupos = [
         '' => [

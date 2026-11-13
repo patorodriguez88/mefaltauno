@@ -15,6 +15,17 @@ if (isset($_GET['movimientos'])) {
     exit(json_encode($iid ? movimientos_item($iid) : [], JSON_UNESCAPED_UNICODE));
 }
 
+// Kardex de WePoint de un número (lo que pasó en el depósito con esa edición), se pide al abrir el panel
+if (isset($_GET['wepoint_kardex'])) {
+    $iid = (int)q("SELECT id FROM items WHERE id=? AND coleccion_id=?", [(int)$_GET['wepoint_kardex'], $id])->fetchColumn();
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        exit(json_encode($iid && $con_wepoint ? wepoint_kardex_item($iid) : ['vinculado' => false], JSON_UNESCAPED_UNICODE));
+    } catch (Exception $e) {
+        exit(json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE));
+    }
+}
+
 function monto($v): ?float {
     $v = trim((string)$v);
     if ($v === '') return null;
@@ -368,7 +379,11 @@ admin_header($col['nombre'], 'colecciones');
                 ${resEnc.length ? fila('− Reservado por encargue', resEnc.length, 'ambar') + lista(resEnc) : ''}
                 ${fila('= Se vende por encargue', d.encargue, 'total')}`}
             </section>
-            <section><h4>Movimientos del depósito</h4>
+            <section><h4>En el depósito (WePoint)</h4>
+                <div id="cajon-wp"><p class="cajon-nota">Consultando WePoint…</p></div>
+            </section>
+            <section><h4>Movimientos en la web</h4>
+                <p class="cajon-nota">Ventas, cancelaciones y lo que informó cada sincronización con WePoint.</p>
                 <div id="cajon-movs"><p class="cajon-nota">Cargando…</p></div>
             </section>
             <section><h4>Historia</h4>
@@ -381,6 +396,7 @@ admin_header($col['nombre'], 'colecciones');
             </section>`;
         cajon.showModal();
         movimientos(d.id);
+        kardexWepoint(d.id);
     });
     // Tabla de movimientos: ingresos, ventas y cancelaciones con el saldo que fue quedando
     const PEDIDO_URL = <?= json_encode(url('admin/pedido.php?id=')) ?>;
@@ -415,6 +431,39 @@ admin_header($col['nombre'], 'colecciones');
                 <tbody>${filas}</tbody></table></div>
             ${ms.some(m => m.reconstruido) ? '<p class="cajon-nota">Las líneas en gris son anteriores al historial: salen de los pedidos y las llegadas anotadas, por eso no tienen saldo.</p>' : ''}`;
         caja.querySelector('.mov-scroll').scrollTop = 1e6;   // lo último a la vista
+    }
+    // Kardex de WePoint: lo que pasó en el depósito con esta edición y cómo cierra contra lo que se vende en la web
+    async function kardexWepoint(itemId) {
+        const caja = document.getElementById('cajon-wp');
+        let k;
+        try {
+            const r = await fetch(`?id=<?= (int)$id ?>&wepoint_kardex=${itemId}`, { headers: { Accept: 'application/json' } });
+            k = await r.json();
+        } catch (e) { k = { error: 'No se pudo consultar WePoint.' }; }
+        if (!caja.isConnected) return;
+        if (k.error) { caja.innerHTML = `<p class="cajon-nota">${esc(k.error)}</p>`; return; }
+        if (!k.vinculado) { caja.innerHTML = '<p class="cajon-nota">Este número no está vinculado a WePoint (falta SKU o sincronizar).</p>'; return; }
+        const n = v => v === null || v === undefined ? '—' : v;
+        const cuadra = k.esperado === null || k.esperado === k.en_web;
+        const filas = k.movimientos.map(m => `<tr class="${m.mueve ? (m.impacto > 0 ? 'mov-mas' : 'mov-menos') : 'mov-info'}">
+                <td class="mov-fecha">${esc(m.cuando)}</td>
+                <td><span class="mov-tipo">${esc(m.tipo)}</span><small>${esc(m.documento)}${m.usuario ? ' · ' + esc(m.usuario) : ''}${m.mueve ? '' : ' · no mueve stock'}</small></td>
+                <td class="mov-num mov-cant">${m.mueve ? signo(m.impacto) : Math.abs(m.cantidad)}</td>
+                <td class="mov-num"><b>${m.mueve ? n(m.saldo) : ''}</b></td></tr>`).join('');
+        caja.innerHTML = `
+            ${fila('Físico en el depósito', n(k.fisico))}
+            ${fila('Disponible para vender en WePoint', n(k.disponible))}
+            ${k.comprometido ? fila('− Vendido en la web que todavía no se le mandó', k.comprometido, 'ambar') : ''}
+            ${fila('= A la venta en la web', k.en_web, 'total')}
+            ${cuadra ? '' : `<p class="cajon-nota" style="color:var(--red)">No coincide: según WePoint deberían quedar ${k.esperado}. Se corrige con la próxima sincronización.</p>`}
+            ${k.fisico !== null && k.disponible !== null && k.fisico > k.disponible ? `<p class="cajon-nota">${k.fisico - k.disponible} están en el depósito pero apartadas para órdenes de venta que todavía no se pickearon.</p>` : ''}
+            ${filas ? `<div class="mov-scroll" style="margin-top:8px"><table class="mov-tabla">
+                <thead><tr><th>Fecha</th><th>Movimiento</th><th class="mov-num">Cant.</th><th class="mov-num">Físico</th></tr></thead>
+                <tbody>${filas}</tbody></table></div>
+            <p class="cajon-nota">El stock entra al posicionar la mercadería y sale en el picking. Ingreso, recepción, egreso y envío son los papeles: no lo mueven.</p>`
+            : '<p class="cajon-nota">WePoint no tiene movimientos de esta edición.</p>'}`;
+        const sc = caja.querySelector('.mov-scroll');
+        if (sc) sc.scrollTop = 1e6;
     }
     cajon.addEventListener('click', ev => { if (ev.target === cajon) cajon.close(); });   // tocar afuera cierra
 })();
