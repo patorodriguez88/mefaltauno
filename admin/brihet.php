@@ -57,10 +57,23 @@ admin_header('Importar desde Brihet', 'colecciones');
 <p><a href="<?= url('admin/colecciones.php') ?>">← Stock</a></p>
 <div class="section-head">
     <h1 style="margin:0">Importar desde Brihet</h1>
+    <?php
+    // Brihet le contesta 403 al servidor: los botones que leen desde acá fallarían siempre, así que no se muestran.
+    // - bloqueado (403 en las últimas 24 h): solo la indicación de actualizar desde la Mac de la oficina.
+    // - catálogo mandado desde la oficina, sin 403 reciente: "Actualizar stock y precios" no hace falta (ya se
+    //   aplicó al recibirlo); queda un botón chico para probar si Brihet dejó de bloquear al servidor.
+    $desde_oficina = ($cat['origen'] ?? '') === 'enviado';
+    ?>
+    <?php if (brihet_bloqueado()): ?>
+        <span class="badge badge-amarillo" title="Brihet le contesta 403 a este servidor">Se actualiza desde la oficina</span>
+    <?php else: ?>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <?php if (!$desde_oficina): ?>
         <form method="post" style="margin:0"><?= csrf_field() ?><input type="hidden" name="accion" value="actualizar_todo"><button class="btn btn-primario btn-chico" type="submit" title="Relee Brihet y actualiza cantidad y precio de todos los números ya importados (no toca fotos ni agrega números)">Actualizar stock y precios</button></form>
-        <form method="post" style="margin:0"><?= csrf_field() ?><input type="hidden" name="accion" value="releer"><button class="btn btn-linea btn-chico" type="submit">Volver a leer de Brihet</button></form>
+        <?php endif; ?>
+        <form method="post" style="margin:0"><?= csrf_field() ?><input type="hidden" name="accion" value="releer"><button class="btn btn-linea btn-chico" type="submit"<?= $desde_oficina ? ' title="El último catálogo vino de la PC de la oficina: probá si Brihet ya deja leer desde el servidor"' : '' ?>><?= $desde_oficina ? 'Probar leer de Brihet desde el servidor' : 'Volver a leer de Brihet' ?></button></form>
     </div>
+    <?php endif; ?>
 </div>
 <div class="aviso" style="margin-bottom:16px;background:var(--teal-50);color:var(--teal-900)">
     Trae de <b>brihet.com.ar</b> las colecciones y <b>solo los números que tienen en stock</b>, con título, foto y <b>precio de Brihet tal cual</b> (su envío fijo se cobra aparte en el carrito como “Recargo interior”, ver Ajustes).
@@ -68,7 +81,7 @@ admin_header('Importar desde Brihet', 'colecciones');
     Si la colección ya existe en la web se completa: <b>no se pisa</b> lo que hayas cambiado a mano (título, foto o precio).
     Se puede volver a importar para traer números nuevos o precios actualizados.
     <?php if ($cat['leido']): ?><br><span class="small">Catálogo leído el <?= e(fecha($cat['leido'])) ?><?= ($cat['origen'] ?? '') === 'enviado' ? ' (mandado desde una PC de la oficina)' : '' ?>.</span><?php endif; ?>
-    <?php if (brihet_bloqueado()): ?><br><span class="small"><b>Brihet bloquea a este servidor:</b> para traer catálogo, stock, precios y fotos nuevas, en una PC de la oficina correr <code>php tools/brihet-enviar.php</code> y después importar acá.</span><?php endif; ?>
+    <?php if (brihet_bloqueado() || $desde_oficina): ?><br><span class="small"><b>Brihet bloquea a este servidor.</b> Para traer catálogo, stock, precios y fotos nuevas: en la Mac de la oficina, doble clic en <b>Actualizar Brihet</b> (Escritorio) —o <code>php tools/brihet-enviar.php</code>—; al recibirlo se actualizan solos el stock y los precios de lo ya importado. Después, si hay colecciones o números nuevos, importalos acá.</span><?php endif; ?>
 </div>
 <?php if ($error): ?><div class="aviso" style="background:var(--red-100);color:var(--red)"><?= e($error) ?></div><?php endif; ?>
 
