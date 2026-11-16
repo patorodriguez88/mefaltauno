@@ -96,9 +96,10 @@ function caddy_crear_envio(int $pedido_id): string {
 // ─── Avisos de Caddy (caddy-webhook.php) ────────────────────────────────────
 // Caddy le avisa a MFU cada cambio del paquete (webhook del cliente MeFaltaUno en sistema.caddy: EndPoint + Token).
 // MFU solo recibe información del servicio (código de seguimiento y estado) y es quien le escribe al cliente:
-//   cualquier movimiento → en_camino ("En camino a tu kiosco")
-//   Entregado            → enviado ("Llegó a tu kiosco", con el kiosco, quién lo atiende y el aviso del DNI)
-//   devuelto, rechazado… → no cambia el estado: queda en el historial y se avisa al operador.
+//   retirado, en tránsito… → en_camino ("En camino a tu kiosco")
+//   Entregado              → enviado ("Llegó a tu kiosco", con el kiosco, quién lo atiende y el aviso del DNI)
+//   devuelto, rechazado…   → no cambia el estado: queda en el historial y se avisa al operador.
+//   En Origen, A Retirar…  → solo historial.
 // El pedido se busca por el código de seguimiento o por la referencia MFU-<id> (idProveedor / no_referencia),
 // así sirve tanto si el envío lo creó MFU como si lo creó WePoint con su integración: en ese caso el código se
 // anota en el pedido con el primer aviso. El estado de la web nunca retrocede.
@@ -109,11 +110,17 @@ function caddy_aviso_desde_texto(string $raw): array {
     return ['estado' => $m[1], 'fecha' => $m[2], 'idProveedor' => $m[3]];
 }
 
-function caddy_estado_web(string $estado): string {
+// Estados de Caddy (tabla Estados, slug entre paréntesis): En Origen / A Retirar (todavía no lo tiene) →
+// solo historial; Retirado, Colectado, En Tránsito, Hoja de Ruta, Redespachado → en_camino; Entregado → enviado;
+// No se pudo entregar / retirar, Devuelto, Rechazado → problema (avisa al operador, no cambia el estado).
+function caddy_estado_web(string $estado, string $slug = ''): ?string {
     $e = mb_strtolower($estado);
-    if (preg_match('/devuel|no entreg|rechaz|anulad|elimin|siniestr|extravi|cancel/u', $e)) return 'problema';
-    if (strpos($e, 'entregad') !== false) return 'enviado';
-    return 'en_camino';
+    if (preg_match('/devuel|no entreg|no se pudo|rechaz|anulad|elimin|siniestr|extravi|cancel/u', $e)
+        || in_array($slug, ['1st_visit_fail', 'returned_to_origin', 'declined'], true)) return 'problema';
+    if (strpos($e, 'entregad') !== false || $slug === 'delivered') return 'enviado';
+    if (preg_match('/retirad|colectad|tr[aá]nsito|camino|hoja de ruta|redespach/u', $e)
+        || in_array($slug, ['pickup_ready', 'pickup_scanned', 'last_mile', 'redispatched'], true)) return 'en_camino';
+    return null;
 }
 
 function caddy_procesar_aviso(array $d): array {
@@ -135,8 +142,8 @@ function caddy_procesar_aviso(array $d): array {
     q("UPDATE pedidos SET caddy_estado=?, caddy_estado_at=NOW(), caddy_seguimiento=? WHERE id=?", [mb_substr($estado, 0, 80), $seg, $id]);
     if (!$p['caddy_seguimiento'] && $codigo !== '') registrar_historial('pedido', $id, $p['estado'], 'Envío de Caddy: ' . $codigo, 'Caddy');
 
-    $nuevo = caddy_estado_web($estado);
-    $nota = 'Caddy: ' . $estado . ($estimada !== '' && strtotime($estimada) ? ' · llegada estimada ' . fecha($estimada, false) : '');
+    $nuevo = caddy_estado_web($estado, (string)($d['slug'] ?? ''));
+    $nota = 'Caddy: ' . $estado . ($nuevo !== 'enviado' && $estimada !== '' && strtotime($estimada) ? ' · llegada estimada ' . fecha($estimada, false) : '');
     $orden = ['confirmado' => 1, 'preparando' => 2, 'en_camino' => 3, 'enviado' => 4];
 
     if ($nuevo === 'problema') {
@@ -146,7 +153,7 @@ function caddy_procesar_aviso(array $d): array {
             . '. El estado del pedido no cambió: revisalo.</p>' . mail_link("admin/pedido.php?id=$id", 'Ver en el panel'));
         return ['ok' => 1, 'pedido' => $id, 'accion' => 'problema'];
     }
-    if (isset($orden[$p['estado']]) && $orden[$nuevo] > $orden[$p['estado']]) {
+    if ($nuevo && isset($orden[$p['estado']]) && $orden[$nuevo] > $orden[$p['estado']]) {
         pedido_cambiar_estado($id, $nuevo, $nota, false, 'Caddy');
         require_once __DIR__ . '/notificaciones.php';
         notificar_cambio_estado('pedido', $id, $nuevo, $nuevo === 'en_camino' && $estimada !== '' && strtotime($estimada)
