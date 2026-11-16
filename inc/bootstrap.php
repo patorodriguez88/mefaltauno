@@ -359,7 +359,8 @@ const ESTADOS_PEDIDO = [
     'pendiente'  => ['Misión recibida',      'Recibimos tu pedido. Apenas confirmemos el pago, arranca la misión.', 'amarillo'],
     'confirmado' => ['Pago confirmado',      'Pago confirmado: ya estamos preparando tu pedido.', 'azul'],
     'preparando' => ['Preparando tu pedido', 'Estamos preparando tu pedido con el cuidado que merece.', 'azul'],
-    'enviado'    => ['Llegó a tu kiosco',    'Tu pedido llegó a tu kiosco. ¡Ya podés pasar a buscarlo!', 'azul'],
+    'en_camino'  => ['En camino a tu kiosco', 'Tu pedido ya salió del depósito y va en camino a tu kiosco.', 'azul'],
+    'enviado'    => ['Llegó a tu kiosco',    'Tu pedido llegó a tu kiosco. ¡Ya podés pasar a buscarlo con tu DNI!', 'azul'],
     'entregado'  => ['Misión cumplida',      '¡Misión cumplida! Ya los sumamos a tu colección.', 'verde'],
     'cancelado'  => ['Cancelado',            'El pedido fue cancelado.', 'gris'],
 ];

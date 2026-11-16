@@ -2,7 +2,7 @@
 require __DIR__ . '/_inc.php';
 
 $editar = isset($_GET['id']) ? (int)$_GET['id'] : null;   // 0 = nuevo
-$campos = ['nombre', 'direccion', 'localidad', 'provincia', 'cp', 'telefono', 'horario', 'notas'];
+$campos = ['nombre', 'direccion', 'localidad', 'provincia', 'cp', 'telefono', 'horario', 'notas', 'responsable'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_exigir();
@@ -31,9 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vals[] = !empty($_POST['domicilio']) ? (trim(mb_substr($_POST['domicilio_nota'] ?? '', 0, 160)) ?: null) : null;
     if ($id) {
         $vals[] = $id;
-        q("UPDATE puntos_retiro SET nombre=?, direccion=?, localidad=?, provincia=?, cp=?, telefono=?, horario=?, notas=?, lat=?, lng=?, activo=?, domicilio=?, domicilio_nota=? WHERE id=?", $vals);
+        q("UPDATE puntos_retiro SET nombre=?, direccion=?, localidad=?, provincia=?, cp=?, telefono=?, horario=?, notas=?, responsable=?, lat=?, lng=?, activo=?, domicilio=?, domicilio_nota=? WHERE id=?", $vals);
     } else {
-        q("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, cp, telefono, horario, notas, lat, lng, activo, domicilio, domicilio_nota) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", $vals);
+        q("INSERT INTO puntos_retiro (nombre, direccion, localidad, provincia, cp, telefono, horario, notas, responsable, lat, lng, activo, domicilio, domicilio_nota) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", $vals);
     }
     flash('ok', 'Punto de retiro guardado.');
     redirect('admin/puntos.php');
@@ -63,6 +63,7 @@ if ($editar !== null):
         </div>
         <aside class="card form">
             <label class="campo">Nombre del kiosco<input type="text" name="nombre" value="<?= e($p['nombre']) ?>" required placeholder="Ej: Kiosco Don Pepe"></label>
+            <label class="campo">Quién lo atiende <small>(lo ve el cliente cuando el pedido llega al kiosco)</small><input type="text" name="responsable" maxlength="120" value="<?= e($p['responsable']) ?>" placeholder="Ej: Sergio Carballo"></label>
             <label class="campo">Dirección<input type="text" name="direccion" value="<?= e($p['direccion']) ?>" required placeholder="Ej: Av. Colón 1250"></label>
             <div class="form-row">
                 <label class="campo">Localidad<input type="text" name="localidad" value="<?= e($p['localidad']) ?>" required></label>

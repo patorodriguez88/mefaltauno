@@ -187,7 +187,8 @@ admin_header('Pedido #' . $id, 'pedidos');
             <h3>Caddy</h3>
             <?php if ($p['caddy_seguimiento']): ?>
                 <p class="small" style="margin:0"><span class="badge badge-verde">Envío creado</span> Seguimiento <b><?= e($p['caddy_seguimiento']) ?></b><br>
-                    <span class="muted">Creado el <?= e(fecha($p['caddy_creado_at'])) ?> hacia el kiosco <?= e($p['envio_punto']) ?>.</span></p>
+                    <span class="muted"><?= $p['caddy_creado_at'] ? 'Creado el ' . e(fecha($p['caddy_creado_at'])) : 'Informado por Caddy' ?> hacia el kiosco <?= e($p['envio_punto']) ?>.</span>
+                    <?php if ($p['caddy_estado']): ?><br>Último aviso de Caddy: <b><?= e($p['caddy_estado']) ?></b> <span class="muted">(<?= e(fecha($p['caddy_estado_at'])) ?>)</span><?php endif; ?></p>
             <?php elseif (!caddy_listo()): ?>
                 <p class="muted small" style="margin:0">Caddy todavía no está conectado (CADDY_URL / CADDY_USUARIO en config.php).</p>
             <?php elseif (!caddy_envios_activos()): ?>

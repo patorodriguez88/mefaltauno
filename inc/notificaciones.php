@@ -62,9 +62,52 @@ function notificar_pedido_nuevo(int $ped_id): void {
         . mail_link("pedido.php?id=$ped_id", 'Ver mi pedido'));
 }
 
+// El kiosco del pedido, con los datos que tenga hoy en Puntos de retiro (si se borró, lo que quedó en el pedido).
+function pedido_kiosco(array $p): array {
+    $k = $p['punto_id'] ? q("SELECT * FROM puntos_retiro WHERE id=?", [$p['punto_id']])->fetch() : null;
+    return [
+        'nombre'      => $k['nombre'] ?? ($p['envio_punto'] ?: 'tu kiosco'),
+        'responsable' => $k['responsable'] ?? null,
+        'direccion'   => trim(($k['direccion'] ?? $p['envio_direccion']) . ', ' . ($k['localidad'] ?? $p['envio_localidad']), ', '),
+        'horario'     => $k['horario'] ?? null,
+        'telefono'    => $k['telefono'] ?? null,
+    ];
+}
+
+// Mails de logística: en camino (con el seguimiento de Caddy) y llegó al kiosco (con quién lo tiene y el DNI).
+function mail_pedido_logistica(array $p, string $estado): ?array {
+    $id = (int)$p['id'];
+    $seg = $p['caddy_seguimiento'] ? '<p>Código de seguimiento de Caddy: <b>' . e($p['caddy_seguimiento']) . '</b></p>' : '';
+    $k = pedido_kiosco($p);
+    $quien = e($k['nombre']) . ($k['responsable'] ? ' · ' . e($k['responsable']) : '');
+    if ($estado === 'en_camino') {
+        return ["Tu pedido #$id va en camino a tu kiosco",
+            '<p>Hola ' . e($p['nombre']) . ',</p><p>Tu pedido <b>#' . $id . '</b> ya salió del depósito y va en camino a <b>' . $quien . '</b>.</p>'
+            . $seg . '<p>Te avisamos apenas llegue al kiosco.</p>'];
+    }
+    if ($estado === 'enviado') {
+        $filas = [['Kiosco', '<b>' . $quien . '</b>']];
+        if ($k['direccion']) $filas[] = ['Dirección', e($k['direccion'])];
+        if ($k['horario']) $filas[] = ['Horario', e($k['horario'])];
+        if ($k['telefono']) $filas[] = ['Teléfono', e($k['telefono'])];
+        return ["Tu pedido #$id ya está en tu kiosco",
+            '<p>Hola ' . e($p['nombre']) . ',</p><p>¡Llegó! Tu pedido <b>#' . $id . '</b> ya se encuentra en poder de <b>' . $quien . '</b>.</p>'
+            . mail_tabla($filas) . $seg
+            . '<p>Comunicate con el kiosco para concretar la entrega.</p>'
+            . '<p style="background:#fff6e0;padding:12px;border-radius:8px"><b>No te olvides de llevar tu DNI</b>: el kiosquero puede pedírtelo.</p>'];
+    }
+    return null;
+}
+
 function notificar_cambio_estado(string $entidad, int $id, string $estado, ?string $nota): void {
     if ($entidad === 'pedido') {
-        $r = q("SELECT c.nombre, c.email FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.id=?", [$id])->fetch();
+        $r = q("SELECT p.*, c.nombre, c.email FROM pedidos p JOIN clientes c ON c.id=p.cliente_id WHERE p.id=?", [$id])->fetch();
+        if ($r && ($m = mail_pedido_logistica($r, $estado))) {
+            mail_enviar($r['email'], $m[0], $m[1]
+                . ($nota ? '<p style="background:#f2f8f8;padding:12px;border-radius:8px">' . nl2br(e($nota)) . '</p>' : '')
+                . mail_link("pedido.php?id=$id", 'Ver mi pedido'));
+            return;
+        }
         [$label, $texto] = ESTADOS_PEDIDO[$estado] ?? [$estado, ''];
         $asunto = "Tu pedido #$id: $label";
         $link = mail_link("pedido.php?id=$id", 'Ver mi pedido');

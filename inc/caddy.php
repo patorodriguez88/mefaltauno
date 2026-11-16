@@ -92,3 +92,67 @@ function caddy_crear_envio(int $pedido_id): string {
         throw $e;
     }
 }
+
+// ─── Avisos de Caddy (caddy-webhook.php) ────────────────────────────────────
+// Caddy le avisa a MFU cada cambio del paquete (webhook del cliente MeFaltaUno en sistema.caddy: EndPoint + Token).
+// MFU solo recibe información del servicio (código de seguimiento y estado) y es quien le escribe al cliente:
+//   cualquier movimiento → en_camino ("En camino a tu kiosco")
+//   Entregado            → enviado ("Llegó a tu kiosco", con el kiosco, quién lo atiende y el aviso del DNI)
+//   devuelto, rechazado… → no cambia el estado: queda en el historial y se avisa al operador.
+// El pedido se busca por el código de seguimiento o por la referencia MFU-<id> (idProveedor / no_referencia),
+// así sirve tanto si el envío lo creó MFU como si lo creó WePoint con su integración: en ese caso el código se
+// anota en el pedido con el primer aviso. El estado de la web nunca retrocede.
+
+// Formato viejo de Caddy (texto plano): "<estado> <AAAA-MM-DDTHH:MMZ> <idProveedor>"
+function caddy_aviso_desde_texto(string $raw): array {
+    if (!preg_match('/^(.+?)\s+(\d{4}-\d{2}-\d{2}T[\d:]+Z?)\s+(\S+)$/u', trim($raw), $m)) return [];
+    return ['estado' => $m[1], 'fecha' => $m[2], 'idProveedor' => $m[3]];
+}
+
+function caddy_estado_web(string $estado): string {
+    $e = mb_strtolower($estado);
+    if (preg_match('/devuel|no entreg|rechaz|anulad|elimin|siniestr|extravi|cancel/u', $e)) return 'problema';
+    if (strpos($e, 'entregad') !== false) return 'enviado';
+    return 'en_camino';
+}
+
+function caddy_procesar_aviso(array $d): array {
+    $codigo = trim((string)($d['codigo_seguimiento'] ?? $d['CodigoSeguimiento'] ?? $d['idCaddy'] ?? ''));
+    $ref    = trim((string)($d['idProveedor'] ?? $d['id_proveedor'] ?? $d['no_referencia'] ?? ''));
+    $estado = trim((string)($d['estado'] ?? $d['state'] ?? $d['Estado'] ?? ''));
+    $estimada = (string)($d['fecha_entrega'] ?? $d['fecha_estimada'] ?? $d['FechaEntrega'] ?? '');
+    if ($estado === '') return ['ok' => 0, 'error' => 'El aviso no trae estado.'];
+
+    $p = $codigo !== '' ? q("SELECT * FROM pedidos WHERE caddy_seguimiento=? LIMIT 1", [$codigo])->fetch() : null;
+    if (!$p && preg_match('/^MFU-(\d+)$/i', $ref, $m)) $p = q("SELECT * FROM pedidos WHERE id=?", [(int)$m[1]])->fetch();
+    if (!$p) return ['ok' => 0, 'error' => 'Pedido no encontrado (' . ($codigo ?: $ref ?: 'sin código') . ').'];
+    $id = (int)$p['id'];
+    if ($estado === (string)$p['caddy_estado'] && ($codigo === '' || $codigo === (string)$p['caddy_seguimiento'])) {
+        return ['ok' => 1, 'pedido' => $id, 'accion' => 'repetido'];   // Caddy reintenta hasta recibir un 200
+    }
+
+    $seg = $p['caddy_seguimiento'] ?: ($codigo ?: null);
+    q("UPDATE pedidos SET caddy_estado=?, caddy_estado_at=NOW(), caddy_seguimiento=? WHERE id=?", [mb_substr($estado, 0, 80), $seg, $id]);
+    if (!$p['caddy_seguimiento'] && $codigo !== '') registrar_historial('pedido', $id, $p['estado'], 'Envío de Caddy: ' . $codigo, 'Caddy');
+
+    $nuevo = caddy_estado_web($estado);
+    $nota = 'Caddy: ' . $estado . ($estimada !== '' && strtotime($estimada) ? ' · llegada estimada ' . fecha($estimada, false) : '');
+    $orden = ['confirmado' => 1, 'preparando' => 2, 'en_camino' => 3, 'enviado' => 4];
+
+    if ($nuevo === 'problema') {
+        registrar_historial('pedido', $id, $p['estado'], $nota, 'Caddy');
+        mail_enviar(MAIL_OPERADOR, "Pedido #$id: Caddy informó \"$estado\"",
+            '<p>Caddy informó <b>' . e($estado) . '</b> para el pedido #' . $id . ($seg ? ' (seguimiento ' . e($seg) . ')' : '')
+            . '. El estado del pedido no cambió: revisalo.</p>' . mail_link("admin/pedido.php?id=$id", 'Ver en el panel'));
+        return ['ok' => 1, 'pedido' => $id, 'accion' => 'problema'];
+    }
+    if (isset($orden[$p['estado']]) && $orden[$nuevo] > $orden[$p['estado']]) {
+        pedido_cambiar_estado($id, $nuevo, $nota, false, 'Caddy');
+        require_once __DIR__ . '/notificaciones.php';
+        notificar_cambio_estado('pedido', $id, $nuevo, $nuevo === 'en_camino' && $estimada !== '' && strtotime($estimada)
+            ? 'Llegada estimada a tu kiosco: ' . fecha($estimada, false) . '.' : null);
+        return ['ok' => 1, 'pedido' => $id, 'accion' => $nuevo];
+    }
+    registrar_historial('pedido', $id, $p['estado'], $nota, 'Caddy');
+    return ['ok' => 1, 'pedido' => $id, 'accion' => 'historial'];
+}

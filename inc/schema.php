@@ -651,6 +651,14 @@ function schema_pasos(): array {
                            FROM items i WHERE i.stock>0 OR EXISTS (SELECT 1 FROM stock_movimientos m WHERE m.item_id=i.id)");
             },
         ],
+
+        // Avisos de Caddy (caddy-webhook.php): el último estado del paquete que informó Caddy, y quién atiende cada
+        // kiosco (va en el mail de "Llegó a tu kiosco": "Kiosco 0001 · Sergio Carballo").
+        39 => [
+            "ALTER TABLE pedidos ADD COLUMN caddy_estado VARCHAR(80) NULL AFTER caddy_creado_at,
+                ADD COLUMN caddy_estado_at DATETIME NULL AFTER caddy_estado, ADD KEY idx_caddy_seg (caddy_seguimiento)",
+            "ALTER TABLE puntos_retiro ADD COLUMN responsable VARCHAR(120) NULL AFTER nombre",
+        ],
     ];
 }
 

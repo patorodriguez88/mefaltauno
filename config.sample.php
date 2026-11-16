@@ -41,6 +41,7 @@ define('CADDY_USUARIO',      '');      // cuenta de MeFaltaUno en plataforma.cad
 define('CADDY_PASSWORD',     '');
 define('CADDY_BOX',          ['Length' => 20, 'Width' => 15, 'Height' => 10, 'Weight' => 1]);   // medidas por defecto (cm, kg)
 define('CADDY_CREAR_ENVIOS', false);   // true = se crean envíos reales en Caddy
+define('CADDY_WEBHOOK_TOKEN', '');    // token de los avisos de Caddy (caddy-webhook.php); el mismo se carga en sistema.caddy → Clientes → Webhook
 
 // Emails con acceso al panel admin (separados por coma)
 define('ADMIN_EMAILS', '');

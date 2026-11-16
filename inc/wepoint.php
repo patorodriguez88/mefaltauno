@@ -362,12 +362,15 @@ function wepoint_crear_orden(int $pedido_id): string {
 
 // ─── Estado de las órdenes ──────────────────────────────────────────────────
 // WePoint: Emitida → Empaquetada → Listo para enviar → (en camino) → Entregada/Completada.
-// En la web: confirmado → preparando ("Preparando tu pedido") → enviado ("Llegó a tu kiosco").
+// En la web: confirmado → preparando ("Preparando tu pedido") → en_camino ("En camino a tu kiosco").
+// WePoint no sabe cuándo el paquete llega al kiosco: "Completada" es que salió de su depósito. "Llegó a tu kiosco"
+// (enviado) lo pone el aviso de Caddy (caddy-webhook.php) o el operador a mano.
 // Cada cambio de estado en WePoint queda en el historial; el mail solo sale cuando cambia el estado de la web.
 
 function wepoint_estado_web(array $ov): ?string {
     $e = mb_strtolower(trim((string)($ov['estado'] ?? '')));
-    if (in_array($e, ['completada', 'entregada', 'entregado', 'cerrada'], true)) return 'enviado';
+    if (in_array($e, ['completada', 'entregada', 'entregado', 'cerrada'], true)
+        || strpos($e, 'transportista') !== false || preg_match('/enviad|despachad|camino|transito|tránsito/u', $e)) return 'en_camino';
     if ($e !== 'emitida' || !empty($ov['picking_existe'])) return 'preparando';
     return null;
 }
@@ -377,17 +380,17 @@ function wepoint_texto_estado(array $ov): string {
     $e = mb_strtolower(trim((string)($ov['estado'] ?? '')));
     $paq = $ov['paquetes'][0]['nro_paquete'] ?? null;
     if ($e === 'empaquetada') return 'Empaquetamos tu pedido' . ($paq ? " (paquete $paq)" : '') . '.';
-    if (strpos($e, 'listo para enviar') !== false) return 'Tu pedido está listo para salir hacia el punto de encuentro.';
-    if (strpos($e, 'transportista') !== false) return 'Tu pedido salió del depósito y va en camino al punto de encuentro.';
-    if (preg_match('/enviad|despachad|camino|transito|tránsito/u', $e)) return 'Tu pedido va en camino al punto de encuentro.';
-    if (in_array($e, ['completada', 'entregada', 'entregado', 'cerrada'], true)) return 'Tu pedido llegó al punto de encuentro. ¡Pasá a buscarlo!';
+    if (strpos($e, 'listo para enviar') !== false) return 'Tu pedido está listo para salir hacia tu kiosco.';
+    if (strpos($e, 'transportista') !== false) return 'Tu pedido salió del depósito y va en camino a tu kiosco.';
+    if (preg_match('/enviad|despachad|camino|transito|tránsito/u', $e)) return 'Tu pedido va en camino a tu kiosco.';
+    if (in_array($e, ['completada', 'entregada', 'entregado', 'cerrada'], true)) return 'Tu pedido salió del depósito y va en camino a tu kiosco.';
     return 'Actualización del depósito: ' . ($ov['estado'] ?? '—') . '.';
 }
 
 // Recorre los pedidos enviados a WePoint que siguen en curso y los actualiza.
 function wepoint_sincronizar_pedidos(): array {
     require_once __DIR__ . '/notificaciones.php';
-    $orden = ['confirmado' => 1, 'preparando' => 2, 'enviado' => 3];
+    $orden = ['confirmado' => 1, 'preparando' => 2, 'en_camino' => 3];
     $res = ['revisados' => 0, 'actualizados' => 0, 'errores' => []];
     foreach (q("SELECT id, estado, wepoint_orden_id, wepoint_estado FROM pedidos WHERE wepoint_orden_id IS NOT NULL AND estado IN ('confirmado','preparando')")->fetchAll() as $p) {
         $res['revisados']++;
@@ -401,7 +404,7 @@ function wepoint_sincronizar_pedidos(): array {
             $estado_web = $avanza ? $nuevo : $p['estado'];
             q("UPDATE pedidos SET estado=?, wepoint_estado=? WHERE id=?", [$estado_web, $estado_wp, $p['id']]);
             registrar_historial('pedido', (int)$p['id'], $estado_web, $texto, 'WePoint · ' . $estado_wp);
-            if ($avanza) notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'enviado' ? null : $texto);
+            if ($avanza) notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'en_camino' ? null : $texto);
             $res['actualizados']++;
             // Listo para enviar en el depósito → se crea el envío en Caddy hacia el kiosco
             if (stripos($estado_wp, 'listo para enviar') !== false && caddy_envios_activos()) {

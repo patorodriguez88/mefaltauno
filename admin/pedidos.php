@@ -5,7 +5,7 @@ $estado = $_GET['estado'] ?? '';
 $where = '1';
 $params = [];
 if ($estado === 'curso') {
-    $where = "p.estado IN ('confirmado','preparando','enviado')";
+    $where = "p.estado IN ('confirmado','preparando','en_camino','enviado')";
 } elseif ($estado === 'preparar') {
     $where = "p.estado IN ('confirmado','preparando')";
 } elseif (isset(ESTADOS_PEDIDO[$estado])) {
