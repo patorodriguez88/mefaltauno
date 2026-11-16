@@ -104,6 +104,9 @@ function caddy_crear_envio(int $pedido_id): string {
 // así sirve tanto si el envío lo creó MFU como si lo creó WePoint con su integración: en ese caso el código se
 // anota en el pedido con el primer aviso. El estado de la web nunca retrocede.
 
+// Un cambio de estado de Caddy más viejo que esto actualiza el pedido sin escribirle al cliente.
+const CADDY_AVISO_HORAS = 48;
+
 // Formato viejo de Caddy (texto plano): "<estado> <AAAA-MM-DDTHH:MMZ> <idProveedor>"
 function caddy_aviso_desde_texto(string $raw): array {
     if (!preg_match('/^(.+?)\s+(\d{4}-\d{2}-\d{2}T[\d:]+Z?)\s+(\S+)$/u', trim($raw), $m)) return [];
@@ -123,7 +126,8 @@ function caddy_estado_web(string $estado, string $slug = ''): ?string {
     return null;
 }
 
-function caddy_procesar_aviso(array $d): array {
+// $avisar = false: actualiza estado e historial sin mandar mails (datos viejos, ver wepoint_sincronizar_pedidos).
+function caddy_procesar_aviso(array $d, bool $avisar = true): array {
     $codigo = trim((string)($d['codigo_seguimiento'] ?? $d['CodigoSeguimiento'] ?? $d['idCaddy'] ?? ''));
     $ref    = trim((string)($d['idProveedor'] ?? $d['id_proveedor'] ?? $d['no_referencia'] ?? ''));
     $estado = trim((string)($d['estado'] ?? $d['state'] ?? $d['Estado'] ?? ''));
@@ -148,15 +152,15 @@ function caddy_procesar_aviso(array $d): array {
 
     if ($nuevo === 'problema') {
         registrar_historial('pedido', $id, $p['estado'], $nota, 'Caddy');
-        mail_enviar(MAIL_OPERADOR, "Pedido #$id: Caddy informó \"$estado\"",
+        if ($avisar) mail_enviar(MAIL_OPERADOR, "Pedido #$id: Caddy informó \"$estado\"",
             '<p>Caddy informó <b>' . e($estado) . '</b> para el pedido #' . $id . ($seg ? ' (seguimiento ' . e($seg) . ')' : '')
             . '. El estado del pedido no cambió: revisalo.</p>' . mail_link("admin/pedido.php?id=$id", 'Ver en el panel'));
         return ['ok' => 1, 'pedido' => $id, 'accion' => 'problema'];
     }
     if ($nuevo && isset($orden[$p['estado']]) && $orden[$nuevo] > $orden[$p['estado']]) {
-        pedido_cambiar_estado($id, $nuevo, $nota, false, 'Caddy');
+        pedido_cambiar_estado($id, $nuevo, $nota . ($avisar ? '' : ' (sin aviso al cliente: dato de más de ' . CADDY_AVISO_HORAS . ' h)'), false, 'Caddy');
         require_once __DIR__ . '/notificaciones.php';
-        notificar_cambio_estado('pedido', $id, $nuevo, $nuevo === 'en_camino' && $estimada !== '' && strtotime($estimada)
+        if ($avisar) notificar_cambio_estado('pedido', $id, $nuevo, $nuevo === 'en_camino' && $estimada !== '' && strtotime($estimada)
             ? 'Llegada estimada a tu kiosco: ' . fecha($estimada, false) . '.' : null);
         return ['ok' => 1, 'pedido' => $id, 'accion' => $nuevo];
     }

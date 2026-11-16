@@ -388,31 +388,59 @@ function wepoint_texto_estado(array $ov): string {
 }
 
 // Recorre los pedidos enviados a WePoint que siguen en curso y los actualiza.
+// Dos fuentes en la misma orden de venta de WePoint:
+//  - su estado (Emitida → Empaquetada → Listo para enviar → Entregado a transportista): preparando / en_camino.
+//  - la orden de envío: WePoint crea el envío en Caddy (nro_seguimiento) y cada ~30 min le consulta el estado
+//    (estado_seguimiento, ej. "Entregado al Cliente" = llegó al kiosco). Eso entra por caddy_procesar_aviso, igual
+//    que un aviso directo de Caddy: Retirado/En tránsito → en_camino, Entregado → enviado ("Llegó a tu kiosco").
+// Si en la misma pasada Caddy ya lleva el pedido más adelante, no sale el mail intermedio de WePoint; y un estado
+// de Caddy de más de CADDY_AVISO_HORAS se aplica sin escribirle al cliente.
 function wepoint_sincronizar_pedidos(): array {
     require_once __DIR__ . '/notificaciones.php';
-    $orden = ['confirmado' => 1, 'preparando' => 2, 'en_camino' => 3];
+    $orden = ['confirmado' => 1, 'preparando' => 2, 'en_camino' => 3, 'enviado' => 4];
     $res = ['revisados' => 0, 'actualizados' => 0, 'errores' => []];
-    foreach (q("SELECT id, estado, wepoint_orden_id, wepoint_estado FROM pedidos WHERE wepoint_orden_id IS NOT NULL AND estado IN ('confirmado','preparando')")->fetchAll() as $p) {
+    foreach (q("SELECT id, estado, wepoint_orden_id, wepoint_estado, caddy_seguimiento, caddy_estado FROM pedidos
+                WHERE wepoint_orden_id IS NOT NULL AND estado IN ('confirmado','preparando','en_camino')")->fetchAll() as $p) {
         $res['revisados']++;
         try {
             $ov = wepoint_api('GET', 'v2/egresos/productos/' . rawurlencode($p['wepoint_orden_id']))['data'] ?? [];
             $estado_wp = trim((string)($ov['estado'] ?? ''));
-            if ($estado_wp === '' || $estado_wp === $p['wepoint_estado']) continue;   // sin cambios en WePoint
-            $texto = wepoint_texto_estado($ov);
-            $nuevo = wepoint_estado_web($ov);
-            $avanza = $nuevo && $orden[$nuevo] > $orden[$p['estado']];   // nunca retrocede
-            $estado_web = $avanza ? $nuevo : $p['estado'];
-            q("UPDATE pedidos SET estado=?, wepoint_estado=? WHERE id=?", [$estado_web, $estado_wp, $p['id']]);
-            registrar_historial('pedido', (int)$p['id'], $estado_web, $texto, 'WePoint · ' . $estado_wp);
-            if ($avanza) notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'en_camino' ? null : $texto);
-            $res['actualizados']++;
-            // Listo para enviar en el depósito → se crea el envío en Caddy hacia el kiosco
-            if (stripos($estado_wp, 'listo para enviar') !== false && caddy_envios_activos()) {
-                try {
-                    caddy_crear_envio((int)$p['id']);
-                } catch (Exception $e) {
-                    $res['errores'][] = '#' . $p['id'] . ' Caddy: ' . $e->getMessage();
+            $oe = !empty($ov['ordenes_envio']) ? end($ov['ordenes_envio']) : [];   // la última orden de envío
+            $seg = trim((string)($oe['nro_seguimiento'] ?? ''));
+            $seg_estado = trim((string)($oe['estado_seguimiento'] ?? ''));
+            $seg_at = (string)($oe['estado_seguimiento_at'] ?? '');
+            $caddy_cambia = $seg_estado !== '' && $seg_estado !== (string)$p['caddy_estado'];
+            $caddy_nuevo = $caddy_cambia ? caddy_estado_web($seg_estado) : null;
+            if ($seg !== '' && !$p['caddy_seguimiento']) {
+                q("UPDATE pedidos SET caddy_seguimiento=? WHERE id=?", [$seg, $p['id']]);
+                registrar_historial('pedido', (int)$p['id'], $p['estado'], 'Envío de Caddy creado por WePoint: ' . $seg, 'WePoint');
+            }
+
+            if ($estado_wp !== '' && $estado_wp !== $p['wepoint_estado']) {
+                $texto = wepoint_texto_estado($ov);
+                $nuevo = wepoint_estado_web($ov);
+                $avanza = $nuevo && $orden[$nuevo] > $orden[$p['estado']];   // nunca retrocede
+                $estado_web = $avanza ? $nuevo : $p['estado'];
+                q("UPDATE pedidos SET estado=?, wepoint_estado=? WHERE id=?", [$estado_web, $estado_wp, $p['id']]);
+                registrar_historial('pedido', (int)$p['id'], $estado_web, $texto, 'WePoint · ' . $estado_wp);
+                $caddy_adelante = isset($orden[$caddy_nuevo]) && $orden[$caddy_nuevo] >= $orden[$estado_web];
+                if ($avanza && !$caddy_adelante) notificar_cambio_estado('pedido', (int)$p['id'], $nuevo, $nuevo === 'en_camino' ? null : $texto);
+                $res['actualizados']++;
+                // Listo para enviar en el depósito → se crea el envío en Caddy hacia el kiosco (apagado: lo crea WePoint)
+                if (stripos($estado_wp, 'listo para enviar') !== false && caddy_envios_activos()) {
+                    try {
+                        caddy_crear_envio((int)$p['id']);
+                    } catch (Exception $e) {
+                        $res['errores'][] = '#' . $p['id'] . ' Caddy: ' . $e->getMessage();
+                    }
                 }
+            }
+
+            if ($caddy_cambia) {
+                $reciente = !$seg_at || strtotime($seg_at) > time() - CADDY_AVISO_HORAS * 3600;
+                $r = caddy_procesar_aviso(['codigo_seguimiento' => $seg, 'idProveedor' => 'MFU-' . $p['id'], 'estado' => $seg_estado], $reciente);
+                if (!$r['ok']) $res['errores'][] = '#' . $p['id'] . ' seguimiento Caddy: ' . $r['error'];
+                else $res['actualizados']++;
             }
         } catch (Exception $e) {
             $res['errores'][] = '#' . $p['id'] . ': ' . $e->getMessage();
