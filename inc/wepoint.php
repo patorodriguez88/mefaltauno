@@ -235,11 +235,81 @@ function wepoint_registrar_nuevos(array $todas): int {
         $marcas = implode(',', array_fill(0, count($todas), '?'));
         q("DELETE FROM wepoint_nuevos WHERE clave NOT IN ($marcas)", array_keys($todas));
     }
+    // Títulos unificados en WePoint (titulos:unificar): las ediciones de la colección pasaron todas a otro título
+    // (la sincronización ya actualizó items.wepoint_id). La colección se ata a ese título y toma su SKU.
+    q("UPDATE colecciones c JOIN (
+           SELECT coleccion_id, MIN(wepoint_id) AS titulo FROM items WHERE wepoint_variante_id IS NOT NULL
+           GROUP BY coleccion_id HAVING COUNT(DISTINCT wepoint_id) = 1
+       ) x ON x.coleccion_id = c.id
+       SET c.wepoint_titulo_id = x.titulo, c.sku = NULL
+       WHERE c.wepoint_titulo_id IS NOT NULL AND c.wepoint_titulo_id <> x.titulo
+         AND NOT EXISTS (SELECT 1 FROM (SELECT wepoint_titulo_id FROM colecciones WHERE wepoint_titulo_id IS NOT NULL) o WHERE o.wepoint_titulo_id = x.titulo)");
+    // SKU de los títulos: los de la bandeja y los de colecciones atadas que todavía no lo tienen
+    wepoint_titulos_completar(array_merge(
+        q("SELECT DISTINCT wepoint_id FROM wepoint_nuevos WHERE wepoint_variante_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN),
+        q("SELECT wepoint_titulo_id FROM colecciones WHERE wepoint_titulo_id IS NOT NULL AND (sku IS NULL OR sku='')")->fetchAll(PDO::FETCH_COLUMN)));
+    q("UPDATE colecciones c JOIN wepoint_titulos t ON t.id=c.wepoint_titulo_id
+       SET c.sku=t.sku WHERE (c.sku IS NULL OR c.sku='') AND t.sku IS NOT NULL
+         AND NOT EXISTS (SELECT 1 FROM (SELECT sku FROM colecciones WHERE sku IS NOT NULL) o WHERE o.sku=t.sku)");
     return wepoint_nuevos_pendientes();
 }
 
 function wepoint_nuevos_pendientes(): int {
     return (int)q("SELECT COUNT(*) FROM wepoint_nuevos")->fetchColumn();
+}
+
+// ─── Título de WePoint ↔ colección de MeFaltaUno (uno a uno) ───────────────
+// Fichas de los títulos (SKU y nombre) que todavía no están guardadas: GET v2/productos/{id}. Pocas por vez.
+function wepoint_titulos_completar(array $ids, int $max = 150): void {
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    if (!$ids) return;
+    $marcas = implode(',', array_fill(0, count($ids), '?'));
+    $ya = array_map('intval', q("SELECT id FROM wepoint_titulos WHERE id IN ($marcas)", $ids)->fetchAll(PDO::FETCH_COLUMN));
+    foreach (array_slice(array_diff($ids, $ya), 0, $max) as $id) {
+        try {
+            $r = wepoint_api('GET', 'v2/productos/' . $id);
+            $p = $r['data'] ?? $r;
+            if (empty($p['id_producto'])) continue;
+            q("REPLACE INTO wepoint_titulos (id, sku, nombre, actualizado_at) VALUES (?,?,?,NOW())",
+              [$id, strtoupper(trim((string)($p['sku'] ?? ''))) ?: null, mb_substr((string)($p['nombre'] ?? ''), 0, 255) ?: null]);
+        } catch (Exception $e) { /* se intenta de nuevo en la próxima sincronización */ }
+    }
+}
+
+// SKU del título en WePoint (el de su ficha; si todavía no se trajo, el que se deduce de una edición)
+function wepoint_sku_de_titulo(int $titulo_id, ?string $sku_edicion = null, ?int $numero = null): ?string {
+    static $cache = [];
+    if (!array_key_exists($titulo_id, $cache)) $cache[$titulo_id] = q("SELECT sku FROM wepoint_titulos WHERE id=?", [$titulo_id])->fetchColumn() ?: null;
+    return $cache[$titulo_id] ?? wepoint_sku_titulo($sku_edicion, $numero);
+}
+
+// SKU del título (el código del proveedor) a partir del de una edición: "13739-1" (edición 1) → "13739"
+function wepoint_sku_titulo(?string $sku_edicion, ?int $numero): ?string {
+    $s = strtoupper(trim((string)$sku_edicion));
+    if ($s === '' || !$numero) return null;
+    return preg_match('/^(.+?)-0*' . (int)$numero . '$/', $s, $m) ? $m[1] : null;
+}
+
+// Colección de MeFaltaUno de un título de WePoint: la atada a su id o la que tiene su SKU (cargado a mano, ej. "Próximamente")
+function wepoint_coleccion_del_titulo(int $titulo_id, ?string $sku): ?array {
+    return q("SELECT * FROM colecciones WHERE wepoint_titulo_id=? OR (? <> '' AND sku=?) ORDER BY wepoint_titulo_id=? DESC LIMIT 1",
+             [$titulo_id, (string)$sku, (string)$sku, $titulo_id])->fetch() ?: null;
+}
+
+// Ata la colección al título de WePoint (y le pone el SKU si no tenía) o explica por qué no se puede:
+// un título no puede terminar en dos colecciones ni una colección mezclar dos títulos.
+function wepoint_atar_coleccion(array $col, int $titulo_id, ?string $sku): void {
+    $otra = wepoint_coleccion_del_titulo($titulo_id, $sku);
+    if ($otra && (int)$otra['id'] !== (int)$col['id']) {
+        throw new Exception('Ese título de WePoint' . ($sku ? " (SKU $sku)" : '') . ' ya es la colección “' . $otra['nombre'] . '”: vinculalo ahí.');
+    }
+    if ($col['wepoint_titulo_id'] && (int)$col['wepoint_titulo_id'] !== $titulo_id) {
+        throw new Exception('“' . $col['nombre'] . '” ya es otro título de WePoint' . ($col['sku'] ? ' (SKU ' . $col['sku'] . ')' : '') . '.');
+    }
+    if ($col['sku'] && $sku && strtoupper($col['sku']) !== $sku) {
+        throw new Exception('“' . $col['nombre'] . '” tiene el SKU ' . $col['sku'] . ' y este título de WePoint es el ' . $sku . ': revisá cuál es.');
+    }
+    q("UPDATE colecciones SET wepoint_titulo_id=?, sku=COALESCE(NULLIF(sku,''), ?) WHERE id=?", [$titulo_id, $sku, $col['id']]);
 }
 
 // SKU MFU-<id colección>-<número> → [coleccion_id, numero] (si tiene ese formato)
@@ -279,6 +349,16 @@ function wepoint_palabras(string $norm): array {
 function wepoint_sugerir(array $nv, array $cols): array {
     [$col_id, $num] = wepoint_sku_partes($nv['sku'] ?? null);
     if ($col_id) return [$col_id, $num];
+    // El título ya es una colección (por su id en WePoint o por el SKU del título), se llame como se llame en MeFaltaUno
+    if (!empty($nv['wepoint_variante_id']) && !empty($nv['wepoint_id'])
+        && ($c = wepoint_coleccion_del_titulo((int)$nv['wepoint_id'], wepoint_sku_de_titulo((int)$nv['wepoint_id'], $nv['sku'] ?? null, !empty($nv['numero_edicion']) ? (int)$nv['numero_edicion'] : null)))) {
+        return [(int)$c['id'], !empty($nv['numero_edicion']) ? (int)$nv['numero_edicion'] : wepoint_nombre_partes((string)($nv['nombre'] ?? ''))[1]];
+    }
+    // Otra edición del mismo título ya es un número de la web (colección todavía sin atar)
+    if (!empty($nv['wepoint_variante_id']) && !empty($nv['wepoint_id'])) {
+        $col_id = q("SELECT coleccion_id FROM items WHERE wepoint_id=? AND wepoint_variante_id IS NOT NULL GROUP BY coleccion_id ORDER BY COUNT(*) DESC LIMIT 1", [(int)$nv['wepoint_id']])->fetchColumn();
+        if ($col_id) return [(int)$col_id, !empty($nv['numero_edicion']) ? (int)$nv['numero_edicion'] : wepoint_nombre_partes((string)($nv['nombre'] ?? ''))[1]];
+    }
     [$base, $num] = wepoint_nombre_partes((string)($nv['nombre'] ?? ''));
     // Una edición de WePoint trae su número; el nombre es el del título
     if (!empty($nv['numero_edicion'])) [$base, $num] = [wepoint_normalizar((string)($nv['nombre'] ?? '')), (int)$nv['numero_edicion']];
@@ -290,6 +370,8 @@ function wepoint_sugerir(array $nv, array $cols): array {
     $mejor = null;
     $mejor_puntaje = 0.0;
     foreach ($cols as $c) {
+        // Una colección que ya es otro título de WePoint no se propone (un título = una colección)
+        if (!empty($c['wepoint_titulo_id']) && (int)$c['wepoint_titulo_id'] !== (int)($nv['wepoint_id'] ?? 0)) continue;
         $cn = wepoint_normalizar($c['nombre']);
         if ($cn === $base) $puntaje = 1.0;
         else {

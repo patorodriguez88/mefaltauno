@@ -51,6 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $nombre = trim($_POST['nombre'] ?? '');
         if ($nombre === '') throw new Exception('El nombre no puede quedar vacío.');
+        // SKU del título en el proveedor / WePoint: único (un título = una colección)
+        $sku = strtoupper(trim((string)($_POST['sku'] ?? ''))) ?: null;
+        if ($sku && ($otra = q("SELECT nombre FROM colecciones WHERE sku=? AND id<>?", [$sku, $id])->fetchColumn())) {
+            throw new Exception("El SKU $sku ya es la colección “{$otra}”.");
+        }
+        q("UPDATE colecciones SET sku=? WHERE id=?", [$sku, $id]);
         $portada = subir_imagen($_FILES['foto_portada'] ?? null, 'colecciones', $col['slug']) ?? $col['imagen'];
         $rec_col = trim((string)($_POST['recargo'] ?? '')) === '' ? null : max(0, monto($_POST['recargo']));
         $tot = (int)($_POST['total_entregas'] ?? 0) ?: null;
@@ -180,6 +186,7 @@ admin_header($col['nombre'], 'colecciones');
         <div class="card form">
             <h3>Datos de la colección</h3>
             <label class="campo">Nombre<input type="text" name="nombre" value="<?= e($col['nombre']) ?>" required></label>
+            <label class="campo">SKU del título <small>(proveedor / WePoint<?= $col['wepoint_titulo_id'] ? ' · atada al título ' . (int)$col['wepoint_titulo_id'] . ' de WePoint' : '' ?>)</small><input type="text" name="sku" maxlength="64" value="<?= e($col['sku'] ?? '') ?>"></label>
             <label class="campo">Bajada <small>(una línea, para buscadores)</small><input type="text" name="bajada" value="<?= e($col['bajada']) ?>"></label>
             <label class="campo campo-desc">Descripción<textarea name="descripcion" rows="6"><?= e($col['descripcion']) ?></textarea></label>
         </div>

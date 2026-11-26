@@ -21,12 +21,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'crear
         flash('error', 'Poné el nombre de la colección.');
         redirect('admin/colecciones.php');
     }
+    // SKU del título en el proveedor (el mismo que usa WePoint): único, así un título no termina en dos colecciones
+    $sku = strtoupper(trim((string)($_POST['sku'] ?? ''))) ?: null;
+    if ($sku && ($otra = q("SELECT nombre FROM colecciones WHERE sku=?", [$sku])->fetchColumn())) {
+        flash('error', "El SKU $sku ya es la colección “{$otra}”.");
+        redirect('admin/colecciones.php');
+    }
     $slug = slugify($nombre);
     $base = $slug;
     for ($i = 2; q("SELECT 1 FROM colecciones WHERE slug=?", [$slug])->fetchColumn(); $i++) $slug = "$base-$i";
     $db = db();
     $db->beginTransaction();
-    q("INSERT INTO colecciones (categoria_id, slug, nombre, activa, recargo) VALUES (?,?,?,0,?)", [(int)($_POST['categoria_id'] ?? 0) ?: null, $slug, $nombre, $recargo]);
+    q("INSERT INTO colecciones (categoria_id, slug, sku, nombre, activa, recargo) VALUES (?,?,?,?,0,?)", [(int)($_POST['categoria_id'] ?? 0) ?: null, $slug, $sku, $nombre, $recargo]);
     $cid = (int)$db->lastInsertId();
     for ($n = 1; $n <= $cant; $n++) {
         q("INSERT INTO items (coleccion_id, numero, titulo, precio, stock) VALUES (?,?,?,?,0)", [$cid, $n, "Número $n", $precios[$n] ?? $precio_resto]);
@@ -102,6 +108,7 @@ admin_header('Stock', 'colecciones');
         <h3 id="modal-crear-titulo">Nueva colección</h3>
         <p class="muted small" style="margin:-4px 0 0">Se crea oculta, con sus números listos para completar título, foto y precio. Después la publicás.</p>
         <label class="campo">Nombre<input type="text" name="nombre" required autofocus></label>
+        <label class="campo">SKU del título <small>(el código del proveedor, ej. 13739; si lo ponés, cuando WePoint cargue ese título se vincula a esta colección)</small><input type="text" name="sku" maxlength="64"></label>
         <div class="form-row">
             <label class="campo">Categoría
                 <select name="categoria_id"><option value="">—</option>

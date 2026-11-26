@@ -1028,3 +1028,13 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .mov-info td { color: var(--muted); }
 .mov-info .mov-tipo { font-weight: 500; }
 .mov-rec td { opacity: .6; }
+/* Por publicar: ediciones de un título juntas, y páginas */
+.nuevo-grupo { display: grid; gap: 6px; }
+.nuevo-campos-grupo { grid-template-columns: minmax(200px, 2fr) 160px; }
+.nuevo-sueltas { padding: 0 14px; }
+.nuevo-sueltas summary { cursor: pointer; color: var(--teal-900); }
+.nuevos-paginas { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 18px 0; }
+.nuevo-destino { display: grid; gap: 6px; }
+.nuevo-opcion { display: flex; gap: 8px; align-items: center; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.nuevo-destino .nuevo-campos-grupo { padding-left: 24px; }
+.nuevo-campos-grupo { grid-template-columns: minmax(200px, 2fr) minmax(140px, 1fr); }

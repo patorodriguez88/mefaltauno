@@ -659,6 +659,29 @@ function schema_pasos(): array {
                 ADD COLUMN caddy_estado_at DATETIME NULL AFTER caddy_estado, ADD KEY idx_caddy_seg (caddy_seguimiento)",
             "ALTER TABLE puntos_retiro ADD COLUMN responsable VARCHAR(120) NULL AFTER nombre",
         ],
+
+        // Un título de WePoint es una sola colección de MeFaltaUno: la colección guarda el id del título y su SKU
+        // (el código del proveedor, ej. 13739 o el EAN 9788410578005). Los dos son únicos. El SKU sale de la ficha del
+        // título en WePoint (wepoint_titulos, se completa en cada sincronización). Acá se ata solo donde no hay dudas:
+        // la colección tiene ediciones de un único título y ese título no está repartido en otra colección.
+        40 => [
+            "ALTER TABLE colecciones ADD COLUMN sku VARCHAR(64) NULL AFTER slug, ADD COLUMN wepoint_titulo_id INT NULL AFTER sku,
+                ADD UNIQUE KEY uniq_col_sku (sku), ADD UNIQUE KEY uniq_col_wp_titulo (wepoint_titulo_id)",
+            "CREATE TABLE IF NOT EXISTS wepoint_titulos (
+                id INT PRIMARY KEY,
+                sku VARCHAR(64) NULL,
+                nombre VARCHAR(255) NULL,
+                actualizado_at DATETIME NOT NULL,
+                KEY idx_sku (sku)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+            "UPDATE colecciones c JOIN (
+                SELECT coleccion_id, MIN(wepoint_id) AS titulo FROM items WHERE wepoint_id IS NOT NULL AND wepoint_variante_id IS NOT NULL
+                GROUP BY coleccion_id HAVING COUNT(DISTINCT wepoint_id) = 1
+             ) x ON x.coleccion_id = c.id
+             SET c.wepoint_titulo_id = x.titulo
+             WHERE x.titulo NOT IN (SELECT wepoint_id FROM (SELECT wepoint_id FROM items WHERE wepoint_variante_id IS NOT NULL
+                                    GROUP BY wepoint_id HAVING COUNT(DISTINCT coleccion_id) > 1) d)",
+        ],
     ];
 }
 
