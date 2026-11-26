@@ -152,7 +152,7 @@ function campana_html(array $camp, string $email = '', string $nombre = ''): str
 }
 
 function campana_enviar_uno(array $camp, string $email, string $nombre): bool {
-    return mail_enviar($email, $camp['asunto'], campana_html($camp, $email, $nombre), ['List-Unsubscribe: <' . mailing_link_baja($email) . '>']);
+    return mail_enviar($email, $camp['asunto'], campana_html($camp, $email, $nombre), ['List-Unsubscribe: <' . mailing_link_baja($email) . '>'], false);
 }
 
 // Arma la lista de destinatarios (una vez, al empezar) y pasa la campaña a "enviando"

@@ -13,6 +13,7 @@ const ADMIN_ICONOS = [
     'cupones'       => '<circle cx="12" cy="12" r="9"/><path d="M9 15l6-6"/><circle cx="9.3" cy="9.3" r=".8"/><circle cx="14.7" cy="14.7" r=".8"/>',
     'marketing'     => '<path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 9a4 4 0 0 1 0 6"/><path d="M8 14l1.2 5"/>',
     'suscripciones' => '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    'mails'         => '<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/><path d="M15 16l2 2 4-4"/>',
     'ventana'       => '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8v5l4.5-2.5z"/><path d="M8 21h8M12 17v4"/>',
     'puntos'        => '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
     'wepoint'       => '<path d="M3 21V9l9-5 9 5v12"/><path d="M7 21v-8h10v8"/><path d="M7 17h10"/>',
@@ -54,6 +55,7 @@ function admin_header(string $titulo_pag, string $activo): void {
             'marketing'     => ['marketing.php', 'Marketing'],
             'ventana'       => ['ventana.php', 'Ventana de inicio'],
             'suscripciones' => ['suscripciones.php', 'Suscripciones'],
+            'mails'         => ['mails.php', 'Mails enviados'],
         ],
         'Logística' => [
             'puntos'  => ['puntos.php', 'Puntos de retiro'],

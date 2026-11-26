@@ -1,15 +1,15 @@
 <?php
 // Envío de mails. En local (MAIL_MODO = 'log') se escriben en storage/mail.log.
+// Cada mail queda en mails_enviados (Panel → Mails enviados), salvo las campañas de marketing ($registrar = false),
+// que ya llevan su propio registro por destinatario en campana_destinatarios.
 
-function mail_enviar(string $para, string $asunto, string $cuerpo_html, array $extra_headers = []): bool {
+function mail_enviar(string $para, string $asunto, string $cuerpo_html, array $extra_headers = [], bool $registrar = true): bool {
     $html = mail_layout($asunto, $cuerpo_html);
     if (MAIL_MODO === 'log') {
         $dir = dirname(__DIR__) . '/storage';
         if (!is_dir($dir)) mkdir($dir, 0775, true);
-        // Los botones quedan como "Texto (link)" para poder seguirlos en una prueba local
-        $con_links = preg_replace('#<a\s[^>]*href="([^"]+)"[^>]*>(.*?)</a>#is', '$2 ($1)', $cuerpo_html);
-        $txt = trim(html_entity_decode(strip_tags(preg_replace('#<br\s*/?>|</p>|</tr>|</h\d>#i', "\n", $con_links)), ENT_QUOTES, 'UTF-8'));
-        file_put_contents("$dir/mail.log", sprintf("=== %s\nPara: %s\nAsunto: %s\n\n%s\n\n", date('Y-m-d H:i:s'), $para, $asunto, preg_replace("/\n\s*\n+/", "\n", $txt)), FILE_APPEND);
+        file_put_contents("$dir/mail.log", sprintf("=== %s\nPara: %s\nAsunto: %s\n\n%s\n\n", date('Y-m-d H:i:s'), $para, $asunto, mail_texto($cuerpo_html)), FILE_APPEND);
+        if ($registrar) mail_registrar($para, $asunto, $cuerpo_html, true);
         return true;
     }
     $headers = [
@@ -20,7 +20,27 @@ function mail_enviar(string $para, string $asunto, string $cuerpo_html, array $e
     ];
     $headers = array_merge($headers, $extra_headers);
     $asunto_enc = '=?UTF-8?B?' . base64_encode($asunto) . '?=';
-    return @mail($para, $asunto_enc, $html, implode("\r\n", $headers), '-f' . MAIL_FROM);
+    $ok = @mail($para, $asunto_enc, $html, implode("\r\n", $headers), '-f' . MAIL_FROM);
+    if ($registrar) mail_registrar($para, $asunto, $cuerpo_html, $ok);
+    return $ok;
+}
+
+// Texto plano del cuerpo: los botones quedan como "Texto (link)"
+function mail_texto(string $cuerpo_html): string {
+    $con_links = preg_replace('#<a\s[^>]*href="([^"]+)"[^>]*>(.*?)</a>#is', '$2 ($1)', $cuerpo_html);
+    $txt = trim(html_entity_decode(strip_tags(preg_replace('#<br\s*/?>|</p>|</tr>|</h\d>#i', "\n", $con_links)), ENT_QUOTES, 'UTF-8'));
+    return preg_replace("/\n\s*\n+/", "\n", $txt);
+}
+
+// $ok = el servidor de correo aceptó el mail. No garantiza que haya llegado (puede rebotar o ir a spam).
+// Si el registro falla, el mail ya salió igual: no se corta el envío por eso.
+function mail_registrar(string $para, string $asunto, string $cuerpo_html, bool $ok): void {
+    try {
+        q("INSERT INTO mails_enviados (para, asunto, cuerpo, ok) VALUES (?,?,?,?)",
+          [mb_substr(trim($para), 0, 160), mb_substr($asunto, 0, 255), mb_substr(mail_texto($cuerpo_html), 0, 20000), $ok ? 1 : 0]);
+    } catch (Throwable $e) {
+        error_log('mails_enviados: ' . $e->getMessage());
+    }
 }
 
 function mail_layout(string $titulo, string $cuerpo): string {

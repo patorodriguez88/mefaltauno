@@ -682,6 +682,21 @@ function schema_pasos(): array {
              WHERE x.titulo NOT IN (SELECT wepoint_id FROM (SELECT wepoint_id FROM items WHERE wepoint_variante_id IS NOT NULL
                                     GROUP BY wepoint_id HAVING COUNT(DISTINCT coleccion_id) > 1) d)",
         ],
+
+        // Registro de mails enviados (inc/mail.php, Panel → Mails enviados): a quién, qué, cuándo y si el servidor
+        // de correo lo aceptó. Las campañas de marketing no van acá (tienen campana_destinatarios).
+        41 => [
+            "CREATE TABLE IF NOT EXISTS mails_enviados (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                para VARCHAR(160) NOT NULL,
+                asunto VARCHAR(255) NOT NULL,
+                cuerpo MEDIUMTEXT NULL,
+                ok TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_para (para),
+                KEY idx_fecha (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        ],
     ];
 }
 
