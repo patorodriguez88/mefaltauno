@@ -33,7 +33,7 @@ admin_header('Mails enviados', 'mails');
     </div>
 </div>
 
-<div class="layout-2">
+<div class="layout-2"<?= $abierto ? ' style="grid-template-columns:minmax(0,1fr) clamp(360px, 40vw, 640px)"' : '' ?>>
     <div>
         <form method="get" class="filtros" style="align-items:center">
             <input type="search" name="q" value="<?= e($buscar) ?>" placeholder="Email, nombre o asunto (ej. Iron Man)" style="width:260px">
@@ -62,12 +62,20 @@ admin_header('Mails enviados', 'mails');
         <?php if ($abierto): ?>
             <h3 style="margin-top:0"><?= e($abierto['asunto']) ?></h3>
             <p class="small muted">Para <b><?= e($abierto['para']) ?></b> · <?= fecha($abierto['created_at']) ?></p>
-            <div class="small" style="white-space:pre-wrap;overflow-wrap:anywhere"><?= e($abierto['cuerpo'] ?? '') ?></div>
+            <?php if (!empty($abierto['html'])): ?>
+                <?php // Tal cual le llegó al cliente. sandbox: sin scripts ni acceso al panel; los links abren en otra pestaña
+                $vista = preg_replace('#<head>#i', '<head><base target="_blank">', $abierto['html'], 1); ?>
+                <iframe srcdoc="<?= e($vista) ?>" sandbox="allow-popups allow-popups-to-escape-sandbox" title="Vista del mail"
+                        style="width:100%;height:75vh;border:1px solid var(--line);border-radius:8px;background:#f4f6f6"></iframe>
+            <?php else: ?>
+                <p class="small muted">Este mail se registró antes de guardar el diseño: se ve solo el texto.</p>
+                <div class="small" style="white-space:pre-wrap;overflow-wrap:anywhere"><?= e($abierto['cuerpo'] ?? '') ?></div>
+            <?php endif; ?>
         <?php else: ?>
             <h3 style="margin-top:0">Cómo leerlo</h3>
             <p class="small"><span class="badge badge-verde">Enviado</span> el servidor de correo aceptó el mail. Casi siempre llega, pero puede rebotar (mail mal escrito) o caer en spam: si el cliente dice que no le llegó, pedile que mire ahí.</p>
             <p class="small"><span class="badge badge-rojo">No salió</span> el servidor lo rechazó y el cliente no lo recibió.</p>
-            <p class="small">Tocá un asunto para ver el texto que se mandó.</p>
+            <p class="small">Tocá un asunto para ver el mail tal como le llegó al cliente.</p>
         <?php endif; ?>
     </aside>
 </div>

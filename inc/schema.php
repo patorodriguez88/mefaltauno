@@ -697,6 +697,12 @@ function schema_pasos(): array {
                 KEY idx_fecha (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ],
+
+        // El mail completo (HTML con logo y pie) para verlo en el panel exactamente como le llegó al cliente.
+        // Los registrados antes de este paso solo tienen el texto (cuerpo).
+        42 => [
+            "ALTER TABLE mails_enviados ADD COLUMN html MEDIUMTEXT NULL AFTER cuerpo",
+        ],
     ];
 }
 
