@@ -177,12 +177,10 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
     .conformidad-head h2 { margin: 0; font: 900 11.5pt 'Nunito', sans-serif; }
     .conformidad-head span { font-size: 7.8pt; opacity: .8; }
     .conformidad p { margin: 2.5mm 5mm 0; font-size: 8.8pt; }
-    .firmas { display: grid; grid-template-columns: 1.25fr 1fr .9fr; grid-template-rows: repeat(3, auto); gap: 4.2mm 7mm; padding: 4.5mm 5mm 3mm; }
+    .firmas { display: grid; grid-template-columns: 1.2fr 1fr; grid-template-rows: repeat(3, auto); gap: 4.2mm 7mm; padding: 4.5mm 5mm 3mm; }
     .firma { border-top: .35mm solid var(--ink); padding-top: 1.2mm; font-size: 7.3pt; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
     .firma.ancha { grid-row: 1 / span 3; display: flex; flex-direction: column; justify-content: flex-end; border-top: 0; padding-top: 0; }
     .firma.ancha .area { flex: 1; min-height: 12mm; border: .35mm dashed #b9c7c7; border-radius: 2mm; margin-bottom: 1.2mm; }
-    .sello { grid-row: 1 / span 3; grid-column: 3; border: .35mm dashed #b9c7c7; border-radius: 2mm; display: grid; place-items: end center; padding-bottom: 1.2mm;
-             font-size: 7.3pt; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 
     /* Aviso al kiosco */
     .aviso { margin-top: 3.5mm; display: flex; gap: 4mm; align-items: center; background: var(--yellow); border-radius: 3.5mm; padding: 2.8mm 5mm; break-inside: avoid; }
@@ -191,22 +189,9 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
     .aviso b { display: block; font: 900 10.5pt 'Nunito', sans-serif; color: var(--teal-900); }
     .aviso div { font-size: 8.4pt; color: var(--teal-900); }
 
-    /* Talón para el cliente */
-    /* El talón queda abajo de todo, pegado al pie, en la parte de la hoja que se corta */
-    .corte { position: relative; margin: auto -14mm 0; border-top: .4mm dashed #9fb1b1; }
-    .aviso { margin-bottom: 4.5mm; }
-    .corte span { position: absolute; left: 10mm; top: -3.1mm; background: #fff; padding: 0 1.5mm; font-size: 10pt; color: #7d9090; line-height: 1; }
-    .corte em { position: absolute; right: 14mm; top: -2.2mm; background: #fff; padding: 0 1.5mm; font: 600 6.8pt 'Inter', sans-serif; font-style: normal; color: #7d9090; text-transform: uppercase; letter-spacing: .1em; }
-    .talon { display: grid; grid-template-columns: auto 1fr auto; gap: 5mm; align-items: center; padding: 3mm 0 2.5mm; break-inside: avoid; }
-    .talon .mini { background: var(--teal-900); color: var(--yellow); border-radius: 2mm; padding: 1.6mm 3mm; font: 900 13pt/1 'Nunito', sans-serif; white-space: nowrap; }
-    .talon .mini small { font-size: 7.5pt; color: #fff; opacity: .75; margin-right: 1mm; }
-        .talon h4 { margin: 0 0 .3mm; font: 900 9.5pt 'Nunito', sans-serif; color: var(--teal-900); }
-    .talon .dato { font-size: 8pt; color: var(--muted); }
-    .talon .dato strong { color: var(--ink); }
-    .talon .fecha { text-align: center; font-size: 7pt; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-    .talon .fecha div { font: 800 11pt 'Nunito', sans-serif; color: #b9c7c7; letter-spacing: .15em; margin-bottom: .5mm; }
+    .aviso { margin-bottom: 5mm; }
 
-    .pie { margin: 0 -14mm; padding: 1.8mm 14mm; background: var(--teal-50); border-top: .3mm solid var(--line); display: flex; justify-content: space-between;
+    .pie { margin: auto -14mm 0; padding: 1.8mm 14mm; background: var(--teal-50); border-top: .3mm solid var(--line); display: flex; justify-content: space-between;
            font-size: 7pt; color: var(--muted); }
     .pie b { color: var(--teal); }
 
@@ -223,6 +208,38 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
         .barra { display: none; }
         .hoja { margin: 0; box-shadow: none; min-height: 296.5mm; }
     }
+
+    /* Los kioscos la imprimen en blanco y negro: en papel va una versión monocromática, sin bloques llenos que
+       gastan tóner y salen rayados, y sin amarillo (en gris queda lavado). En pantalla sigue en color. */
+    @media print {
+        :root { --teal: #000; --teal-900: #000; --teal-700: #000; --ink: #000; --muted: #444; --line: #999; --teal-50: #fff; --teal-100: #fff; --yellow: #fff; }
+        .cabeza { background: #fff; color: #000; padding-bottom: 5mm; }
+        .cabeza::before { display: none; }
+        .cabeza::after { height: 1.6mm; background: repeating-linear-gradient(-45deg, #000 0 1.6mm, #fff 1.6mm 3.6mm); }
+        .logo { filter: brightness(0); }
+        .bajada { color: #444; }
+        .kicker { color: #000; }
+        .nro small { opacity: 1; color: #444; }
+        .chip-barras { padding: 0; }
+        .barras { fill: #000; }
+        .saludo h1 em { background: none; border-bottom: .6mm solid #000; padding: 0; }
+        .estado b { background: #fff; border: .35mm solid #000; }
+        .paso::before, .punto { border-color: #999; }
+        .hecho .punto { background: #000; border-color: #000; }
+        .actual .punto { background: #fff; border: .7mm solid #000; color: #000; box-shadow: none; }
+        .ficha { border-color: #999; }
+        .ficha.kiosco { border: .5mm solid #000; }
+        .dinter { background: #fff; color: #000; border: .35mm solid #000; }
+        .tapa { box-shadow: none; border: .2mm solid #999; }
+        .numero { background: #fff; border: .35mm solid #000; }
+        .conformidad-head { background: #fff; color: #000; border-bottom: .5mm solid #000; }
+        .conformidad-head span { opacity: 1; color: #444; }
+        .firma.ancha .area { border-color: #777; }
+        .aviso { background: #fff; border: .5mm solid #000; }
+        .aviso .ico { background: #000; color: #fff; }
+        .pie { background: #fff; border-top-color: #999; }
+        .sello-estado.ok, .sello-estado.no { color: #000; }
+    }
     @media screen and (max-width: 820px) {
         .hoja { transform-origin: top left; zoom: .5; }
     }
@@ -233,14 +250,14 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
 <div class="barra">
     <a href="<?= url('admin/pedido.php?id=' . $id) ?>">← Volver al pedido</a>
     <button type="button" onclick="window.print()">Imprimir o guardar PDF</button>
-    <span>Hoja A4 · se imprime tal cual la ves</span>
+    <span>Hoja A4 · en papel sale en blanco y negro, lista para cualquier impresora</span>
 </div>
 
 <article class="hoja">
     <header class="cabeza">
         <div>
             <img class="logo" src="<?= asset('assets/img/logo.png') ?>" alt="MeFaltaUno">
-            <div class="bajada">Colecciones para grandes · mefaltauno.com.ar</div>
+            <div class="bajada">mefaltauno.com.ar</div>
         </div>
         <div class="ident">
             <div class="kicker">Constancia de entrega</div>
@@ -337,7 +354,6 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
             <div class="firmas">
                 <div class="firma ancha"><div class="area"></div>Firma de quien retira</div>
                 <div class="firma">Aclaración</div>
-                <div class="sello">Sello y firma del kiosco</div>
                 <div class="firma">DNI</div>
                 <div class="firma">Fecha de retiro</div>
             </div>
@@ -348,17 +364,6 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
             <div><b>Kiosquero: devolvé esta hoja firmada a Dinter</b>
                 Con la constancia firmada te acreditamos el pedido<?= $cliente_dinter ? ' en tu cuenta de cliente N° ' . e($cliente_dinter) : '' ?>. Consultas: <strong><?= CONSTANCIA_TEL ?></strong> · <strong><?= CONSTANCIA_MAIL ?></strong></div>
         </div>
-
-        <div class="corte"><span>✂</span><em>Talón para el cliente</em></div>
-        <section class="talon">
-            <div class="mini"><small>N°</small><?= $id ?></div>
-            <div>
-                <h4>Comprobante de retiro · ¡Gracias por coleccionar con nosotros!</h4>
-                <div class="dato"><strong><?= e($retira) ?></strong> · <?= e($kiosco) ?> · <?= $unidades ?> <?= $unidades === 1 ? 'unidad' : 'unidades' ?> · <?= precio((float)$p['total']) ?></div>
-                <div class="dato">Guardalo: ante cualquier consulta, escribinos con tu número de pedido.</div>
-            </div>
-            <div class="fecha"><div>__ / __ / __</div>Retirado el</div>
-        </section>
 
         <footer class="pie">
             <span><b>MeFaltaUno</b> · <?= e(implode(' · ', $legal)) ?></span>
