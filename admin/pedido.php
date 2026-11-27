@@ -79,6 +79,9 @@ admin_header('Pedido #' . $id, 'pedidos');
 <div class="section-head">
     <h1 style="margin:0">Pedido #<?= $id ?></h1>
     <?= badge_estado($p['estado'], ESTADOS_PEDIDO) ?>
+    <?php if ($p['estado'] !== 'cancelado'): ?>
+        <a class="btn btn-teal btn-chico" style="margin-left:auto" href="<?= url('admin/constancia.php?id=' . $id) ?>" target="_blank" rel="noopener">🖨️ Constancia de entrega</a>
+    <?php endif; ?>
 </div>
 
 <?php if ($encargues): ?>
