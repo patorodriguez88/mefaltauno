@@ -28,6 +28,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'encar
     redirect('admin/pedido.php?id=' . $id);
 }
 
+// Comprobante de transferencia subido por el operador (el cliente lo mandó por WhatsApp o mail, o es un pedido viejo)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'comprobante') {
+    csrf_exigir();
+    try {
+        $ped = q("SELECT estado, pago_metodo, comprobante FROM pedidos WHERE id=?", [$id])->fetch();
+        if (!$ped || $ped['pago_metodo'] !== 'transferencia') throw new Exception('El pedido no es por transferencia.');
+        comprobante_guardar($id, $_FILES['comprobante'] ?? null);
+        registrar_historial('pedido', $id, $ped['estado'], ($ped['comprobante'] ? 'Comprobante de transferencia cambiado' : 'Comprobante de transferencia cargado') . ' por el operador.', nombre_cliente($admin));
+        flash('ok', 'Comprobante cargado en el pedido.');
+    } catch (Exception $e) {
+        flash('error', $e->getMessage());
+    }
+    redirect('admin/pedido.php?id=' . $id);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'caddy') {
     csrf_exigir();
     try {
@@ -163,6 +178,15 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <?php endif; ?>
                 <?php if ($p['notas']): ?><br><br><b>Notas del cliente:</b> <?= nl2br(e($p['notas'])) ?><?php endif; ?>
             </p>
+            <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] !== 'cancelado'): ?>
+                <form method="post" enctype="multipart/form-data" style="margin-top:12px">
+                    <?= csrf_field() ?><input type="hidden" name="accion" value="comprobante">
+                    <label class="btn btn-linea btn-chico"><span><?= $p['comprobante'] ? 'Cambiar comprobante' : '📎 Cargar comprobante' ?></span>
+                        <input type="file" name="comprobante" accept="image/*,application/pdf" required hidden
+                               onchange="if (this.files.length) { this.previousElementSibling.textContent = 'Subiendo…'; this.form.submit(); }"></label>
+                    <span class="muted small">Si el cliente te lo mandó por WhatsApp o mail. Foto, captura o PDF.</span>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 
