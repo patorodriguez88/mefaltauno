@@ -149,7 +149,14 @@ require __DIR__ . '/inc/header.php';
                             </label>
                         </form>
                     </div>
-                <?php elseif ($p['comprobante']): ?>
+                <?php elseif (in_array($p['estado'], ['en_camino', 'enviado'], true)): ?>
+                    <div class="card card-destacada clave-retiro">
+                        <div class="clave-retiro-etq">Tu palabra clave para retirar</div>
+                        <div class="clave-retiro-palabra"><?= e(pedido_palabra_clave((int)$p['id'])) ?></div>
+                        <p class="small" style="margin:0">Decísela al kiosquero cuando vayas a buscar tu pedido, junto con tu DNI. Sin la palabra clave no te lo puede entregar.</p>
+                    </div>
+                <?php endif; ?>
+                <?php if (!$puede_comprobante && $p['comprobante']): ?>
                     <div class="card">
                         <h3>Comprobante de transferencia</h3>
                         <p class="small" style="margin:0">Lo subiste el <?= e(fecha($p['comprobante_at'])) ?>. <a href="<?= e(comprobante_url((int)$p['id'])) ?>" target="_blank" rel="noopener">Verlo</a></p>

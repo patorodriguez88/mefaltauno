@@ -67,3 +67,34 @@ function pedido_borrar(int $id, string $usuario): void {
     $db->commit();
     comprobante_borrar_archivo($comprobante ?: null);
 }
+
+// ─── Palabra clave de retiro ────────────────────────────────────────────────
+// Una sola palabra, corta y fácil de recordar, con la onda de MeFaltaUno (aventuras, héroes, colecciones):
+// "COMETA", "TESORO", "JAGUAR". Le llega al cliente en el mail de "Llegó a tu kiosco" y está en la constancia
+// que imprime el kiosco: antes de entregar, el kiosquero se la pide a quien retira. Sin tildes ni ñ, para que
+// nadie dude cómo se dice o se escribe.
+const PALABRAS_CLAVE = [
+    'RAYO', 'TRUENO', 'COMETA', 'ESCUDO', 'COHETE', 'ROBOT', 'NINJA', 'MAGO', 'TESORO', 'MAPA', 'ESTRELLA', 'PLANETA',
+    'LUNA', 'TORNADO', 'METEORO', 'GALAXIA', 'CAPA', 'ANTIFAZ', 'ESPADA', 'CORONA', 'CASTILLO', 'BARCO', 'GLOBO', 'TREN',
+    'FARO', 'ANCLA', 'TIGRE', 'LOBO', 'PUMA', 'JAGUAR', 'ZORRO', 'PANDA', 'KOALA', 'CANGURO', 'BALLENA', 'PULPO', 'CEBRA',
+    'JIRAFA', 'GORILA', 'BISONTE', 'MAMUT', 'TROMPO', 'PELOTA', 'DADO', 'FIGURITA', 'PORTADA', 'CUENTO', 'AVENTURA', 'PILOTO',
+    'TURBO', 'RADAR', 'CRISTAL', 'DIAMANTE', 'MEDALLA', 'TROFEO', 'COPA', 'BANDERA', 'VOLANTE', 'MOTOR', 'CASCO', 'BRUMA',
+    'SELVA', 'DESIERTO', 'ISLA', 'OASIS', 'PIRATA', 'VIKINGO', 'GIGANTE', 'CENTELLA', 'CHISPA', 'LINTERNA', 'TELESCOPIO', 'ASTRONAUTA',
+];
+
+/** La palabra clave del pedido: se sortea la primera vez que se necesita y queda fija. */
+function pedido_palabra_clave(int $id): string {
+    $p = q("SELECT palabra_clave, punto_id, envio_punto FROM pedidos WHERE id=?", [$id])->fetch();
+    if (!$p) return '';
+    if ($p['palabra_clave']) return $p['palabra_clave'];
+    // Que no se repita con otro pedido sin retirar del mismo kiosco
+    $usadas = q("SELECT palabra_clave FROM pedidos WHERE palabra_clave IS NOT NULL AND estado NOT IN ('entregado','cancelado')
+                 AND (punto_id <=> ?) AND (envio_punto <=> ?)", [$p['punto_id'], $p['envio_punto']])->fetchAll(PDO::FETCH_COLUMN);
+    $libres = array_values(array_diff(PALABRAS_CLAVE, $usadas)) ?: PALABRAS_CLAVE;
+    $clave = $libres[random_int(0, count($libres) - 1)];
+    q("UPDATE pedidos SET palabra_clave=? WHERE id=? AND palabra_clave IS NULL", [$clave, $id]);
+    return (string)q("SELECT palabra_clave FROM pedidos WHERE id=?", [$id])->fetchColumn();
+}
+
+/** Estados con el pago ya confirmado: recién ahí se puede imprimir la constancia de entrega. */
+const ESTADOS_CON_PAGO = ['confirmado', 'preparando', 'en_camino', 'enviado', 'entregado'];

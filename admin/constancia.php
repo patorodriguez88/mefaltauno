@@ -40,6 +40,12 @@ $p = q("SELECT p.*, c.nombre, c.apellido, c.email, c.telefono,
         FROM pedidos p JOIN clientes c ON c.id=p.cliente_id LEFT JOIN puntos_retiro pr ON pr.id=p.punto_id
         WHERE p.id=?", [$id])->fetch();
 if (!$p) redirect('admin/pedidos.php');
+// Recién con el pago confirmado: antes no hay nada que entregar (y se evita imprimirla por error)
+if (!in_array($p['estado'], ESTADOS_CON_PAGO, true)) {
+    flash('error', 'La constancia de entrega se puede imprimir recién cuando el pago está confirmado.');
+    redirect('admin/pedido.php?id=' . $id);
+}
+$clave = pedido_palabra_clave($id);
 $lineas   = q("SELECT pi.*, i.imagen FROM pedido_items pi LEFT JOIN items i ON i.id=pi.item_id WHERE pi.pedido_id=? ORDER BY pi.coleccion, pi.numero", [$id])->fetchAll();
 $unidades = (int)array_sum(array_column($lineas, 'cantidad'));
 $hist     = historial('pedido', $id);
@@ -56,19 +62,12 @@ $kiosco_dir = $p['punto_direccion']
     ? trim($p['punto_direccion'] . ', ' . $p['punto_localidad'] . ($p['punto_provincia'] ? ', ' . $p['punto_provincia'] : ''))
     : trim($p['envio_direccion'] . ', ' . $p['envio_localidad'] . ' ' . $p['envio_provincia'], ' ,');
 
-// Recorrido del pedido: cada paso con la primera fecha en que pasó por ahí
-$pasos = ['pendiente' => 'Recibido', 'confirmado' => 'Pagado', 'preparando' => 'Preparado',
-          'en_camino' => 'En camino', 'enviado' => 'En el kiosco', 'entregado' => 'Entregado'];
-$cuando = [];
-foreach ($hist as $h) if (!isset($cuando[$h['estado']])) $cuando[$h['estado']] = $h['created_at'];
-$cuando['pendiente'] ??= $p['created_at'];
-$orden_pasos = array_keys($pasos);
-$idx_actual  = array_search($p['estado'], $orden_pasos, true);
-$cancelado   = $p['estado'] === 'cancelado';
+// Fecha en que se confirmó el pago (la primera vez que el pedido pasó a "Pago confirmado")
+$pago_at = null;
+foreach ($hist as $h) if ($h['estado'] === 'confirmado') { $pago_at = $h['created_at']; break; }
 
 $pago = PAGO_METODOS[$p['pago_metodo']] ?? $p['pago_metodo'];
 $legal = array_filter([ajuste('razon_social', 'Dinter S.A.'), ajuste('cuit') ? 'CUIT ' . ajuste('cuit') : '', ajuste('domicilio')]);
-$estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
 ?><!doctype html>
 <html lang="es">
 <head>
@@ -123,22 +122,18 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
     .saludo h1 { font: 900 17pt/1.1 'Nunito', sans-serif; color: var(--teal-900); margin: 0 0 1.2mm; }
     .saludo h1 em { font-style: normal; background: linear-gradient(transparent 58%, var(--yellow) 58% 92%, transparent 92%); padding: 0 .5mm; }
     .saludo p { margin: 0; color: var(--muted); font-size: 9pt; }
-    .estado { flex: none; text-align: right; font-size: 7.5pt; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-    .estado b { display: inline-block; margin-top: 1mm; font: 800 10pt 'Nunito', sans-serif; letter-spacing: 0; text-transform: none;
-                color: var(--teal-900); background: var(--teal-100); border-radius: 999px; padding: 1.2mm 3.5mm; }
+    .pago { flex: none; text-align: right; font-size: 7.5pt; color: var(--muted); }
+    .pago b { display: inline-flex; align-items: center; gap: 1.5mm; font: 800 10pt 'Nunito', sans-serif;
+              color: #156b3a; background: #def5e7; border-radius: 999px; padding: 1.2mm 3.5mm; margin-bottom: .8mm; }
 
-    /* Recorrido */
-    .recorrido { display: grid; grid-template-columns: repeat(6, 1fr); margin: 3.5mm 0 3mm; position: relative; }
-    .paso { text-align: center; position: relative; font-size: 7.5pt; color: var(--muted); }
-    .paso::before { content: ''; position: absolute; top: 3.2mm; left: -50%; right: 50%; height: .7mm; background: var(--line); }
-    .paso:first-child::before { display: none; }
-    .paso.hecho::before { background: var(--teal); }
-    .punto { position: relative; z-index: 1; width: 7mm; height: 7mm; margin: 0 auto 1.6mm; border-radius: 50%; background: #fff;
-             border: .7mm solid var(--line); display: grid; place-items: center; font: 900 8pt 'Nunito', sans-serif; color: var(--line); }
-    .hecho .punto { background: var(--teal); border-color: var(--teal); color: #fff; }
-    .actual .punto { background: var(--yellow); border-color: var(--teal-900); color: var(--teal-900); box-shadow: 0 0 0 1.2mm rgba(241,229,47,.35); }
-    .paso b { display: block; font-weight: 700; color: var(--ink); font-size: 8pt; }
-    .paso:not(.hecho):not(.actual) b { color: var(--muted); font-weight: 500; }
+    /* Palabra clave de retiro */
+    .clave { display: grid; grid-template-columns: auto 1fr; gap: 6mm; align-items: center; margin: 4.5mm 0 4.5mm;
+             border: .5mm dashed var(--teal-900); border-radius: 3.5mm; padding: 3mm 5mm; background: var(--teal-50); break-inside: avoid; }
+    .clave-etq { font: 800 7pt 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .12em; color: var(--teal); }
+    .clave-palabra { font: 400 25pt/1 'Bangers', 'Nunito', sans-serif; letter-spacing: .07em; color: var(--teal-900); margin-top: 1mm; white-space: nowrap; }
+    .clave-palabra span { background: linear-gradient(transparent 62%, var(--yellow) 62% 94%, transparent 94%); padding: 0 1mm; }
+    .clave-txt { font-size: 8.5pt; color: var(--ink); border-left: .3mm solid var(--line); padding-left: 6mm; }
+    .clave-txt b { display: block; font: 900 10pt 'Nunito', sans-serif; color: var(--teal-900); margin-bottom: .5mm; }
 
     /* Fichas */
     .fichas { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 4mm; }
@@ -195,13 +190,6 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
            font-size: 7pt; color: var(--muted); }
     .pie b { color: var(--teal); }
 
-    /* Sello de estado final */
-    .sello-estado { flex: none; margin: -2mm 2mm 0 0; transform: rotate(-8deg); border: .9mm solid currentColor; border-radius: 3mm;
-                    padding: 1.3mm 4mm 1mm; font: 400 17pt/1 'Bangers', sans-serif; letter-spacing: .08em; text-align: center; opacity: .85; }
-    .sello-estado small { display: block; font: 700 7pt 'Inter', sans-serif; letter-spacing: .15em; margin-top: .8mm; }
-    .sello-estado.ok { color: var(--green); }
-    .sello-estado.no { color: var(--red); }
-
     @page { size: A4; margin: 0; }
     @media print {
         body { background: #fff; }
@@ -223,10 +211,10 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
         .chip-barras { padding: 0; }
         .barras { fill: #000; }
         .saludo h1 em { background: none; border-bottom: .6mm solid #000; padding: 0; }
-        .estado b { background: #fff; border: .35mm solid #000; }
-        .paso::before, .punto { border-color: #999; }
-        .hecho .punto { background: #000; border-color: #000; }
-        .actual .punto { background: #fff; border: .7mm solid #000; color: #000; box-shadow: none; }
+        .pago b { background: #fff; color: #000; border: .35mm solid #000; }
+        .clave { background: #fff; border-color: #000; }
+        .clave-palabra span { background: none; }
+        .clave-txt { border-left-color: #999; }
         .ficha { border-color: #999; }
         .ficha.kiosco { border: .5mm solid #000; }
         .dinter { background: #fff; color: #000; border: .35mm solid #000; }
@@ -238,7 +226,6 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
         .aviso { background: #fff; border: .5mm solid #000; }
         .aviso .ico { background: #000; color: #fff; }
         .pie { background: #fff; border-top-color: #999; }
-        .sello-estado.ok, .sello-estado.no { color: #000; }
     }
     @media screen and (max-width: 820px) {
         .hoja { transform-origin: top left; zoom: .5; }
@@ -272,30 +259,17 @@ $estado_txt = ESTADOS_PEDIDO[$p['estado']][0] ?? $p['estado'];
                 <h1><?= e($primer) ?>, <em>¡ya no te falta!</em></h1>
                 <p>Al retirarlo, revisá que esté completo y firmá esta constancia de entrega.</p>
             </div>
-            <?php if ($p['estado'] === 'entregado'): ?>
-                <div class="sello-estado ok">¡Misión cumplida!<small>Entregado el <?= e(fecha($cuando['entregado'] ?? $p['updated_at'], false)) ?></small></div>
-            <?php elseif ($cancelado): ?>
-                <div class="sello-estado no">Pedido anulado<small>No entregar</small></div>
-            <?php else: ?>
-                <div class="estado">Estado<br><b><?= e($estado_txt) ?></b></div>
-            <?php endif; ?>
+            <div class="pago"><b>✓ Pago recibido</b><?= $pago_at ? '<br>el ' . e(fecha($pago_at, false)) : '' ?></div>
         </section>
 
-        <?php if (!$cancelado): ?>
-        <section class="recorrido" aria-label="Recorrido del pedido">
-            <?php foreach ($orden_pasos as $i => $k):
-                // El último paso alcanzado va resaltado en amarillo; "Entregado" ya es un paso cumplido
-                $alcanzado = $idx_actual !== false && $i <= $idx_actual;
-                $actual    = $idx_actual === $i && $k !== 'entregado';
-                $tilde     = $alcanzado && !$actual; ?>
-                <div class="paso <?= $alcanzado ? 'hecho' : '' ?> <?= $actual ? 'actual' : '' ?>">
-                    <div class="punto"><?= $tilde ? '✓' : $i + 1 ?></div>
-                    <b><?= e($pasos[$k]) ?></b>
-                    <?= $alcanzado && isset($cuando[$k]) ? e(date('d/m H:i', strtotime($cuando[$k]))) : '&nbsp;' ?>
-                </div>
-            <?php endforeach; ?>
+        <section class="clave">
+            <div>
+                <div class="clave-etq">Palabra clave de retiro</div>
+                <div class="clave-palabra"><span><?= e($clave) ?></span></div>
+            </div>
+            <div class="clave-txt"><b>Kiosquero: antes de entregar, pedí la palabra clave</b>
+                Se la mandamos por mail a <?= e($titular) ?> cuando el pedido llegó al kiosco. Si quien retira no la sabe, no entregues el pedido y comunicate con nosotros.</div>
         </section>
-        <?php else: ?><div style="height:6mm"></div><?php endif; ?>
 
         <section class="fichas">
             <div class="ficha">

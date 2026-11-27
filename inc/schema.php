@@ -708,6 +708,11 @@ function schema_pasos(): array {
         43 => [
             "ALTER TABLE pedidos ADD COLUMN comprobante VARCHAR(80) NULL, ADD COLUMN comprobante_at DATETIME NULL",
         ],
+
+        // Palabra clave de retiro ("COMETA"): va en el mail de "Llegó a tu kiosco" y en la constancia de entrega.
+        44 => [
+            "ALTER TABLE pedidos ADD COLUMN palabra_clave VARCHAR(40) NULL",
+        ],
     ];
 }
 

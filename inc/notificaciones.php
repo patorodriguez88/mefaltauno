@@ -89,6 +89,15 @@ function pedido_kiosco(array $p): array {
     ];
 }
 
+// La palabra clave de retiro, bien a la vista en el mail (estilo historieta: tipografía gruesa sobre amarillo)
+function mail_palabra_clave(string $clave): string {
+    return '<div style="margin:20px 0;border:2px dashed #00393c;border-radius:12px;padding:16px;text-align:center;background:#f2f8f8">'
+        . '<div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#006368;font-weight:bold">Tu palabra clave para retirar</div>'
+        . '<div style="margin:8px 0 6px"><span style="display:inline-block;background:#f1e52f;color:#00393c;font:900 26px/1.2 Arial Black,Arial,sans-serif;letter-spacing:2px;padding:6px 16px;border-radius:8px">'
+        . e($clave) . '</span></div>'
+        . '<div style="font-size:14px;color:#1c2626">Decísela al kiosquero cuando vayas a buscar tu pedido: <b>sin la palabra clave no te lo puede entregar</b>.</div></div>';
+}
+
 // Mails de logística: en camino (con el seguimiento de Caddy) y llegó al kiosco (con quién lo tiene y el DNI).
 function mail_pedido_logistica(array $p, string $estado): ?array {
     $id = (int)$p['id'];
@@ -108,6 +117,7 @@ function mail_pedido_logistica(array $p, string $estado): ?array {
         return ["Tu pedido #$id ya está en tu kiosco",
             '<p>Hola ' . e($p['nombre']) . ',</p><p>¡Llegó! Tu pedido <b>#' . $id . '</b> ya se encuentra en poder de <b>' . $quien . '</b>.</p>'
             . mail_tabla($filas) . $seg
+            . mail_palabra_clave(pedido_palabra_clave($id))
             . '<p>Comunicate con el kiosco para concretar la entrega.</p>'
             . '<p style="background:#fff6e0;padding:12px;border-radius:8px"><b>No te olvides de llevar tu DNI</b>: el kiosquero puede pedírtelo.</p>'];
     }

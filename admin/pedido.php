@@ -79,8 +79,10 @@ admin_header('Pedido #' . $id, 'pedidos');
 <div class="section-head">
     <h1 style="margin:0">Pedido #<?= $id ?></h1>
     <?= badge_estado($p['estado'], ESTADOS_PEDIDO) ?>
-    <?php if ($p['estado'] !== 'cancelado'): ?>
+    <?php if (in_array($p['estado'], ESTADOS_CON_PAGO, true)): ?>
         <a class="btn btn-teal btn-chico" style="margin-left:auto" href="<?= url('admin/constancia.php?id=' . $id) ?>" target="_blank" rel="noopener">🖨️ Constancia de entrega</a>
+    <?php elseif ($p['estado'] !== 'cancelado'): ?>
+        <span class="btn btn-linea btn-chico" style="margin-left:auto;opacity:.55;cursor:not-allowed" title="Se habilita cuando el pago está confirmado">🖨️ Constancia de entrega · con el pago confirmado</span>
     <?php endif; ?>
 </div>
 
@@ -145,7 +147,8 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <b><?= e(nombre_cliente($p)) ?></b> · <a href="mailto:<?= e($p['email']) ?>"><?= e($p['email']) ?></a> · <?= e($p['telefono'] ?: '') ?><br><br>
                 <b><?= e($p['envio_punto'] ? 'Retira en ' . $p['envio_punto'] : (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?></b><br>
                 <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?> <?= e($p['envio_provincia']) ?><br>
-                Retira: <?= e($p['envio_nombre']) ?> (<?= e($p['envio_telefono']) ?>)<br><br>
+                Retira: <?= e($p['envio_nombre']) ?> (<?= e($p['envio_telefono']) ?>)<br>
+                <?php if ($p['palabra_clave']): ?>Palabra clave de retiro: <b><?= e($p['palabra_clave']) ?></b><br><?php endif; ?><br>
                 <b>Pago:</b> <?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?>
                 <?php if ($p['pago_metodo'] === 'transferencia'): ?>
                     · <?php if ($p['comprobante']): ?><a href="<?= e(comprobante_url($id)) ?>" target="_blank" rel="noopener"><b>🧾 Ver comprobante</b></a> <span class="muted">(subido el <?= e(fecha($p['comprobante_at'])) ?>)</span>
