@@ -502,3 +502,4 @@ require __DIR__ . '/salidas.php';
 require __DIR__ . '/abonos.php';
 require __DIR__ . '/trazabilidad.php';
 require __DIR__ . '/mail.php';
+require __DIR__ . '/comprobantes.php';

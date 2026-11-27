@@ -84,6 +84,11 @@ admin_header('Pedido #' . $id, 'pedidos');
     <?php endif; ?>
 </div>
 
+<?php if ($p['estado'] === 'pendiente' && $p['pago_metodo'] === 'transferencia' && $p['comprobante']): ?>
+    <div class="aviso" style="margin-bottom:16px">🧾 <b>El cliente subió el comprobante</b> el <?= e(fecha($p['comprobante_at'])) ?>.
+        <a href="<?= e(comprobante_url($id)) ?>" target="_blank" rel="noopener">Ver comprobante</a> · Si la plata ya entró al banco, pasá el pedido a <b>Pago confirmado</b>.</div>
+<?php endif; ?>
+
 <?php if ($encargues): ?>
     <div class="card encargue-panel <?= $enc_pend ? 'pendiente' : 'listo' ?>">
         <div class="encargue-head">
@@ -142,6 +147,10 @@ admin_header('Pedido #' . $id, 'pedidos');
                 <?= e($p['envio_direccion']) ?>, <?= e($p['envio_localidad']) ?> <?= e($p['envio_provincia']) ?><br>
                 Retira: <?= e($p['envio_nombre']) ?> (<?= e($p['envio_telefono']) ?>)<br><br>
                 <b>Pago:</b> <?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?>
+                <?php if ($p['pago_metodo'] === 'transferencia'): ?>
+                    · <?php if ($p['comprobante']): ?><a href="<?= e(comprobante_url($id)) ?>" target="_blank" rel="noopener"><b>🧾 Ver comprobante</b></a> <span class="muted">(subido el <?= e(fecha($p['comprobante_at'])) ?>)</span>
+                    <?php else: ?><span class="badge badge-amarillo">Sin comprobante todavía</span><?php endif; ?>
+                <?php endif; ?>
                 <?php if ($p['mp_estado']):
                     $mp_estados = ['approved' => 'aprobado', 'pending' => 'pendiente', 'in_process' => 'en revisión', 'authorized' => 'autorizado',
                                    'rejected' => 'rechazado', 'cancelled' => 'cancelado', 'refunded' => 'devuelto', 'charged_back' => 'contracargo'];

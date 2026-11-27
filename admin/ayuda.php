@@ -144,7 +144,7 @@ admin_header('Ayuda', 'ayuda');
     <h2>Rutina del día</h2>
     <ol class="ayuda-lista">
         <li><b>Inicio:</b> mirá los cuatro recuadros.</li>
-        <li><b>Por cobrar:</b> confirmá las transferencias que ya entraron al banco.</li>
+        <li><b>Por cobrar:</b> confirmá las transferencias que ya entraron al banco. El cliente sube el comprobante desde su pedido: te llega un mail y en la lista ves <b>🧾 Comprobante</b>.</li>
         <li><b>Encargues:</b> en los pedidos con unidades por encargue, pedíselas al editor y marcá cada paso.</li>
         <li><b>En el kiosco:</b> cuando el kiosco te avise que lo retiraron (o que lo entregó a domicilio), marcá <i>Misión cumplida</i>.</li>
         <li><b>Me faltan:</b> respondé las búsquedas nuevas (las “Por salir” no hace falta buscarlas).</li>

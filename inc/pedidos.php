@@ -57,6 +57,7 @@ function pedido_borrar(int $id, string $usuario): void {
     $estado = q("SELECT estado FROM pedidos WHERE id=?", [$id])->fetchColumn();
     if ($estado === false) throw new Exception('Pedido no encontrado.');
     if ($estado !== 'cancelado') pedido_cambiar_estado($id, 'cancelado', 'Cancelado para borrarlo (prueba).', false, $usuario);
+    $comprobante = q("SELECT comprobante FROM pedidos WHERE id=?", [$id])->fetchColumn();
     $db = db();
     $db->beginTransaction();
     q("UPDATE reservas SET pedido_id=NULL WHERE pedido_id=?", [$id]);
@@ -64,4 +65,5 @@ function pedido_borrar(int $id, string $usuario): void {
     q("DELETE FROM historial WHERE entidad='pedido' AND entidad_id=?", [$id]);
     q("DELETE FROM pedidos WHERE id=?", [$id]);
     $db->commit();
+    comprobante_borrar_archivo($comprobante ?: null);
 }

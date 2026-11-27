@@ -132,6 +132,9 @@ require __DIR__ . '/inc/header.php';
                     </div>
                     <div style="display:flex;gap:12px;align-items:center">
                         <strong><?= precio((float)$p['total']) ?></strong>
+                        <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente'): ?>
+                            <?= $p['comprobante'] ? '<span class="badge badge-verde">Comprobante enviado</span>' : '<span class="badge badge-amarillo">📎 Falta el comprobante</span>' ?>
+                        <?php endif; ?>
                         <?= badge_estado($p['estado'], ESTADOS_PEDIDO) ?>
                     </div>
                 </a>

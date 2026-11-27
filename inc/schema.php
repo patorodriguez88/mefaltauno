@@ -703,6 +703,11 @@ function schema_pasos(): array {
         42 => [
             "ALTER TABLE mails_enviados ADD COLUMN html MEDIUMTEXT NULL AFTER cuerpo",
         ],
+
+        // Comprobante de transferencia que sube el cliente desde su pedido (archivo en storage/comprobantes).
+        43 => [
+            "ALTER TABLE pedidos ADD COLUMN comprobante VARCHAR(80) NULL, ADD COLUMN comprobante_at DATETIME NULL",
+        ],
     ];
 }
 

@@ -47,7 +47,8 @@ admin_header('Pedidos', 'pedidos');
                 <td><?= e(nombre_cliente($p)) ?><div class="muted small"><?= e($p['email']) ?></div></td>
                 <td><?= (int)$p['unidades'] ?><?php if ($p['encargue_pend'] && $p['estado'] !== 'cancelado'): ?> <span class="badge badge-rojo" title="Unidades por encargue que faltan llegar de Brihet">📦 <?= (int)$p['encargue_pend'] ?> encargue</span><?php endif; ?></td>
                 <td class="small"><?= e($p['envio_punto'] ?: (ENVIO_METODOS[$p['envio_metodo']] ?? '')) ?><div class="muted"><?= e($p['envio_localidad']) ?></div></td>
-                <td class="small"><?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?></td>
+                <td class="small"><?= e(PAGO_METODOS[$p['pago_metodo']] ?? '') ?>
+                    <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente'): ?><div><?= $p['comprobante'] ? '<span class="badge badge-verde">🧾 Comprobante</span>' : '<span class="badge badge-gris">Sin comprobante</span>' ?></div><?php endif; ?></td>
                 <td><b><?= precio((float)$p['total']) ?></b></td>
                 <td><?= badge_estado($p['estado'], ESTADOS_PEDIDO) ?></td>
             </tr>

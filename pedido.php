@@ -5,6 +5,25 @@ $cli = requiere_login();
 $p = q("SELECT * FROM pedidos WHERE id=? AND cliente_id=?", [(int)($_GET['id'] ?? 0), $cli['id']])->fetch();
 if (!$p) redirect('cuenta.php?tab=pedidos');
 
+// Transferencia: el cliente sube el comprobante acá (mientras el pago no esté confirmado puede cambiarlo)
+$puede_comprobante = $p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['accion'] ?? '') === 'comprobante') {
+    csrf_exigir();
+    if ($puede_comprobante) {
+        try {
+            $habia = (bool)$p['comprobante'];
+            comprobante_guardar((int)$p['id'], $_FILES['comprobante'] ?? null);
+            registrar_historial('pedido', (int)$p['id'], 'pendiente', $habia ? 'Cambiaste el comprobante de la transferencia.' : 'Subiste el comprobante de la transferencia.', nombre_cliente($cli));
+            require_once __DIR__ . '/inc/notificaciones.php';
+            notificar_comprobante((int)$p['id']);
+            flash('ok', '¡Listo, recibimos tu comprobante! Apenas confirmemos la transferencia, empezamos a preparar tu pedido y te avisamos por mail.');
+        } catch (Exception $e) {
+            flash('error', $e->getMessage());
+        }
+    }
+    redirect('pedido.php?id=' . $p['id'] . '#comprobante');
+}
+
 // Mercado Pago: el botón "Pagar" arma (o reusa) el link; al volver de pagar se mira el pago en el momento,
 // así el cliente ve su pedido confirmado sin esperar el aviso de Mercado Pago.
 if (mp_activo() && $p['pago_metodo'] === 'mercadopago') {
@@ -109,11 +128,31 @@ require __DIR__ . '/inc/header.php';
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
-                <?php if ($p['pago_metodo'] === 'transferencia' && $p['estado'] === 'pendiente'): ?>
-                    <div class="card card-destacada">
+                <?php if ($puede_comprobante): ?>
+                    <div class="card card-destacada" id="comprobante">
                         <h3>Datos para transferir</h3>
                         <?= html_datos_bancarios((float)$p['total']) ?>
-                        <p class="small" style="margin:12px 0 0">Cuando transfieras, enviá el comprobante respondiendo el mail del pedido. Apenas lo confirmamos, empezamos a prepararlo.</p>
+                        <form method="post" enctype="multipart/form-data" class="comprobante-form">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="accion" value="comprobante">
+                            <?php if ($p['comprobante']): ?>
+                                <p class="comprobante-ok">✅ <b>Recibimos tu comprobante</b> el <?= e(fecha($p['comprobante_at'])) ?>.
+                                    <a href="<?= e(comprobante_url((int)$p['id'])) ?>" target="_blank" rel="noopener">Verlo</a></p>
+                                <p class="small muted" style="margin:0 0 10px">Apenas confirmemos la transferencia, empezamos a preparar tu pedido. ¿Subiste el que no era? Cambialo:</p>
+                            <?php else: ?>
+                                <p class="small" style="margin:14px 0 10px"><b>Cuando transfieras, subí el comprobante acá.</b> Sirve una foto, una captura de pantalla o el PDF del banco. Apenas lo confirmamos, empezamos a preparar tu pedido.</p>
+                            <?php endif; ?>
+                            <label class="btn <?= $p['comprobante'] ? 'btn-linea btn-chico' : 'btn-teal btn-bloque' ?>">
+                                <span><?= $p['comprobante'] ? 'Cambiar comprobante' : '📎 Subir comprobante' ?></span>
+                                <input type="file" name="comprobante" accept="image/*,application/pdf" required hidden
+                                       onchange="if (this.files.length) { this.previousElementSibling.textContent = 'Subiendo…'; this.form.submit(); }">
+                            </label>
+                        </form>
+                    </div>
+                <?php elseif ($p['comprobante']): ?>
+                    <div class="card">
+                        <h3>Comprobante de transferencia</h3>
+                        <p class="small" style="margin:0">Lo subiste el <?= e(fecha($p['comprobante_at'])) ?>. <a href="<?= e(comprobante_url((int)$p['id'])) ?>" target="_blank" rel="noopener">Verlo</a></p>
                     </div>
                 <?php endif; ?>
                 <div class="card">

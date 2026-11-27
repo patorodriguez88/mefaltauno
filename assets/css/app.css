@@ -1038,3 +1038,7 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .nuevo-opcion { display: flex; gap: 8px; align-items: center; font-size: .9rem; font-weight: 600; cursor: pointer; }
 .nuevo-destino .nuevo-campos-grupo { padding-left: 24px; }
 .nuevo-campos-grupo { grid-template-columns: minmax(200px, 2fr) minmax(140px, 1fr); }
+
+/* Comprobante de transferencia (pedido.php) */
+.comprobante-ok { margin: 14px 0 4px; background: var(--green-100); color: #156b3a; border-radius: var(--radius-sm); padding: 10px 12px; font-size: .9rem; }
+.comprobante-ok a { color: inherit; font-weight: 700; margin-left: 4px; }
